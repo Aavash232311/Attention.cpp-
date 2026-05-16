@@ -12,7 +12,7 @@ __global__ void addVec(const float *a, const float *b, float *c, int N) {
 
 
 int main() {
-    int N = 1000000;
+    int N = 10000;
     size_t size = N * sizeof(float);
 
     std::mt19937 gen; 
