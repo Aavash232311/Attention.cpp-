@@ -9,7 +9,7 @@ A function that runs on the GPU
 
 *** When we lanch a kernels they are executed as a set of parallel threads
 
-The smallest unit. One thread = one execution of your kernel. It has its own registers (private variables), stack, and unique id (theadIdx)
+The smallest unit of execution. One thread = one execution of your kernel. It has its own registers (private variables), stack, and unique id (theadIdx)
 
 When we write something like launch 256 threads.
 GPU sees: 8 wraps of 32
@@ -21,12 +21,13 @@ A group of threads that we define at launch. Threads in the same block can share
 #+BEGIN_SRC C
 
 add<<4, 256>> // 4 blocks, 256 threads per block
+  // we have 4 blocks and each with 256 threads running in parallel.
 
   // the second arguement 256 is our block size
 #+END_SRC
 
 *** Grid
-All the blocks in a single thread kernel launch. The entire army of theads.
+All the blocks in a single thread kernel launch. The entire army of theads. They all share global memory.
 
 Grid
 
@@ -63,3 +64,7 @@ __global__ void add(int *a, int *b, int * c, int N)
 #+END_SRC
 
 - Those pointers in the paramater points to the GPU memory not CPU
+*** Exchanging data
+When we exchange data from GPU to CPU it gets travelled from the PCIE express BUS which makes the cost of exchanging slower.
+*** Organizing threads
+CUDA organizes theads in a 3-level hierarchy: Threads blocks grid
