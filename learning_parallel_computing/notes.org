@@ -26,6 +26,8 @@ add<<4, 256>> // 4 blocks, 256 threads per block
   // the second arguement 256 is our block size
 #+END_SRC
 
+#+RESULTS:
+
 *** Grid
 All the blocks in a single thread kernel launch. The entire army of theads. They all share global memory.
 
@@ -68,3 +70,12 @@ __global__ void add(int *a, int *b, int * c, int N)
 When we exchange data from GPU to CPU it gets travelled from the PCIE express BUS which makes the cost of exchanging slower.
 *** Organizing threads
 CUDA organizes theads in a 3-level hierarchy: Threads blocks grid
+- Threads within a block run on the same Stremaing Multiprocressor(SM) which is why shared memeory is fast and sync is possible.
+- Grid can scale according to all block size.
+- A group of 32 threads called wrap is the actual hardware execution unit, all threads in a wrap execute the same instruction in lockstep.
+- If threads from different blocks communicuate then they need Dynamic Random Access Memory to communicate which makes it slower.
+
+*** Good CUDA code
+- Load data from global memory into shared memeory once.
+- Do all the heavy computation using shared memory.
+- Write resules back to global memory at the end.
