@@ -1,0 +1,6 @@
+# Ignore compiled executable
+main
+
+# Ignore Visual Studio / VS Code settings
+.vs/
+.vscode/
