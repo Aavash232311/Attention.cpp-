@@ -1,6 +1,6 @@
 #+title: Learning parallel computing and c++
 
-* Learning how to add vectors in Kernel
+** Learning how to add vectors in Kernel
 
 This is my first cuda Kernel. The __global__ keyword means it runs on the GPU. Each thread handles one element.
 
