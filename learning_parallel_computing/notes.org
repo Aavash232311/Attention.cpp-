@@ -98,3 +98,35 @@ for (int i = 0; i < N; i++) {
 #+END_SRC
 
 #+RESULTS:
+
+if (i < N) protects if our array size does not divide evenly into blocks.
+
+if N is the size of array in our case adding element from an array then it is divided into blocks and threads.
+
+CUDA grid can hold up to 2^31-1 blocks per dimension, so we can launch huge numbers of blocks but the problem is GPU might not have enough SM to execute those.
+
+Let's see how the hardware runs blocks in waves.
+
+Wave 1 first Nblocks run on all SM's
+wave 2 next N block so on and so on until done.
+
+*** Allocation of grid size.
+
+Normally if we just did
+#+BEGIN_SRC C
+int gridSize = N / blockSize; // This is a floor division
+#+END_SRC
+
+N = 1000, blockSize=256 = 1000/256 = 3 floor
+3x256 threads = 768 threads
+missing 232 elements.
+#+BEGIN_SRC C
+int girdSize = (N + blockSize - 1) / blockSize;
+#+END_SRC
+
+N = 1000, blockSize = 256
+(1000 + 255) / 256
+= 1255 / 256 = 4 blocks  = 4x256=1024 threads
+
+Why do we calculate the gird size instead of allocating it ourself?
+Well, because the N might be extremly large, it might come from a database so we want to make it according to N.
