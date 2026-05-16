@@ -79,3 +79,22 @@ CUDA organizes theads in a 3-level hierarchy: Threads blocks grid
 - Load data from global memory into shared memeory once.
 - Do all the heavy computation using shared memory.
 - Write resules back to global memory at the end.
+*** Understanding the execution of smile kernel
+Each thread computes a unique i based on where it sits.
+For example:-
+Block 0: threads indices form 0-256
+Block 1: threads handle indices from 256-511
+If we have comething like add <<4, 256>>
+
+What happens in parallel c[i] = a[i] + b[i] simultaneously in paralle. No thread is going to wait for another.
+For example thread 0 adds a[0] + b[0]
+Thread 1 adds a[1] + b[1]
+
+For example on a cpu
+#+BEGIN_SRC C
+for (int i = 0; i < N; i++) {
+  c[i] = a[i] + b[i]
+ }
+#+END_SRC
+
+#+RESULTS:
