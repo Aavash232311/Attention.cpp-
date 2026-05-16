@@ -5,11 +5,11 @@
 This is my first cuda Kernel. The __global__ keyword means it runs on the GPU. Each thread handles one element.
 
 
-** Understanding of thead block and GPU Hardware
+*** Understanding of thead block and GPU Hardware
 
 GPU unlike CPU has thousands of smaller cores which I understand from my childhood questoning why does my laptop with igpu wont render complex graphics.
 
-** Understanding how are those threads organized for NVIDA GPU
+*** Understanding how are those threads organized for NVIDA GPU
 NVIDA organizes threads in a hierarchy
 
 Grid (entire kernel launch)
