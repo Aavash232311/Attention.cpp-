@@ -1,13 +1,36 @@
 #+title: Learning parallel computing and c++
 
-** Learning how to add vectors in Kernel
-
-This is my first cuda Kernel. The __global__ keyword means it runs on the GPU. Each thread handles one element.
-
-
 *** Understanding of thead block and GPU Hardware
 
 GPU unlike CPU has thousands of smaller cores which I understand from my childhood questoning why does my laptop with igpu wont render complex graphics.
+
+*** Kernels
+A function that runs on the GPU
+
+*** When we lanch a kernels they are executed as a set of parallel threads
+
+The smallest unit. One thread = one execution of your kernel. It has its own registers (private variables), stack, and unique id (theadIdx)
+
+When we write something like launch 256 threads.
+GPU sees: 8 wraps of 32
+
+*** Block
+
+A group of threads that we define at launch. Threads in the same block can share fast memory. Threads in different blocks cannot communicate.
+
+#+BEGIN_SRC C
+
+add<<4, 256>> // 4 blocks, 256 threads per block
+
+  // the second arguement 256 is our block size
+#+END_SRC
+
+*** Grid
+All the blocks in a single thread kernel launch. The entire army of theads.
+
+Grid
+
+Block 0 (256 threads = 8 wraps) ...
 
 *** Understanding how are those threads organized for NVIDA GPU
 NVIDA organizes threads in a hierarchy
