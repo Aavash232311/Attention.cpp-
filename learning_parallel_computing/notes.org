@@ -186,3 +186,24 @@ If the order does not matter then it's fine not to sync but in our case in divin
 #+BEGIN_SRC
 total_sum
 #+END_SRC
+*** Understanding atomicAdd in parallel computing.
+
+atomicAdd is a speciallized hardware instruction that guarantees a read modify write opreation on a variable is completed by a single thread without any interference from other threads.
+
+It basically forces threads competing for the same memory address to wait for their turn preventing them from stepping on each other's toes and corrupting data.
+
+*** Understanding the problem
+#+BEGIN_SRC
+Memory (sum = 10)
+
+Thread A -> reads 10 from memory -> modifies (10 + 5 = 15) -> writes 15 back to memory
+
+Thread B => reads 10 from memory -> modifies (10 + 3 = 13) -> writes 13 back to memory
+
+#+END_SRC
+
+The atomicAdd() fixes that by locking the memory address in the GPU for duration of those three steps (Read, Modify, and Write)
+
+*** If thread A, and thread B is executing how will thread B access memory of the variable sum?
+
+This effect is called hardware stalling. The thread B will wait at the memory gateway ultil thread A reseases the lock.
