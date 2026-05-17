@@ -132,7 +132,7 @@ Why do we calculate the gird size instead of allocating it ourself?
 Well, because the N might be extremly large, it might come from a database so we want to make it according to N.
 *** We have a code that does the softmax actication
 
-#+BEGIN_SRC
+#+BEGIN_SRC C
 __global__ void softmax(float *arr, float *out, size_t N)
 {
     __shared__ float total_sum; 
@@ -161,14 +161,16 @@ First of all we have shared float called total_sum
 And we initiallize that by zero at first.
 
 Then we call the
-#+BEGIN_SRC
+#+BEGIN_SRC C
 __syncthreads();
 #+END_SRC
+
+#+RESULTS:
 
 Which is going to wait for all the threads to catch up
 After that we do the lower part of the softmax function
 
-#+BEGIN_SRC
+#+BEGIN_SRC C
 atomicAdd(&total_sum, expf(arr[i]));
 #+END_SRC
 
@@ -178,3 +180,9 @@ And we again wait for the thread to sync.
 We will introduce a bug known as Race condition
 
 GPU threads are known to execute at different speeds, they will read and write to the shared total_sum variable completely out of order.
+
+If the order does not matter then it's fine not to sync but in our case in diving in softmax the order matters.
+
+#+BEGIN_SRC
+total_sum
+#+END_SRC
