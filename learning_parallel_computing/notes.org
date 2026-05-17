@@ -207,3 +207,11 @@ The atomicAdd() fixes that by locking the memory address in the GPU for duration
 *** If thread A, and thread B is executing how will thread B access memory of the variable sum?
 
 This effect is called hardware stalling. The thread B will wait at the memory gateway ultil thread A reseases the lock.
+
+*** Understanding of memory allocation
+In different programming languages the memory can be allocated on either a stack or a heap.
+
+We can think of stack as fast organized but limited, and heap like a giant pool of storage which requires effort to find things.
+Stack allocation is managed by the CPU and Heap allocation is managed by the programmer or if the language has GC then GC will take care of it.
+
+The stack is just a slice of computers system RAM. The CPU uses the stack pointer to quickly push and pop data in a LIFO.

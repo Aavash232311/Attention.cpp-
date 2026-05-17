@@ -11,7 +11,7 @@ softmax(x3) = e^0/e^2 + e^1 + e^0
 
 */
 
-__global__ void softmax(float *arr, float *out, size_t N)
+__global__ void softmax_kernel(float *arr, float *out, size_t N)
 {
     __shared__ float total_sum; // memeory across all threads in the block
 
@@ -32,4 +32,15 @@ __global__ void softmax(float *arr, float *out, size_t N)
     if (i < N) {
         out[i] = expf(arr[i]) / total_sum;
     }
+}
+
+
+extern "C" void softmax(float*arr, float *out, int N) {
+    const int threads_per_block = 256;
+    const int blocks_per_grid = (N + threads_per_block - 1) / threads_per_block;
+
+    softmax_kernel<<<blocks_per_grid, threads_per_block>>>(arr, out, N);
+    
+    // wait for GPU to finish so the print statements display
+    cudaDeviceSynchronize();
 }
