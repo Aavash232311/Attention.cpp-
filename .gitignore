@@ -1,6 +1,7 @@
 # Ignore compiled executable
 main
 vector_add
+bin
 
 # Ignore Visual Studio / VS Code settings
 .vs/

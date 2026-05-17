@@ -130,3 +130,51 @@ N = 1000, blockSize = 256
 
 Why do we calculate the gird size instead of allocating it ourself?
 Well, because the N might be extremly large, it might come from a database so we want to make it according to N.
+*** We have a code that does the softmax actication
+
+#+BEGIN_SRC
+__global__ void softmax(float *arr, float *out, size_t N)
+{
+    __shared__ float total_sum; 
+
+    int i = blockDim.x * blockIdx.x + threadIdx.x;
+
+    if (threadIdx.x == 0) {
+        total_sum = 0.0f; 
+    }
+    __syncthreads(); 
+
+    if (i < N) {
+        atomicAdd(&total_sum, expf(arr[i]));
+    }
+
+    __syncthreads();
+
+    if (i < N) {
+        out[i] = expf(arr[i]) / total_sum;
+    }
+}
+
+#+END_SRC
+*** Let's understand this code line by line
+First of all we have shared float called total_sum
+And we initiallize that by zero at first.
+
+Then we call the
+#+BEGIN_SRC
+__syncthreads();
+#+END_SRC
+
+Which is going to wait for all the threads to catch up
+After that we do the lower part of the softmax function
+
+#+BEGIN_SRC
+atomicAdd(&total_sum, expf(arr[i]));
+#+END_SRC
+
+And we again wait for the thread to sync.
+
+*** What happens if we do not wait for the thread of sync.
+We will introduce a bug known as Race condition
+
+GPU threads are known to execute at different speeds, they will read and write to the shared total_sum variable completely out of order.
