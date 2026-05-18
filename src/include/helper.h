@@ -2,6 +2,7 @@
 #include <cstdio>
 #include <fstream>
 #include <iostream>
+#include <iomanip>
 #include <unordered_map>
 
 class Helper
@@ -60,11 +61,12 @@ public:
         {
             bool found = false;
             char key;
-            for (size_t j = 0; j < encodingKeyPairs.size(); j++) 
+            for (size_t j = 0; j < encodingKeyPairs.size(); j++)
             {
                 for (const auto &pair : encodingKeyPairs[j])
                 {
-                    if (pair.second == indices[i]) {
+                    if (pair.second == indices[i])
+                    {
                         found = true;
                         key = pair.first;
                         break;
@@ -78,13 +80,42 @@ public:
             // please never mind my skills in this lang this is my first time learning it.
             // I might do things in the wrong way!
 
-            if (found) 
+            if (found)
             {
                 decoded.push_back(key);
             }
         }
         return decoded;
     }
+
+    void print_full_matrix(const float *matrix, int seq_len, int d_model)
+    {
+
+        std::cout << std::fixed << std::setprecision(4);
+
+        std::cout << "[\n";
+        for (int r = 0; r < seq_len; ++r)
+        {
+            std::cout << "  [";
+            for (int c = 0; c < d_model; ++c)
+            {
+
+                std::cout << std::setw(8) << matrix[r * d_model + c];
+                if (c < d_model - 1)
+                {
+                    std::cout << ", ";
+                }
+            }
+            std::cout << "]";
+
+            if (r < seq_len - 1)
+            {
+                std::cout << ",\n";
+            }
+        }
+        std::cout << "\n] Shape: (" << seq_len << ", " << d_model << ")\n";
+    }
+
     template <typename T>
     void showVector(std::vector<T> &arr)
     {
@@ -94,7 +125,6 @@ public:
         }
         std::cout << "\n";
     }
-
 
     void showHashMap(std::vector<std::unordered_map<char, int>> &encoded_input)
     {

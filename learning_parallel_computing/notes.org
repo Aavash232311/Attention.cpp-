@@ -226,3 +226,26 @@ Inside of a warp which has 32 threads our code get's assign to multiple threads.
 Let's take an example of an array which some elements and we want to increment each element by 2.0f. All those things happen in parallel.
 
 What is the size of an array is greater than the number of thread itself.
+
+*** Thinking in GPU level
+
+CUDA gives each thread two built in coordinates blockIdx and threadIdx. blockIdx belongs to in the grid and threadIdx position withing that grid. By combination of both each thread computes a unqiue (row, col) pair that's it's address in the output matrix.
+
+#+BEGIN_SRC C
+// A simple nested loop
+
+for (int i = 0; i < 4; i++)
+  for (int j = 0; j < 4; j++)
+    // we are here work(i, j);
+    // we can think of this as time being our axis.
+
+#+END_SRC
+
+#+BEGIN_SRC C
+int i = blockIdx.y * blockDim.y + threadIdx.y;
+int j = blockIdx.x * blockDim.x + threadIdx.x;
+
+
+#+END_SRC
+
+Becase things are happenning in the parallel we need to think in that way.

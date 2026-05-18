@@ -39,19 +39,30 @@ __global__ void softmax_kernel(float *arr, float *out, size_t N)
 }
 
 // This is sinosudial positional embeddings. For simpilicity we wont used learned positional embeddings. We can learn about it later atleast.
-__global__ void positional_embedding_kernel(int *dimension, int N)
+__global__ void positional_embedding_kernel(float *out, int seq_len, int d_model)
 {
-    int i = blockDim.x * blockIdx.x + threadIdx.x;
+    // each id is pinned to a thread itself.
+    int id = blockDim.x * blockIdx.x + threadIdx.x;
+    int pos = blockDim.y * blockIdx.y + threadIdx.y; // because thread runs in parallel we use this formula to look our positions in a gird
 
     /*
         Note:- Okay so inorder to solve something like this, first we need to change the prespection on how we approach the problem
         because we are using differnet hardware to perform a given task. Although, this task is easily done by the CPU, just to get momentum in this
-        platofmr we will be using a GPU to use positional encoding using a GPU.
+        platofm we will be using a GPU to use positional encoding using a GPU.
     */
-
-    if (i < N)
+    if (pos < seq_len && id < d_model)
     {
-        printf("%d \n", i);
+        float denominator = powf(10000.0f, (2.0f * (id / 2)) / d_model);
+        int idx = pos * d_model + id; // Flattened 1D array index
+
+        if (id % 2 == 0)
+        {
+            out[idx] = sinf(pos / denominator);
+        }
+        else
+        {
+            out[idx] = cosf(pos / denominator);
+        }
     }
 }
 
@@ -69,13 +80,12 @@ extern "C"
         cudaDeviceSynchronize();
     }
 
-
-    void positionalEmbeddings(int *tokens, float *out, int N)
+    void positionalEmbeddings(float *out, int seq_len, int d_model)
     {
         const int threads_per_block = 256;
-        const int blocks_per_grid = (N + threads_per_block - 1) / threads_per_block;
+        const int blocks_per_grid = (seq_len + threads_per_block - 1) / threads_per_block;
 
-        positional_embedding_kernel<<<blocks_per_grid, threads_per_block>>>(tokens, N);
+        positional_embedding_kernel<<<blocks_per_grid, threads_per_block>>>(out, seq_len, d_model);
 
         cudaDeviceSynchronize();
     }

@@ -8,7 +8,7 @@
 // I will use this to check if all the components are working.
 // nvcc src/entry.cpp src/kernel/math.cu -o src/bin/entry  ./src/bin/entry
 extern "C" void softmax(float *arr, float *out, int N);
-extern "C" void positionalEmbeddings(int *tokens, float*out, int N);
+extern "C" void positionalEmbeddings(float *out, int seq_len, int d_model);
 
 // please don't judge me this is my first semester learning this particular language with little background in C.
 // I will make this messy in order to learn
@@ -39,7 +39,7 @@ int main()
 
     // launch kernel
     softmax(device_arr_a, device_arr_out, N);
-    cudaDeviceSynchronize(); 
+    cudaDeviceSynchronize();
 
     // copy output back to host
     cudaMemcpy(host_out, device_arr_out, size, cudaMemcpyDeviceToHost);
@@ -48,12 +48,10 @@ int main()
     device_arr_a = nullptr;
     device_arr_out = nullptr;
 
-
     free(host_a);
     free(host_out);
     host_a = nullptr;
     host_out = nullptr;
-
 
     auto textEncoderFile = std::make_unique<EncoderText>();
     // that's cool no delete required
@@ -67,23 +65,25 @@ int main()
     auto decoded = helper->decoder(encodedMap);
     helper->showVector(decoded);
 
-
     // positional encoding like the original attention paper, not learned.
     int d_model = 8;
-    int seq_len = 5;
+    int seq_len = 30;
+
     int total_shape_positional_encoding = d_model * seq_len;
     float *psoitional_encoding_out = (float *)malloc(total_shape_positional_encoding * sizeof(N));
 
-
-
     float *device_positional_encoding;
-    cudaMalloc((void **)&device_positional_encoding, cudaMemcpyHostToDevice);
+    cudaMalloc((void **)&device_positional_encoding, total_shape_positional_encoding * sizeof(float));
 
-    positionalEmbeddings(encodedMap.data(), psoitional_encoding_out, total_shape_positional_encoding);
+    positionalEmbeddings(device_positional_encoding, seq_len, d_model);
+
+    cudaMemcpy(psoitional_encoding_out, device_positional_encoding, total_shape_positional_encoding * sizeof(float), cudaMemcpyDeviceToHost);
+
+    // helper->print_full_matrix(psoitional_encoding_out, seq_len, d_model);
+
 
     cudaFree(device_positional_encoding);
     device_positional_encoding = nullptr;
     free(psoitional_encoding_out);
     psoitional_encoding_out = nullptr;
-
 }
