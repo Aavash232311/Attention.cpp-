@@ -6,24 +6,60 @@
 
 class Helper
 {
+private:
+    std::vector<std::unordered_map<char, int>> encodingKeyPairs;
 
 public:
+    Helper(std::vector<char> encodingPool)
+    {
+        // okay so we have this array of characters based on their poistion first let's encode them.
+        encodingKeyPairs.resize(encodingPool.size()); // resize
+
+        for (size_t i = 0; i < encodingPool.size(); i++)
+        {
+            encodingKeyPairs[i][encodingPool[i]] = i;
+        }
+    }
+
     std::vector<std::unordered_map<char, int>> encoder(std::string input_text)
     {
-        int input_lengh = input_text.length();
+        // let's iterate on what we have and we will check for the encoded dict.
 
-        std::vector<std::unordered_map<char, int>> encoded_pair(input_lengh);
+        auto encodedVectors = std::vector<std::unordered_map<char, int>>(input_text.length());
 
-        for (size_t i = 0; i < input_lengh; i++)
+        for (size_t i = 0; i < input_text.length(); i++)
         {
-            encoded_pair[i][input_text[i]] = i;
+            // let's just do a linear search here. It's just a encoder/decoder does not matter much.
+            char key = input_text[i];
+            bool found = false;
+            int value;
+
+            for (size_t j = 0; j < encodingKeyPairs.size(); j++)
+            {
+                for (const auto &pair : encodingKeyPairs[j])
+                {
+                    if (pair.first == key)
+                    {
+                        found = true;
+                        value = pair.second;
+                        break;
+                    }
+                }
+                if (found)
+                    break;
+            }
+            // I mean as along as we send string to incode that lies withing the vocab of the text it should find it.
+            if (found)
+            {
+                encodedVectors[i][key] = value;
+            }
         }
-        return encoded_pair;
+        return encodedVectors;
     };
 
-    void showHashMap(std::vector<std::unordered_map<char, int>> &encoded_input, int N)
+    void showHashMap(std::vector<std::unordered_map<char, int>> &encoded_input)
     {
-        for (size_t i = 0; i < N; i++)
+        for (size_t i = 0; i < encoded_input.size(); i++)
         {
             for (const auto &pair : encoded_input[i])
             {
@@ -44,7 +80,6 @@ class EncoderText
 public:
     EncoderText()
     {
-
     }
 
     std::vector<char> loadTextChunk(std::string path)
@@ -55,7 +90,6 @@ public:
         {
             std::runtime_error("Failed to open the file");
         }
-
 
         std::vector<char> charArray;
         char ch;

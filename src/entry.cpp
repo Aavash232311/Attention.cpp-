@@ -51,24 +51,13 @@ int main()
     free(host_out);
     host_a = nullptr;
     host_out = nullptr;
-    // Lets work with positional embeddings
-    // In modern day torch it is handelled by encoding.
 
-    Helper helper;
-    std::string input_test = "Hello world";
-
-    int input_length = input_test.length();
-
-    auto encoded_input = helper.encoder("Hello world");
-    // helper.showHashMap(encoded_input, input_length);
-
-    helper.decoder(encoded_input, input_length);
-
-    // we intentionally want to allocate memory in heap here.
-    // It's doing to be in Rnadom Access Memory for a while
-    // This input maybe be something large, and when after encoding we will delete it.
 
     auto textEncoderFile = std::make_unique<EncoderText>();
     // that's cool no delete required
-    textEncoderFile->loadTextChunk("./src/data/chunk.txt");
+    auto charPool = textEncoderFile->loadTextChunk("./src/data/chunk.txt");
+
+    auto helper = std::make_unique<Helper>(charPool);
+    std::string input_text = "RelocateAvailable";
+    auto encodedMap = helper->encoder(input_text);
 }
