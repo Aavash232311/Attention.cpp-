@@ -55,7 +55,8 @@ int main()
 
     auto textEncoderFile = std::make_unique<EncoderText>();
     // that's cool no delete required
-    auto charPool = textEncoderFile->loadTextChunk("./src/data/chunk.txt");
+    std::string filePath = "./src/data/chunk.txt";
+    auto charPool = textEncoderFile->loadTextChunk(filePath);
 
     auto helper = std::make_unique<Helper>(charPool);
     std::string input_text = "RelocateAvailable";

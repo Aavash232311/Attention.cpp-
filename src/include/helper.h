@@ -10,7 +10,7 @@ private:
     std::vector<std::unordered_map<char, int>> encodingKeyPairs;
 
 public:
-    Helper(std::vector<char> encodingPool)
+    Helper(std::vector<char> &encodingPool)
     {
         // okay so we have this array of characters based on their poistion first let's encode them.
         encodingKeyPairs.resize(encodingPool.size()); // resize
@@ -21,7 +21,7 @@ public:
         }
     }
 
-    std::vector<int> encoder(std::string input_text)
+    std::vector<int> encoder(std::string &input_text)
     {
         // let's iterate on what we have and we will check for the encoded dict.
         std::vector<int> indices;
@@ -52,7 +52,7 @@ public:
         return indices;
     };
 
-    std::vector<char> decoder(std::vector<int> indices)
+    std::vector<char> decoder(std::vector<int> &indices)
     {
         std::vector<char> decoded;
         decoded.reserve(indices.size());
@@ -121,7 +121,7 @@ public:
     {
     }
 
-    std::vector<char> loadTextChunk(std::string path)
+    std::vector<char> loadTextChunk(std::string &path)
     {
         std::ifstream file(path);
 
