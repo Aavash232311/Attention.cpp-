@@ -60,4 +60,7 @@ int main()
     auto helper = std::make_unique<Helper>(charPool);
     std::string input_text = "RelocateAvailable";
     auto encodedMap = helper->encoder(input_text);
+    helper->showVector(encodedMap);
+    auto decoded = helper->decoder(encodedMap);
+    helper->showVector(decoded);
 }

@@ -21,18 +21,17 @@ public:
         }
     }
 
-    std::vector<std::unordered_map<char, int>> encoder(std::string input_text)
+    std::vector<int> encoder(std::string input_text)
     {
         // let's iterate on what we have and we will check for the encoded dict.
-
-        auto encodedVectors = std::vector<std::unordered_map<char, int>>(input_text.length());
+        std::vector<int> indices;
+        indices.reserve(input_text.length());
 
         for (size_t i = 0; i < input_text.length(); i++)
         {
             // let's just do a linear search here. It's just a encoder/decoder does not matter much.
             char key = input_text[i];
             bool found = false;
-            int value;
 
             for (size_t j = 0; j < encodingKeyPairs.size(); j++)
             {
@@ -41,21 +40,61 @@ public:
                     if (pair.first == key)
                     {
                         found = true;
-                        value = pair.second;
+                        indices.push_back(pair.second);
                         break;
                     }
                 }
                 if (found)
                     break;
             }
-            // I mean as along as we send string to incode that lies withing the vocab of the text it should find it.
-            if (found)
+        }
+
+        return indices;
+    };
+
+    std::vector<char> decoder(std::vector<int> indices)
+    {
+        std::vector<char> decoded;
+        decoded.reserve(indices.size());
+        for (size_t i = 0; i < indices.size(); i++)
+        {
+            bool found = false;
+            char key;
+            for (size_t j = 0; j < encodingKeyPairs.size(); j++) 
             {
-                encodedVectors[i][key] = value;
+                for (const auto &pair : encodingKeyPairs[j])
+                {
+                    if (pair.second == indices[i]) {
+                        found = true;
+                        key = pair.first;
+                        break;
+                    }
+                }
+                if (found)
+                    break;
+            }
+
+            // if should find as long as we feed it with soemthing in vocab
+            // please never mind my skills in this lang this is my first time learning it.
+            // I might do things in the wrong way!
+
+            if (found) 
+            {
+                decoded.push_back(key);
             }
         }
-        return encodedVectors;
-    };
+        return decoded;
+    }
+    template <typename T>
+    void showVector(std::vector<T> &arr)
+    {
+        for (size_t i = 0; i < arr.size(); i++)
+        {
+            std::cout << arr[i] << " ";
+        }
+        std::cout << "\n";
+    }
+
 
     void showHashMap(std::vector<std::unordered_map<char, int>> &encoded_input)
     {
