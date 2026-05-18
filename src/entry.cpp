@@ -1,10 +1,16 @@
+#include "include/helper.h"
 #include <cuda_runtime.h>
+#include <unordered_map>
 #include <iostream>
+#include <memory>
 #include <cstdio>
 // nvcc src/entry.cpp src/kernel/math.cu -o src/bin/entry  ./src/bin/entry
 extern "C" void softmax(float *arr, float *out, int N);
+extern "C" void postionalEmbeddings(float *dimenstion, int N);
 
 // please don't judge me this is my first semester learning this particular language with little background in C.
+// I will make this messy in order to learn
+
 int main()
 {
     int N = 3;
@@ -40,15 +46,29 @@ int main()
     device_arr_a = nullptr;
     device_arr_out = nullptr;
 
-    for (int i = 0; i < N; i++)
-    {
-        std::cout << host_out[i] << " ";
-    }
-    std::cout << "\n"
-              << " ";
 
     free(host_a);
     free(host_out);
     host_a = nullptr;
     host_out = nullptr;
+    // Lets work with positional embeddings
+    // In modern day torch it is handelled by encoding.
+
+    Helper helper;
+    std::string input_test = "Hello world";
+
+    int input_length = input_test.length();
+
+    auto encoded_input = helper.encoder("Hello world");
+    // helper.showHashMap(encoded_input, input_length);
+
+    helper.decoder(encoded_input, input_length);
+
+    // we intentionally want to allocate memory in heap here.
+    // It's doing to be in Rnadom Access Memory for a while
+    // This input maybe be something large, and when after encoding we will delete it.
+
+    auto textEncoderFile = std::make_unique<EncoderText>();
+    // that's cool no delete required
+    textEncoderFile->loadTextChunk("./src/data/chunk.txt");
 }
