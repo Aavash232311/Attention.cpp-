@@ -1,6 +1,7 @@
 #include <iostream>
 #include <iterator>
 #include <math.h>
+#include <vector>
 #include <cuda_runtime.h>
 
 /*
@@ -37,38 +38,45 @@ __global__ void softmax_kernel(float *arr, float *out, size_t N)
     }
 }
 
-__global__ void positional_embedding_kernel(float *dimension, int N)
+// This is sinosudial positional embeddings. For simpilicity we wont used learned positional embeddings. We can learn about it later atleast.
+__global__ void positional_embedding_kernel(int *dimension, int N)
 {
     int i = blockDim.x * blockIdx.x + threadIdx.x;
 
+    /*
+        Note:- Okay so inorder to solve something like this, first we need to change the prespection on how we approach the problem
+        because we are using differnet hardware to perform a given task. Although, this task is easily done by the CPU, just to get momentum in this
+        platofmr we will be using a GPU to use positional encoding using a GPU.
+    */
+
     if (i < N)
     {
-        if (i % 2 == 0)
-        {
-            printf("Even \n");
-        }
-        else
-        {
-            printf("Odd \n");
-        }
+        printf("%d \n", i);
     }
 }
 
-extern "C" void softmax(float *arr, float *out, int N)
+extern "C"
 {
-    const int threads_per_block = 256;
-    const int blocks_per_grid = (N + threads_per_block - 1) / threads_per_block;
+    void softmax(float *arr, float *out, int N)
+    {
 
-    softmax_kernel<<<blocks_per_grid, threads_per_block>>>(arr, out, N);
+        const int threads_per_block = 256;
+        const int blocks_per_grid = (N + threads_per_block - 1) / threads_per_block;
 
-    // wait for GPU to finish so the print statements display
-    cudaDeviceSynchronize();
-}
+        softmax_kernel<<<blocks_per_grid, threads_per_block>>>(arr, out, N);
 
-extern "C" void postionalEmbeddings(float *dimension, int N)
-{
-    const int threads_per_block = 256;
-    const int blocks_per_grid = (N + threads_per_block - 1) / threads_per_block;
+        // wait for GPU to finish so the print statements display
+        cudaDeviceSynchronize();
+    }
 
-    positional_embedding_kernel<<<blocks_per_grid, threads_per_block>>>(dimension, N);
+
+    void positionalEmbeddings(int *tokens, float *out, int N)
+    {
+        const int threads_per_block = 256;
+        const int blocks_per_grid = (N + threads_per_block - 1) / threads_per_block;
+
+        positional_embedding_kernel<<<blocks_per_grid, threads_per_block>>>(tokens, N);
+
+        cudaDeviceSynchronize();
+    }
 }

@@ -4,9 +4,11 @@
 #include <iostream>
 #include <memory>
 #include <cstdio>
+
+// I will use this to check if all the components are working.
 // nvcc src/entry.cpp src/kernel/math.cu -o src/bin/entry  ./src/bin/entry
 extern "C" void softmax(float *arr, float *out, int N);
-extern "C" void postionalEmbeddings(float *dimenstion, int N);
+extern "C" void positionalEmbeddings(int *tokens, float*out, int N);
 
 // please don't judge me this is my first semester learning this particular language with little background in C.
 // I will make this messy in order to learn
@@ -64,4 +66,24 @@ int main()
     helper->showVector(encodedMap);
     auto decoded = helper->decoder(encodedMap);
     helper->showVector(decoded);
+
+
+    // positional encoding like the original attention paper, not learned.
+    int d_model = 8;
+    int seq_len = 5;
+    int total_shape_positional_encoding = d_model * seq_len;
+    float *psoitional_encoding_out = (float *)malloc(total_shape_positional_encoding * sizeof(N));
+
+
+
+    float *device_positional_encoding;
+    cudaMalloc((void **)&device_positional_encoding, cudaMemcpyHostToDevice);
+
+    positionalEmbeddings(encodedMap.data(), psoitional_encoding_out, total_shape_positional_encoding);
+
+    cudaFree(device_positional_encoding);
+    device_positional_encoding = nullptr;
+    free(psoitional_encoding_out);
+    psoitional_encoding_out = nullptr;
+
 }

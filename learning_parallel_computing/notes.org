@@ -215,3 +215,14 @@ We can think of stack as fast organized but limited, and heap like a giant pool 
 Stack allocation is managed by the CPU and Heap allocation is managed by the programmer or if the language has GC then GC will take care of it.
 
 The stack is just a slice of computers system RAM. The CPU uses the stack pointer to quickly push and pop data in a LIFO.
+
+*** Problem to solve, Positional encoding like in the original attention papaer, Learning to think in the hardware level.
+
+When calculating the positional encoding for a particular sequence we have a conditional branch, if the index is even then we calculate the sin and when calculating the odd position we go for cos.
+
+Because we have adjacent threads like thread 0 and thread 1. We will trigger something called wrap divergence. This occours when thread whithin the same wrap follow different execution like if-else.
+
+Inside of a warp which has 32 threads our code get's assign to multiple threads.
+Let's take an example of an array which some elements and we want to increment each element by 2.0f. All those things happen in parallel.
+
+What is the size of an array is greater than the number of thread itself.
