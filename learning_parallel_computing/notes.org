@@ -296,15 +296,25 @@ void positionalEmbeddings(float *out, int seq_len, int d_model)
 
 For the grid we have same idea, grids are just collection of blocks.
 
-Let's say we have d_model = 48
+okay so let us assume we have d_model = 512 and seq_len = 40
 
-d_model = 38
+grid.x = (512 + 15) / 16 = 32 // 32 tiles needed horizontally
+grid.y = (40 + 15) / 16 = 3 // tiles needed vertically
 
-(48 + 15) / 16 = 3
 
-We have 3 block wide
+so in one block we have 16x16 = 256 threads
+and according to our eqiation we have around 32x3 grid
+so number of threads will be 96x256 = 24756
 
-block1  block2  block3
-[0-16]  [16-31] [32-47]
+(N+15)/16 ensures we never under cover.
 
-Here inside of GPU each block handles one column. 3 block x 16 threads = 48 columns covered exactly.
++15 brings up any-non multiple just enough to round up.
+
+The celling division guarantees that the grid dimension covers all the data.
+
+(N + 16) / 16 always ensures to round up the full data like in our case.
+
+If we assume block(A,B) in a 2d kernel launch then,
+we can say that grid (total_cols + A - 1) / A
+(total_rows + B - 1) / B
+this ensures we have full data coverrage. Data coverage means every element inside of our matrix has assigned thread to it.

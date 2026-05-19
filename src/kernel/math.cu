@@ -43,8 +43,8 @@ __global__ void positional_embedding_kernel(float *out, int seq_len, int d_model
 {
     // we need to change how we think here because we are working in low level and the things are happenning in the parallel.
 
-    int pos = blockIdx.y * blockDim.y + threadIdx.y;
-    int k = blockIdx.x * blockDim.x + threadIdx.x;
+    int pos = blockIdx.y * blockDim.y + threadIdx.y; // this is row
+    int k = blockIdx.x * blockDim.x + threadIdx.x; // this is column
 
     if (pos >= seq_len || k >= d_model)
         return;
