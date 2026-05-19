@@ -41,29 +41,20 @@ __global__ void softmax_kernel(float *arr, float *out, size_t N)
 // This is sinosudial positional embeddings. For simpilicity we wont used learned positional embeddings. We can learn about it later atleast.
 __global__ void positional_embedding_kernel(float *out, int seq_len, int d_model)
 {
-    // each id is pinned to a thread itself.
-    int id = blockDim.x * blockIdx.x + threadIdx.x;
-    int pos = blockDim.y * blockIdx.y + threadIdx.y; // because thread runs in parallel we use this formula to look our positions in a gird
+    // we need to change how we think here because we are working in low level and the things are happenning in the parallel.
 
-    /*
-        Note:- Okay so inorder to solve something like this, first we need to change the prespection on how we approach the problem
-        because we are using differnet hardware to perform a given task. Although, this task is easily done by the CPU, just to get momentum in this
-        platofm we will be using a GPU to use positional encoding using a GPU.
-    */
-    if (pos < seq_len && id < d_model)
-    {
-        float denominator = powf(10000.0f, (2.0f * (id / 2)) / d_model);
-        int idx = pos * d_model + id; // Flattened 1D array index
+    int pos = blockIdx.y * blockDim.y + threadIdx.y;
+    int k = blockIdx.x * blockDim.x + threadIdx.x;
 
-        if (id % 2 == 0)
-        {
-            out[idx] = sinf(pos / denominator);
-        }
-        else
-        {
-            out[idx] = cosf(pos / denominator);
-        }
-    }
+    if (pos >= seq_len || k >= d_model)
+        return;
+
+    int i = k / 2;
+    float denom = powf(10000.0f, 2 * i / d_model);
+
+    float sin_val, cos_val;
+    sincosf(pos / denom, &sin_val, &cos_val); // to prevent the branch divergence
+    out[pos * d_model + k] = (k % 2 == 0) ? sin_val : cos_val;
 }
 
 extern "C"
@@ -79,13 +70,16 @@ extern "C"
         // wait for GPU to finish so the print statements display
         cudaDeviceSynchronize();
     }
-
     void positionalEmbeddings(float *out, int seq_len, int d_model)
     {
-        const int threads_per_block = 256;
-        const int blocks_per_grid = (seq_len + threads_per_block - 1) / threads_per_block;
+        dim3 block(16, 16); // 16x16=256 threads in total.
 
-        positional_embedding_kernel<<<blocks_per_grid, threads_per_block>>>(out, seq_len, d_model);
+        dim3 grid(
+            (d_model + 15) / 16, // this celling division determines how many of those 16x16 grid are needed to cover entire dimension.
+            (seq_len + 15) / 16  
+        );
+
+        positional_embedding_kernel<<<grid, block>>>(out, seq_len, d_model);
 
         cudaDeviceSynchronize();
     }

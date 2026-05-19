@@ -67,7 +67,7 @@ int main()
 
     // positional encoding like the original attention paper, not learned.
     int d_model = 8;
-    int seq_len = 30;
+    int seq_len = 4;
 
     int total_shape_positional_encoding = d_model * seq_len;
     float *psoitional_encoding_out = (float *)malloc(total_shape_positional_encoding * sizeof(N));
@@ -79,7 +79,7 @@ int main()
 
     cudaMemcpy(psoitional_encoding_out, device_positional_encoding, total_shape_positional_encoding * sizeof(float), cudaMemcpyDeviceToHost);
 
-    // helper->print_full_matrix(psoitional_encoding_out, seq_len, d_model);
+     helper->print_full_matrix(psoitional_encoding_out, seq_len, d_model);
 
 
     cudaFree(device_positional_encoding);

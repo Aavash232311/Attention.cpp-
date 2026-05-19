@@ -240,7 +240,7 @@ for (int i = 0; i < 4; i++)
     // we can think of this as time being our axis.
 
 #+END_SRC
-
+*** Working with GPU
 #+BEGIN_SRC C
 int i = blockIdx.y * blockDim.y + threadIdx.y;
 int j = blockIdx.x * blockDim.x + threadIdx.x;
@@ -249,3 +249,62 @@ int j = blockIdx.x * blockDim.x + threadIdx.x;
 #+END_SRC
 
 Becase things are happenning in the parallel we need to think in that way.
+
+**** Positional encoding in parallel
+
+#+BEGIN_SRC C++
+
+__global__ void positional_embedding_kernel(float *out, int seq_len, int d_model)
+  {
+    int pos = blockIdx.y * blockDim.y + threadIdx.y;
+    int k = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (pos >= seq_len || k >= d_model)
+      return;
+
+    int  i = k / 2;
+    float denom = powf(10000.0f, 2 * i / d_model);
+
+    float sin_val, cos_val;
+    sincosf(pos/denom, &sin_val, &cos_val);
+    out[pos * d_model + k] = (k % 2 == 0) ? sin_val : cos_val;
+  }
+
+#+END_SRC
+
+We are calculating both sin and cos to prevent branching divergence in the threads.
+
+**** Launching a kernel for the above code
+
+#+BEGIN_SRC  C
+
+void positionalEmbeddings(float *out, int seq_len, int d_model)
+  {
+    dim3 block(16, 16) // just 256 threads 2d block
+
+   dim3 grid(
+     (d_model + 15) / 16,
+     (seq_len + 15) / 16
+   )
+
+      positional_embedding_kernel<<grid, block>>(out, seq_len, d_model);
+
+    cudaDeviceSynchronize();
+  }
+
+#+END_SRC
+
+For the grid we have same idea, grids are just collection of blocks.
+
+Let's say we have d_model = 48
+
+d_model = 38
+
+(48 + 15) / 16 = 3
+
+We have 3 block wide
+
+block1  block2  block3
+[0-16]  [16-31] [32-47]
+
+Here inside of GPU each block handles one column. 3 block x 16 threads = 48 columns covered exactly.
