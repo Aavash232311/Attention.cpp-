@@ -318,3 +318,14 @@ If we assume block(A,B) in a 2d kernel launch then,
 we can say that grid (total_cols + A - 1) / A
 (total_rows + B - 1) / B
 this ensures we have full data coverrage. Data coverage means every element inside of our matrix has assigned thread to it.
+
+#+BEGIN_SRC C
+if (pos >= seq_len || k >= d_model)
+  return;
+
+
+#+END_SRC
+
+The above code acts like a stpping potential.
+Assumming we have d_model = 512 and seq_len = 30
+Our shape is simple 30X512. We will have more theads than 30x512 and it will just read and write the random memory in VRAM without this gurad.
