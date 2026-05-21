@@ -5,6 +5,11 @@
 #include <memory>
 #include <cstdio>
 
+// This is for unit testing features and compoenents.
+// We will also create a cheat sheet in python to compare and check if something is off.
+// Working with a different hardware is really tuff.
+
+
 // I will use this to check if all the components are working.
 // nvcc src/entry.cpp src/kernel/math.cu -o src/bin/entry  ./src/bin/entry
 extern "C" void softmax(float *arr, float *out, int N);
@@ -67,10 +72,10 @@ int main()
 
     // positional encoding like the original attention paper, not learned.
     int d_model = 8;
-    int seq_len = 4;
+    int seq_len = input_text.length(); // since we are working on character level model.
 
     int total_shape_positional_encoding = d_model * seq_len;
-    float *psoitional_encoding_out = (float *)malloc(total_shape_positional_encoding * sizeof(N));
+    float *psoitional_encoding_out = (float *)malloc(total_shape_positional_encoding * sizeof(float));
 
     float *device_positional_encoding;
     cudaMalloc((void **)&device_positional_encoding, total_shape_positional_encoding * sizeof(float));
@@ -79,7 +84,7 @@ int main()
 
     cudaMemcpy(psoitional_encoding_out, device_positional_encoding, total_shape_positional_encoding * sizeof(float), cudaMemcpyDeviceToHost);
 
-     helper->print_full_matrix(psoitional_encoding_out, seq_len, d_model);
+    helper->print_full_matrix(psoitional_encoding_out, seq_len, d_model);
 
 
     cudaFree(device_positional_encoding);
