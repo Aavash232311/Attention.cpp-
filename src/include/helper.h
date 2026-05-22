@@ -172,3 +172,76 @@ public:
         return charArray;
     }
 };
+
+struct posDataPtr
+{
+    int s1;
+    int s2;
+} dataPointerTrack;
+
+// For this transformer our goal is to learn things so we will create a simple data loader, and feed it with toy data.
+// For this particular case lets user silding window to retrive the data in batch.
+class DataLoader
+{
+    std::string data_path;
+    int batch_size;
+    posDataPtr dataPointer;
+    bool drop_last;
+    std::vector<char> data;
+
+public:
+    DataLoader(std::string data_path, int batch_size, bool drop_last = false)
+    {
+        // pass by value, it does not matter for such small value
+        this->batch_size = batch_size;
+        this->data_path = data_path;
+
+        this->dataPointer.s2 += batch_size;
+    }
+    // We can consider this like a iterator
+    int getData()
+    {
+        // Check for the edge case of data being empty;
+        if (data.empty())
+        {
+            std::cout << " The data is empty. " << std::endl;
+            return 1;
+        }
+
+        // If we want to send all the batches inside then the batch_size should divide the dataset cleanly
+        bool fullBatch = false;
+        if (batch_size % data.size() == 0)
+            fullBatch = true;
+
+        if (fullBatch == true)
+        {
+            this->dataPointer.s1 += batch_size;
+            this->dataPointer.s2 += batch_size;
+        }
+        else // This condition is triggrred only when fullBatch is false.
+        {
+            // If it does not divide cleanly then we need to watchout for the dropout.
+            int projectSecondPointer;
+            // The first pointer is going to be as it is.
+            this->dataPointer.s1 += batch_size;
+            if (this->drop_last == false)
+            {
+                projectSecondPointer = this->dataPointer.s2 + this->batch_size;
+
+                if (projectSecondPointer > data.size())
+                {
+                    // This is the edge case where we have that uneven fit.
+                    this->dataPointer.s2 = this->data.size() - this->batch_size;
+                }
+            }
+            else
+            {
+                // If we have drop last is true, then we ignore that chunk of data
+                projectSecondPointer = this->dataPointer.s2 + this->batch_size;
+            }
+            this->dataPointer.s2 += projectSecondPointer;
+        }
+        
+        return 0;
+    }
+};

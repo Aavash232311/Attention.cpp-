@@ -25,13 +25,13 @@ public:
         this->seq_len = seq_len;
     };
 
-    /* I am not sure if we want to make positional encoding and other arrays flat 
+    /* I am not sure if we want to make positional encoding and other arrays flat
     because the memory strip on hardware level is flat itself and GPU on parallel handels things in flat way. */
     void generatePositionalEncoding()
     {
         // Allocate the memory on the host
         int shape = d_model * seq_len;
-        float *positional_encoding_host = (float *)malloc(shape * sizeof(float)); // shape expected is seq_len * dimension but this is a flat array 
+        float *positional_encoding_host = (float *)malloc(shape * sizeof(float)); // shape expected is seq_len * dimension but this is a flat array
 
         free(positional_encoding_host);
         positional_encoding_host = nullptr;
@@ -41,18 +41,13 @@ public:
 class Attention
 {
 public:
-    int d_model;
-    int vocab_size;
-    int block_size;
-    int num_heads;
+    int &d_model;
+    int &vocab_size;
+    int &block_size;
+    int &num_heads;
 
-    Attention(int d_model, int vocab_size, int block_size, int num_heads)
-    {
-        this->d_model = d_model;
-        this->vocab_size = vocab_size;
-        this->block_size = block_size;
-        this->num_heads = num_heads;
-    };
+    Attention(int &d_model, int &vocab_size, int &block_size, int &num_heads) : d_model(d_model), vocab_size(vocab_size), block_size(block_size), num_heads(num_heads)
+     {};
 
 public:
     void forward()
@@ -73,6 +68,7 @@ int main()
     int vocab_size = 56;
     int block_size = 128;
     int num_heads = 64;
+    int batch_size = 32;
     /* For something like attention we need heap allocation. */
     std::unique_ptr<Attention> attention = std::make_unique<Attention>(
         d_model,
@@ -81,6 +77,13 @@ int main()
         num_heads);
 
     attention->forward();
+
+    std::string path = "./src/data/chunk.txt";
+    std::unique_ptr<DataLoader> dataLoader = std::make_unique<DataLoader>(path, batch_size);
+
+    int iter1 = dataLoader->getData();
+    int iter2 = dataLoader->getData();
+
 
     return 0;
 }
