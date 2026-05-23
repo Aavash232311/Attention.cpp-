@@ -46,8 +46,7 @@ public:
     int &block_size;
     int &num_heads;
 
-    Attention(int &d_model, int &vocab_size, int &block_size, int &num_heads) : d_model(d_model), vocab_size(vocab_size), block_size(block_size), num_heads(num_heads)
-     {};
+    Attention(int &d_model, int &vocab_size, int &block_size, int &num_heads) : d_model(d_model), vocab_size(vocab_size), block_size(block_size), num_heads(num_heads) {};
 
 public:
     void forward()
@@ -68,7 +67,8 @@ int main()
     int vocab_size = 56;
     int block_size = 128;
     int num_heads = 64;
-    int batch_size = 32;
+    int batch_size = 33;
+    bool drop_last = true;
     /* For something like attention we need heap allocation. */
     std::unique_ptr<Attention> attention = std::make_unique<Attention>(
         d_model,
@@ -78,12 +78,19 @@ int main()
 
     attention->forward();
 
+
     std::string path = "./src/data/chunk.txt";
-    std::unique_ptr<DataLoader> dataLoader = std::make_unique<DataLoader>(path, batch_size);
 
-    int iter1 = dataLoader->getData();
-    int iter2 = dataLoader->getData();
+    auto textEncoderFile = std::make_unique<EncoderText>();
 
+    textEncoderFile->loadTextChunk(path); // load that into char arr
 
+     auto& charPool = textEncoderFile->getFileAsChar(); 
+
+    std::unique_ptr<DataLoader> dataLoader = std::make_unique<DataLoader>(path, batch_size, charPool, drop_last);
+    while (dataLoader->getData() != 200)
+    {
+    
+    }
     return 0;
 }
