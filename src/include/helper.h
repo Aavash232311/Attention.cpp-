@@ -146,12 +146,14 @@ public:
 
 class EncoderText
 {
+    std::vector<char> fileAsChar;
+
 public:
     EncoderText()
     {
     }
 
-    std::vector<char> loadTextChunk(std::string &path)
+    void loadTextChunk(std::string &path)
     {
         std::ifstream file(path);
 
@@ -169,7 +171,12 @@ public:
         }
 
         file.close();
-        return charArray;
+        this->fileAsChar = charArray;
+    }
+
+    const std::vector<char> &getFileAsChar() const
+    {
+        return fileAsChar;
     }
 };
 
@@ -195,7 +202,7 @@ public:
         // pass by value, it does not matter for such small value
         this->batch_size = batch_size;
         this->data_path = data_path;
-
+        // let's load the data here.
         this->dataPointer.s2 += batch_size;
     }
     // We can consider this like a iterator
@@ -241,7 +248,7 @@ public:
             }
             this->dataPointer.s2 += projectSecondPointer;
         }
-        
+
         return 0;
     }
 };
