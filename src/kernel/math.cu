@@ -57,6 +57,7 @@ __global__ void positional_embedding_kernel(float *out, int seq_len, int d_model
     out[pos * d_model + k] = (k % 2 == 0) ? sin_val : cos_val;
 }
 
+
 extern "C"
 {
     void softmax(float *arr, float *out, int N)

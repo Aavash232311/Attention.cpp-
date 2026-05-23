@@ -1,8 +1,9 @@
 #include <vector>
 #include <cstdio>
+#include <ranges>
 #include <fstream>
-#include <iostream>
 #include <iomanip>
+#include <iostream>
 #include <unordered_map>
 
 class Helper
@@ -11,7 +12,7 @@ private:
     std::vector<std::unordered_map<char, int>> encodingKeyPairs;
 
 public:
-    Helper(std::vector<char> &encodingPool)
+    Helper(std::vector<char> encodingPool)
     {
         // okay so we have this array of characters based on their poistion first let's encode them.
         encodingKeyPairs.resize(encodingPool.size()); // resize
@@ -20,6 +21,22 @@ public:
         {
             encodingKeyPairs[i][encodingPool[i]] = i;
         }
+    }
+    // getter to get the encoding pool of everything that we plan to encode on.
+    std::vector<int> getEncodedList()
+    {
+        std::vector<int> newList;
+        newList.reserve(encodingKeyPairs.size());
+
+        for (size_t i = 0; i < encodingKeyPairs.size(); i++)
+        {
+            for (const auto &pair : encodingKeyPairs[i])
+            {
+                newList.push_back(pair.second);
+            }
+        }
+
+        return newList;
     }
 
     std::vector<int> encoder(std::string &input_text)
@@ -142,6 +159,18 @@ public:
     {
         return "";
     }
+
+    template <typename T>
+    void print_vector(const std::vector<T> &vec)
+    {
+        std::cout << "[";
+        for (int i = 0; i < vec.size(); i++)
+        {
+            std::cout << vec[i]; 
+            std::cout << ", ";
+        }
+        std::cout << "]\n";
+    }
 };
 
 class EncoderText
@@ -190,37 +219,33 @@ struct posDataPtr
 // For this particular case lets user silding window to retrive the data in batch.
 class DataLoader
 {
-    std::string data_path;
     int batch_size;
     posDataPtr dataPointer;
     bool drop_last;
-    const std::vector<char> &data;
+    const std::vector<int> &data;
 
 public:
-    DataLoader(std::string data_path, int batch_size, const std::vector<char> &data, bool drop_last = true)
-        : data_path(data_path), batch_size(batch_size), data(data), drop_last(drop_last)
+    DataLoader(int batch_size, const std::vector<int> &data, bool drop_last = true)
+        : batch_size(batch_size), data(data), drop_last(drop_last)
     {
-        // let's load the data here.
-        this->dataPointer.s1 = 0;
-        this->dataPointer.s2 += batch_size;
+        dataPointer.s1 = 0;
+        dataPointer.s2 += batch_size;
     }
     // We can consider this like a iterator
-    int getData()
+    std::vector<int> getData()
     {
+        int dataSize = data.size();
+        int pt2Inc = batch_size;
         // Check for the edge case of data being empty;
         if (data.empty())
         {
             throw std::invalid_argument("Data is empty");
         }
-        std::cout << dataPointer.s1 << ": " << dataPointer.s2 << std::endl;
-        int dataSize = data.size();
-        int pt2Inc = batch_size;
 
         // for even fit
-
         if (this->dataPointer.s2 >= dataSize)
         {
-            return 200;
+            return {};
         }
 
         int decisionHeight = dataSize - (dataSize % batch_size);
@@ -229,18 +254,19 @@ public:
         {
             if (drop_last == true)
             {
-                return 200;
+                return {};
             }
-            else 
+            else
             {
                 // if the drop_last is false then we increment the pointer2 by remaining amount
                 pt2Inc = (dataSize % batch_size);
             }
         }
+        std::vector<int> batch(data.begin() + dataPointer.s1, data.begin() + dataPointer.s2);
 
         this->dataPointer.s1 += batch_size;
         this->dataPointer.s2 += pt2Inc;
 
-        return 0;
+        return batch;
     }
 };

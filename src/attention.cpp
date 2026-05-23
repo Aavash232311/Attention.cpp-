@@ -85,12 +85,17 @@ int main()
 
     textEncoderFile->loadTextChunk(path); // load that into char arr
 
-     auto& charPool = textEncoderFile->getFileAsChar(); 
+    auto& charPool = textEncoderFile->getFileAsChar(); 
+    auto helper = std::make_unique<Helper>(charPool);
 
-    std::unique_ptr<DataLoader> dataLoader = std::make_unique<DataLoader>(path, batch_size, charPool, drop_last);
-    while (dataLoader->getData() != 200)
+    const std::vector<int>& encodedData = helper->getEncodedList();
+
+    std::unique_ptr<DataLoader> dataLoader = std::make_unique<DataLoader>(batch_size, encodedData, drop_last);
+
+    std::vector<int> currentBatch;
+    while (!(currentBatch = dataLoader->getData()).empty())
     {
-    
+        helper->print_vector(currentBatch);
     }
     return 0;
 }
