@@ -30,22 +30,45 @@ public:
         this->seq_len = seq_len;
     };
 
+    float* positionalEncoding()
+    {
+        int shape = d_model * seq_len;
+        float *positionalEncodingOut = (float *)malloc(shape * sizeof(float));
+
+        float *devicePositionalEncoding;
+        cudaMalloc((void **)&devicePositionalEncoding, shape * sizeof(float));
+
+        positionalEmbeddings(devicePositionalEncoding, seq_len, d_model);
+
+        cudaMemcpy(positionalEncodingOut,
+                   devicePositionalEncoding,
+                   shape * sizeof(float),
+                   cudaMemcpyDeviceToHost);
+
+        
+
+        cudaFree(devicePositionalEncoding);
+        return positionalEncodingOut;
+    }
+
     /* I am not sure if we want to make positional encoding and other arrays flat
     because the memory strip on hardware level is flat itself and GPU on parallel handels things in flat way. */
     void generateEmbeddings()
     {
         // Allocate the memory on the host
         int shape = d_model * seq_len;
-        float *positional_encoding_host = (float *)malloc(shape * sizeof(float)); // shape expected is seq_len * dimension but this is a flat array
 
         // Now generate token encoding
         std::unique_ptr<Initializer> initilizer = std::make_unique<Initializer>();
-        auto heInit = initilizer->HeInit(this->d_model, this->vocab_size);
+        auto heInit = initilizer->HeInit(this->d_model, this->vocab_size); // token embeddings
 
-        
+        float* encoding = this->positionalEncoding();
 
-        free(positional_encoding_host);
-        positional_encoding_host = nullptr;
+
+        auto vecArr = utils->flatArrToVec<float>(encoding, seq_len, d_model);
+        float* encodingConv = utils->TwoDVectorToFlatMem(vecArr);
+
+        delete[] encodingConv;
     }
 };
 

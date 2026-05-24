@@ -200,6 +200,42 @@ public:
         }
         std::cout << "\n] Shape: (" << seq_len << ", " << d_model << ")\n";
     }
+
+    // For now lets make this method convert the flat array which is computed by the GPU to 2D array of vectors
+    template <typename T>
+    std::vector<std::vector<T>> flatArrToVec(const float *arr, int rows, int cols)
+    {
+        std::vector<std::vector<T>> vec2d(rows, std::vector<T>(cols)); // rows and cols allocation
+
+        for (int r = 0; r < rows; ++r)
+        {
+            for (int c = 0; c < cols; ++c)
+            {
+                vec2d[r][c] = static_cast<T>(arr[r * cols + c]);
+            }
+        }
+
+        return vec2d;
+    } // opreation in the parallel happens through the flat strip of memory so just to check and see I am writing this.
+
+
+    float *TwoDVectorToFlatMem(const std::vector<std::vector<float>> &arr)
+    {
+        int rows = arr.size();
+        int cols = arr[0].size();
+
+        float *newArr = new float[rows * cols];
+
+        for (int r = 0; r < rows; r++)
+        {
+            for (int c = 0; c < cols; c++)
+            {
+                newArr[r * cols + c] = arr[r][c];
+            }
+        }
+
+        return newArr; // rule of thumb call delete because we are forced to do manual memory allocation here.
+    }
 };
 
 class EncoderText
@@ -309,7 +345,7 @@ public:
 
     std::vector<std::vector<float>> HeInit(int vocabSize, int dModel)
     {
-        float stdDev = std::sqrt(2.0f / dModel); 
+        float stdDev = std::sqrt(2.0f / dModel);
 
         std::vector<std::vector<float>> tokenEmbeddings(
             vocabSize,

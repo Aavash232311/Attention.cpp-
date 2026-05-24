@@ -57,6 +57,13 @@ __global__ void positional_embedding_kernel(float *out, int seq_len, int d_model
     out[pos * d_model + k] = (k % 2 == 0) ? sin_val : cos_val;
 }
 
+__global__ void addVec(const float *a, const float *b, float *c, int N) {
+   int i = blockDim.x * blockIdx.x + threadIdx.x;
+   if (i < N) {
+     c[i] = a[i] + b[i];
+   }
+}
+
 
 extern "C"
 {

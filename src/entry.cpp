@@ -68,9 +68,9 @@ int main()
     auto helper = std::make_unique<Helper>(charPool);
     std::string input_text = "RelocateAvailable";
     auto encodedMap = helper->encoder(input_text);
-    helper->showVector(encodedMap);
+
     auto decoded = helper->decoder(encodedMap);
-    helper->showVector(decoded);
+
 
     // positional encoding like the original attention paper, not learned.
     int d_model = 8;
@@ -86,7 +86,7 @@ int main()
 
     cudaMemcpy(psoitional_encoding_out, device_positional_encoding, total_shape_positional_encoding * sizeof(float), cudaMemcpyDeviceToHost);
 
-    helper->print_full_matrix(psoitional_encoding_out, seq_len, d_model);
+   
 
 
     cudaFree(device_positional_encoding);
