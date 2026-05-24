@@ -43,9 +43,13 @@ The final embeddings are added together. First of all lets think of the token en
 "sat" = ID 4291
 
 **** Token embedding matrix
+
+#+BEGIN_SRC Python
 Row 547 [.... d_model] "the"
 Row 8923 [.... d_model] "cat"
 Row 4291 [.... d_model] "sat"
+
+#+END_SRC
 
 **** Token embeddings for the sequence stacked in the order
 #+BEGIN_SRC Python
