@@ -30,7 +30,7 @@ public:
         this->seq_len = seq_len;
     };
 
-    float* positionalEncoding()
+    float *positionalEncoding()
     {
         int shape = d_model * seq_len;
         float *positionalEncodingOut = (float *)malloc(shape * sizeof(float));
@@ -45,8 +45,6 @@ public:
                    shape * sizeof(float),
                    cudaMemcpyDeviceToHost);
 
-        
-
         cudaFree(devicePositionalEncoding);
         return positionalEncodingOut;
     }
@@ -60,15 +58,17 @@ public:
 
         // Now generate token encoding
         std::unique_ptr<Initializer> initilizer = std::make_unique<Initializer>();
-        // this gets changed in god backpropagationv 
+        // this gets changed in god backpropagationv
         auto tokenEmbeddings = initilizer->HeInit(this->vocab_size, this->d_model); // token embeddings
 
-        float* sinosudialEncoding = this->positionalEncoding(); // in moden torch this also gets chaged but are using sinosudial encoding for simplicity here.
+        float *sinosudialEncoding = this->positionalEncoding(); // in moden torch this also gets chaged but are using sinosudial encoding for simplicity here.
 
-        /* 
+        /*
             sinosudialEncoding: [seq_len, d_model]
             tokenEmbedding: [vocab_size, d_model]
         */
+
+        free(sinosudialEncoding);
     }
 };
 
@@ -77,17 +77,22 @@ class Attention
 public:
     int &d_model;
     int &vocab_size;
-    int &block_size;
     int &num_heads;
     int &seq_len;
     std::unique_ptr<Embeddings> embeddings;
 
-    Attention(int &d_model, int &vocab_size, int &block_size, int &num_heads, int &seq_len) : d_model(d_model), vocab_size(vocab_size), block_size(block_size), num_heads(num_heads), seq_len(seq_len)
+    Attention(int &d_model, int &vocab_size, int &num_heads, int &seq_len) : d_model(d_model), vocab_size(vocab_size), num_heads(num_heads), seq_len(seq_len)
     {
         this->embeddings = std::make_unique<Embeddings>(
             this->d_model,
             this->vocab_size,
             this->seq_len);
+
+        // Just to test and keep track of things
+        std::cout << "d_model: " << d_model << std::endl;
+        std::cout << "vocab_size: " << vocab_size << std::endl;
+        std::cout << "seq_len: " << seq_len << std::endl;
+        std::cout << "num_heads: " << num_heads << std::endl;
     };
 
 public:
@@ -108,19 +113,11 @@ int main()
 {
 
     int d_model = 512;
-    int vocab_size = 56;
-    int block_size = 128;
+    int vocab_size; // that depends upon the data that you are passing.
     int num_heads = 64;
     int batch_size = 33;
-    int seq_len = 64;
+    int seq_len = 56;
     bool drop_last = true;
-    /* For something like attention we need heap allocation. */
-    std::unique_ptr<Attention> attention = std::make_unique<Attention>(
-        d_model,
-        vocab_size,
-        block_size,
-        num_heads,
-        seq_len);
 
     std::string path = "./src/data/chunk.txt";
 
@@ -131,7 +128,15 @@ int main()
     auto &charPool = textEncoderFile->getFileAsChar();
     auto helper = std::make_unique<Helper>(charPool);
 
+    vocab_size = charPool.size();
+
     const std::vector<int> &encodedData = helper->getEncodedList();
+    /* For something like attention we need heap allocation. */
+    std::unique_ptr<Attention> attention = std::make_unique<Attention>(
+        d_model,
+        vocab_size,
+        num_heads,
+        seq_len);
 
     std::unique_ptr<DataLoader> dataLoader = std::make_unique<DataLoader>(batch_size, encodedData, drop_last);
 
