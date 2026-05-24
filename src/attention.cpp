@@ -20,12 +20,14 @@ class Embeddings
 public:
     int d_model;
     int vocab_size;
+    int seq_len;
     std::unique_ptr<Utility> utils = std::make_unique<Utility>();
 
-    Embeddings(int d_model, int vocab_size)
+    Embeddings(int d_model, int vocab_size, int seq_len)
     {
         this->d_model = d_model;
         this->vocab_size = vocab_size;
+        this->seq_len = seq_len;
     };
 
     /* I am not sure if we want to make positional encoding and other arrays flat
@@ -33,17 +35,17 @@ public:
     void generateEmbeddings()
     {
         // Allocate the memory on the host
-        int shape = d_model * vocab_size;
+        int shape = d_model * seq_len;
         float *positional_encoding_host = (float *)malloc(shape * sizeof(float)); // shape expected is seq_len * dimension but this is a flat array
-
-        free(positional_encoding_host);
-        positional_encoding_host = nullptr;
 
         // Now generate token encoding
         std::unique_ptr<Initializer> initilizer = std::make_unique<Initializer>();
         auto heInit = initilizer->HeInit(this->d_model, this->vocab_size);
 
+        
 
+        free(positional_encoding_host);
+        positional_encoding_host = nullptr;
     }
 };
 
@@ -54,13 +56,15 @@ public:
     int &vocab_size;
     int &block_size;
     int &num_heads;
+    int &seq_len;
     std::unique_ptr<Embeddings> embeddings;
 
-    Attention(int &d_model, int &vocab_size, int &block_size, int &num_heads) : d_model(d_model), vocab_size(vocab_size), block_size(block_size), num_heads(num_heads) {
+    Attention(int &d_model, int &vocab_size, int &block_size, int &num_heads, int &seq_len) : d_model(d_model), vocab_size(vocab_size), block_size(block_size), num_heads(num_heads), seq_len(seq_len)
+    {
         this->embeddings = std::make_unique<Embeddings>(
             this->d_model,
-            this->vocab_size
-        );
+            this->vocab_size,
+            this->seq_len);
     };
 
 public:
@@ -74,7 +78,6 @@ public:
         }
 
         embeddings->generateEmbeddings();
-
     };
 };
 
@@ -86,13 +89,15 @@ int main()
     int block_size = 128;
     int num_heads = 64;
     int batch_size = 33;
+    int seq_len = 64;
     bool drop_last = true;
     /* For something like attention we need heap allocation. */
     std::unique_ptr<Attention> attention = std::make_unique<Attention>(
         d_model,
         vocab_size,
         block_size,
-        num_heads);
+        num_heads,
+        seq_len);
 
     std::string path = "./src/data/chunk.txt";
 
@@ -100,18 +105,16 @@ int main()
 
     textEncoderFile->loadTextChunk(path); // load that into char arr
 
-    auto& charPool = textEncoderFile->getFileAsChar(); 
+    auto &charPool = textEncoderFile->getFileAsChar();
     auto helper = std::make_unique<Helper>(charPool);
 
-    const std::vector<int>& encodedData = helper->getEncodedList();
+    const std::vector<int> &encodedData = helper->getEncodedList();
 
     std::unique_ptr<DataLoader> dataLoader = std::make_unique<DataLoader>(batch_size, encodedData, drop_last);
-
 
     std::vector<int> currentBatch;
     while (!(currentBatch = dataLoader->getData()).empty())
     {
-
     }
 
     attention->forward();
