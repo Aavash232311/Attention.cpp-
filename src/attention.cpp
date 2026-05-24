@@ -60,15 +60,15 @@ public:
 
         // Now generate token encoding
         std::unique_ptr<Initializer> initilizer = std::make_unique<Initializer>();
-        auto heInit = initilizer->HeInit(this->d_model, this->vocab_size); // token embeddings
+        // this gets changed in god backpropagationv 
+        auto tokenEmbeddings = initilizer->HeInit(this->vocab_size, this->d_model); // token embeddings
 
-        float* encoding = this->positionalEncoding();
+        float* sinosudialEncoding = this->positionalEncoding(); // in moden torch this also gets chaged but are using sinosudial encoding for simplicity here.
 
-
-        auto vecArr = utils->flatArrToVec<float>(encoding, seq_len, d_model);
-        float* encodingConv = utils->TwoDVectorToFlatMem(vecArr);
-
-        delete[] encodingConv;
+        /* 
+            sinosudialEncoding: [seq_len, d_model]
+            tokenEmbedding: [vocab_size, d_model]
+        */
     }
 };
 

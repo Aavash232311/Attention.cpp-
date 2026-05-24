@@ -219,12 +219,14 @@ public:
     } // opreation in the parallel happens through the flat strip of memory so just to check and see I am writing this.
 
 
-    float *TwoDVectorToFlatMem(const std::vector<std::vector<float>> &arr)
+    float *TwoDVectorToFlatMem(const std::vector<std::vector<float>> &arr, bool shape = false)
     {
         int rows = arr.size();
         int cols = arr[0].size();
 
         float *newArr = new float[rows * cols];
+        if (shape)
+            std::cout << "Shape: (" << rows << ", " << cols << ")\n";
 
         for (int r = 0; r < rows; r++)
         {
@@ -236,6 +238,8 @@ public:
 
         return newArr; // rule of thumb call delete because we are forced to do manual memory allocation here.
     }
+
+
 };
 
 class EncoderText
