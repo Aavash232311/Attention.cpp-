@@ -58,14 +58,31 @@ public:
 
         // Now generate token encoding
         std::unique_ptr<Initializer> initilizer = std::make_unique<Initializer>();
-        // this gets changed in god backpropagationv
+        // this gets changed in the backpropagation
         auto tokenEmbeddings = initilizer->HeInit(this->vocab_size, this->d_model); // token embeddings
 
         float *sinosudialEncoding = this->positionalEncoding(); // in moden torch this also gets chaged but are using sinosudial encoding for simplicity here.
 
         /*
             sinosudialEncoding: [seq_len, d_model]
+
+            To build an Intuition lets say
+            H = [... d_model]
+            E = [.... d_model]
+            L = [... d_model]
+            L = [... d_model]
+            O = [... d_model] shape (seq_len, d_model)
+
             tokenEmbedding: [vocab_size, d_model]
+
+            a [... d_model]
+            to
+            z [.... d_model] just an example, which are randomly initlized using methods like HeInit
+
+
+            accodring to the paper this should get added but you think its possible to add these matrix?
+            well absolutely not.
+
         */
 
         free(sinosudialEncoding);

@@ -1,0 +1,69 @@
+
+* Understanding of the embeddings inside the Transformer
+
+** Token embeddings:
+Token embeddings are of shape [vocab_size, d_model]. They are randomly initialized at first and learned during the training process. We can imagine the embedding matrix as a high-dimensional vector space that contains all the vocabulary we want the model to learn from.
+
+** Positional encoding:
+Taking the original Transformer as an example, it used sinusoidal positional encoding, which was fixed during training. The position is determined by sine and cosine functions according to the position index, storing them in a higher-dimensional space.
+
+** Final embeddings
+
+#+BEGIN_SRC Python
+
+# Positional encoding
+
+H = [... d_model]
+E = [... d_model]
+L = [... d_model]
+L = [... d_model]
+O = [... d_model]
+
+Shape(seq_len, d_model)
+
+#+END_SRC
+
+#+BEGIN_SRC Python
+
+# Token embeddings (all of the voab)
+
+a = [...d_model]
+...
+z = [...d_model]
+
+Shape(vocab_size, d_model)
+#+END_SRC
+
+They are randomly initilized at first and adjusted during the training procress.
+
+The final embeddings are added together. First of all lets think of the token encoding as a large lookup table.
+
+"the" = ID 547 (these are encoded based on position or whatever)
+"cat" = ID 8923
+"sat" = ID 4291
+
+**** Token embedding matrix
+Row 547 [.... d_model] "the"
+Row 8923 [.... d_model] "cat"
+Row 4291 [.... d_model] "sat"
+
+**** Token embeddings for the sequence stacked in the order
+#+BEGIN_SRC Python
+E = [
+    [.... ] position 0: "the"
+            position 1: "cat"
+            position 2: "sat"
+]
+Shape (3, 4)
+#+END_SRC
+
+**** Positional encoding
+
+#+BEGIN_SRC Python
+P = [
+   [.... ] # position 0 encoding
+                 ....
+]
+#+END_SRC
+
+Now add those two E[0] P[0] ...
