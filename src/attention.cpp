@@ -4,6 +4,8 @@
 #include <memory>
 #include <cstdio>
 
+// Again my background is beginner here with little concept from C
+
 // nvcc src/attention.cpp src/kernel/math.cu -o src/bin/attention
 // ./src/bin/attention
 
@@ -17,24 +19,31 @@ class Embeddings
 
 public:
     int d_model;
-    int seq_len;
+    int vocab_size;
+    std::unique_ptr<Utility> utils = std::make_unique<Utility>();
 
-    Embeddings(int d_model, int seq_len)
+    Embeddings(int d_model, int vocab_size)
     {
         this->d_model = d_model;
-        this->seq_len = seq_len;
+        this->vocab_size = vocab_size;
     };
 
     /* I am not sure if we want to make positional encoding and other arrays flat
     because the memory strip on hardware level is flat itself and GPU on parallel handels things in flat way. */
-    void generatePositionalEncoding()
+    void generateEmbeddings()
     {
         // Allocate the memory on the host
-        int shape = d_model * seq_len;
+        int shape = d_model * vocab_size;
         float *positional_encoding_host = (float *)malloc(shape * sizeof(float)); // shape expected is seq_len * dimension but this is a flat array
 
         free(positional_encoding_host);
         positional_encoding_host = nullptr;
+
+        // Now generate token encoding
+        std::unique_ptr<Initializer> initilizer = std::make_unique<Initializer>();
+        auto heInit = initilizer->HeInit(this->d_model, this->vocab_size);
+
+
     }
 };
 
@@ -45,8 +54,14 @@ public:
     int &vocab_size;
     int &block_size;
     int &num_heads;
+    std::unique_ptr<Embeddings> embeddings;
 
-    Attention(int &d_model, int &vocab_size, int &block_size, int &num_heads) : d_model(d_model), vocab_size(vocab_size), block_size(block_size), num_heads(num_heads) {};
+    Attention(int &d_model, int &vocab_size, int &block_size, int &num_heads) : d_model(d_model), vocab_size(vocab_size), block_size(block_size), num_heads(num_heads) {
+        this->embeddings = std::make_unique<Embeddings>(
+            this->d_model,
+            this->vocab_size
+        );
+    };
 
 public:
     void forward()
@@ -57,6 +72,9 @@ public:
             std::cout << "The number of heads must be perfectly divisible by dimesnion " << std::endl;
             return;
         }
+
+        embeddings->generateEmbeddings();
+
     };
 };
 
@@ -76,9 +94,6 @@ int main()
         block_size,
         num_heads);
 
-    attention->forward();
-
-
     std::string path = "./src/data/chunk.txt";
 
     auto textEncoderFile = std::make_unique<EncoderText>();
@@ -92,10 +107,14 @@ int main()
 
     std::unique_ptr<DataLoader> dataLoader = std::make_unique<DataLoader>(batch_size, encodedData, drop_last);
 
+
     std::vector<int> currentBatch;
     while (!(currentBatch = dataLoader->getData()).empty())
     {
-        helper->print_vector(currentBatch);
+
     }
+
+    attention->forward();
+
     return 0;
 }

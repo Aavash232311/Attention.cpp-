@@ -1,5 +1,7 @@
 #include <vector>
+#include <random>
 #include <cstdio>
+#include <math.h>
 #include <ranges>
 #include <fstream>
 #include <iomanip>
@@ -105,6 +107,72 @@ public:
         return decoded;
     }
 
+    std::string decoder(std::vector<std::unordered_map<char, int>> &encoded_pairs, int N)
+    {
+        return "";
+    }
+};
+
+class Utility
+{
+public:
+    Utility()
+    {
+    }
+
+    void showHashMap(std::vector<std::unordered_map<char, int>> &encoded_input)
+    {
+        for (size_t i = 0; i < encoded_input.size(); i++)
+        {
+            for (const auto &pair : encoded_input[i])
+            {
+                std::cout << "  Key: " << pair.first << " -> Value: " << pair.second << std::endl;
+            }
+        }
+        return;
+    }
+
+    template <typename T>
+    void showVector(std::vector<T> &arr)
+    {
+        for (size_t i = 0; i < arr.size(); i++)
+        {
+            std::cout << arr[i] << " ";
+        }
+        std::cout << "\n";
+    }
+
+    template <typename T>
+    void Print2DVector(const std::vector<std::vector<T>> &vec)
+    {
+        for (const auto &row : vec)
+        {
+            for (const auto &value : row)
+            {
+                std::cout << value << " ";
+            }
+
+            std::cout << std::endl;
+        }
+        std::cout << "\n] Shape: ("
+                  << vec.size()
+                  << ", "
+                  << vec[0].size()
+                  << ")\n";
+    }
+
+    template <typename T>
+    void print_vector(const std::vector<T> &vec)
+    {
+        std::cout << "[";
+        for (int i = 0; i < vec.size(); i++)
+        {
+            std::cout << vec[i];
+            std::cout << ", ";
+        }
+        std::cout << "]\n";
+    }
+
     void print_full_matrix(const float *matrix, int seq_len, int d_model)
     {
 
@@ -131,45 +199,6 @@ public:
             }
         }
         std::cout << "\n] Shape: (" << seq_len << ", " << d_model << ")\n";
-    }
-
-    template <typename T>
-    void showVector(std::vector<T> &arr)
-    {
-        for (size_t i = 0; i < arr.size(); i++)
-        {
-            std::cout << arr[i] << " ";
-        }
-        std::cout << "\n";
-    }
-
-    void showHashMap(std::vector<std::unordered_map<char, int>> &encoded_input)
-    {
-        for (size_t i = 0; i < encoded_input.size(); i++)
-        {
-            for (const auto &pair : encoded_input[i])
-            {
-                std::cout << "  Key: " << pair.first << " -> Value: " << pair.second << std::endl;
-            }
-        }
-        return;
-    }
-
-    std::string decoder(std::vector<std::unordered_map<char, int>> &encoded_pairs, int N)
-    {
-        return "";
-    }
-
-    template <typename T>
-    void print_vector(const std::vector<T> &vec)
-    {
-        std::cout << "[";
-        for (int i = 0; i < vec.size(); i++)
-        {
-            std::cout << vec[i]; 
-            std::cout << ", ";
-        }
-        std::cout << "]\n";
     }
 };
 
@@ -268,5 +297,35 @@ public:
         this->dataPointer.s2 += pt2Inc;
 
         return batch;
+    }
+};
+
+class Initializer
+{
+public:
+    Initializer()
+    {
+    }
+
+    std::vector<std::vector<float>> HeInit(int vocabSize, int dModel)
+    {
+        float stdDev = std::sqrt(2.0f / dModel); 
+
+        std::vector<std::vector<float>> tokenEmbeddings(
+            vocabSize,
+            std::vector<float>(dModel));
+
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::normal_distribution<float> gaussian(0.0f, 1.0f); // mean 0 std dev
+
+        for (int i = 0; i < vocabSize; ++i)
+        {
+            for (int j = 0; j < dModel; ++j)
+            {
+                tokenEmbeddings[i][j] = gaussian(gen);
+            }
+        }
+        return tokenEmbeddings;
     }
 };
