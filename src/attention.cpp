@@ -119,7 +119,7 @@ int main()
     int d_model = 128;
     int vocab_size; // that depends upon the data that you are passing.
     int num_heads = 64;
-    int batch_size = 33;
+    int batch_size = 32;
     int seq_len = 4;
     bool drop_last = false;
 
@@ -150,7 +150,7 @@ int main()
     std::vector<std::vector<int>> getBatch = dataLoader->getBatch();
 
     // utils->Print2DVector(getBatch);
-
+ 
     auto end = std::chrono::high_resolution_clock::now();
 
     cudaDeviceSynchronize(); // CPU is waiting for the GPU to finish

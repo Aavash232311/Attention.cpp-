@@ -8,6 +8,10 @@
 #include <iostream>
 #include <unordered_map>
 
+
+// I will be really honest it takes time for me to think deeply, but I will figure it out
+// till this day AI hallucination is common on task that requires deep thinking. 
+// whatever even if this market is brutal I am investing my effort into thinking.
 class Helper
 {
 private:
@@ -141,23 +145,27 @@ public:
         }
         std::cout << "\n";
     }
-
     template <typename T>
-    void Print2DVector(const std::vector<std::vector<T>> &vec)
+    void Print2DVector(const std::vector<std::vector<T>> &vec, bool shape_only = false)
     {
-        for (const auto &row : vec)
+        if (shape_only == false)
         {
-            for (const auto &value : row)
+            for (const auto &row : vec)
             {
-                std::cout << value << " ";
-            }
+                for (const auto &value : row)
+                {
+                    std::cout << value << " ";
+                }
 
-            std::cout << std::endl;
+                std::cout << '\n';
+            }
         }
-        std::cout << "\n] Shape: ("
+        std::string shapeAnnotation = shape_only == false ? "\n] Shape: (" : "Shape: (";
+
+        std::cout << shapeAnnotation
                   << vec.size()
                   << ", "
-                  << vec[0].size()
+                  << (vec.empty() ? 0 : vec[0].size())
                   << ")\n";
     }
 
@@ -308,8 +316,7 @@ private:
             throw std::invalid_argument("Data is empty");
         }
 
-        // for even fit
-        if (this->dataPointer.s2 >= dataSize)
+        if (this->dataPointer.s2 > dataSize)
         {
             return {};
         }
@@ -318,16 +325,28 @@ private:
 
         if (decisionHeight == this->dataPointer.s2) // this will be 0 if the data goes in cleanly
         {
+            // one bug was here if 891 == 891 example then without taking out the slice we are returning empty that wont work
             if (drop_last == true)
             {
-                return {};
+                // std::cout << dataPointer.s1 << " : " << decisionHeight << std::endl;
+                this->dataPointer.s2 += decisionHeight; // if not this then it will return infinitely just make this grater than data size.
+                std::vector<int> batch(data.begin() + dataPointer.s1, data.begin() + decisionHeight);
+                return batch;
             }
             else
             {
                 // if the drop_last is false then we increment the pointer2 by remaining amount
                 pt2Inc = (dataSize % batch_size);
+                
+                std::vector<int> batch(data.begin() + dataPointer.s1, data.begin() + dataPointer.s2);
+
+                this->dataPointer.s1 += batch_size;
+                this->dataPointer.s2 += pt2Inc;
+
+                return batch;
             }
         }
+
         std::vector<int> batch(data.begin() + dataPointer.s1, data.begin() + dataPointer.s2);
 
         this->dataPointer.s1 += batch_size;
