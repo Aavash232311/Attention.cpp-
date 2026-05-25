@@ -44,7 +44,7 @@ __global__ void positional_embedding_kernel(float *out, int seq_len, int d_model
     // we need to change how we think here because we are working in low level and the things are happenning in the parallel.
 
     int pos = blockIdx.y * blockDim.y + threadIdx.y; // this is row
-    int k = blockIdx.x * blockDim.x + threadIdx.x; // this is column
+    int k = blockIdx.x * blockDim.x + threadIdx.x;   // this is column
 
     if (pos >= seq_len || k >= d_model)
         return;
@@ -57,20 +57,27 @@ __global__ void positional_embedding_kernel(float *out, int seq_len, int d_model
     out[pos * d_model + k] = (k % 2 == 0) ? sin_val : cos_val;
 }
 
-__global__ void addVec(const float *a, const float *b, float *c, int N) {
-   int i = blockDim.x * blockIdx.x + threadIdx.x;
-   if (i < N) {
-     c[i] = a[i] + b[i];
-   }
+__global__ void addVec(const float *a, const float *b, float *c, int N)
+{
+    int i = blockDim.x * blockIdx.x + threadIdx.x;
+    if (i < N)
+    {
+        c[i] = a[i] + b[i];
+    }
 }
-
 
 // For adding up embeddings
-__global__ void addEmbeddingsKernel()
+__global__ void lookUpEncodingKernel(int *batch, float encoding, int N)
 {
-    
-}
+    int i = blockDim.x * blockIdx.x + threadIdx.x; // here this is the index ref to current pos
 
+    if (i < N)
+    {
+        int idx = batch[i]; // this is flat.
+        // we get that from the encoding even though its flat, we just get it in O(1).
+        
+    }
+}
 
 extern "C"
 {
@@ -91,8 +98,7 @@ extern "C"
 
         dim3 grid(
             (d_model + 15) / 16, // this celling division determines how many of those 16x16 grid are needed to cover entire dimension.
-            (seq_len + 15) / 16  
-        );
+            (seq_len + 15) / 16);
 
         positional_embedding_kernel<<<grid, block>>>(out, seq_len, d_model);
 
