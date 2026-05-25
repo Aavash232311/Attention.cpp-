@@ -87,9 +87,15 @@ We can think of batch_size as how many times the things are procressed in parall
 So at once if the batch_size = 32 then we have 32 element working in parallel for efficient computation.
 
 #+BEGIN_SRC Python
-batch_0 = [0, 1, 2 .... 31]
+# Example we have batch 0:
+indices grabbled: [0, 1, 2, .... 31]
 
-# Inside of just batch 0 we have (seq_len, 32)
-# For all batch till 0-31 things get computed in parallel.
+item0 item1 item2 item3 item..31
+t0
+t1
+t2
+..
+tn
+
 
 #+END_SRC
