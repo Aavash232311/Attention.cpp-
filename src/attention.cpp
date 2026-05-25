@@ -149,7 +149,7 @@ int main()
 
     std::vector<std::vector<int>> getBatch = dataLoader->getBatch();
 
-    // utils->Print2DVector(getBatch);
+    utils->Print2DVector(getBatch);
  
     auto end = std::chrono::high_resolution_clock::now();
 

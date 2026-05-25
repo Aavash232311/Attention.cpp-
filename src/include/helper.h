@@ -315,6 +315,10 @@ private:
         {
             throw std::invalid_argument("Data is empty");
         }
+        if (batch_size > dataSize)
+        {
+            throw std::invalid_argument("We wont deal with batch_size greater than data_size case at the moment.");
+        }
 
         if (this->dataPointer.s2 > dataSize)
         {
@@ -337,7 +341,7 @@ private:
             {
                 // if the drop_last is false then we increment the pointer2 by remaining amount
                 pt2Inc = (dataSize % batch_size);
-                
+
                 std::vector<int> batch(data.begin() + dataPointer.s1, data.begin() + dataPointer.s2);
 
                 this->dataPointer.s1 += batch_size;

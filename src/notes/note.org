@@ -72,6 +72,14 @@ P = [
 
 Now add those two E[0] P[0] ...
 
-**** Procressing of the batch and sequence important for how we write the kernel
+**** We need to understand the batch and sequeces here first
 
-One
+We can think of batch_size as how many times the things are procressed in parallel horizontal and seq_len as the items sequence vertical.
+
+
+#+BEGIN_SRC Python
+[....]
+[....]
+[....]
+[....] # Shape (seq_len, batch_size) example (4, 32)
+#+END_SRC
