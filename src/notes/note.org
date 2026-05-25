@@ -71,3 +71,7 @@ P = [
 #+END_SRC
 
 Now add those two E[0] P[0] ...
+
+**** Procressing of the batch and sequence important for how we write the kernel
+
+One

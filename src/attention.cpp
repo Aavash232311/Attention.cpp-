@@ -59,12 +59,15 @@ public:
         int shape = d_model * seq_len;
 
         // this gets changed in the backpropagation
-        auto tokenEmbeddings = initilizer->HeInit(this->vocab_size, this->d_model); // token embeddings
+        std::vector<std::vector<float>> tokenEmbeddings = initilizer->HeInit(this->vocab_size, this->d_model); // token embeddings
 
         float *sinosudialEncoding = this->positionalEncoding(); // in moden torch this also gets chaged but are using sinosudial encoding for simplicity here.
         // This lnag itself is difficult so I wont comment abuut the concept much to keep it clearn, I have notes on note.org
 
-        utils->print_vector(batch);
+
+        // Now inorder to get the array from token embeddings i.e rows the runtime complexity if O(1)
+        /* Lookup happens in the parallel */
+
 
         free(sinosudialEncoding);
         // We have the token emb with some numbers, and their row is basically our encoded id (based on position or whatever). We fetch those rows according to the seq_len and add those two.
@@ -117,8 +120,8 @@ int main()
     int vocab_size; // that depends upon the data that you are passing.
     int num_heads = 64;
     int batch_size = 33;
-    int seq_len = 8;
-    bool drop_last = true;
+    int seq_len = 4;
+    bool drop_last = false;
 
     std::string path = "./src/data/chunk.txt";
 
@@ -144,11 +147,9 @@ int main()
 
     std::unique_ptr<DataLoader> dataLoader = std::make_unique<DataLoader>(batch_size, encodedData, drop_last);
 
-    std::vector<int> currentBatch;
-    while (!(currentBatch = dataLoader->getData()).empty())
-    {
-        attention->forward(currentBatch);
-    }
+    std::vector<std::vector<int>> getBatch = dataLoader->getBatch();
+
+    // utils->Print2DVector(getBatch);
 
     auto end = std::chrono::high_resolution_clock::now();
 

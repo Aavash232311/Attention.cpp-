@@ -218,7 +218,6 @@ public:
         return vec2d;
     } // opreation in the parallel happens through the flat strip of memory so just to check and see I am writing this.
 
-
     float *TwoDVectorToFlatMem(const std::vector<std::vector<float>> &arr, bool shape = false)
     {
         int rows = arr.size();
@@ -238,8 +237,6 @@ public:
 
         return newArr; // rule of thumb call delete because we are forced to do manual memory allocation here.
     }
-
-
 };
 
 class EncoderText
@@ -284,6 +281,12 @@ struct posDataPtr
     int s2;
 } dataPointerTrack;
 
+struct Vector
+{
+    int x;
+    int y;
+};
+
 // For this transformer our goal is to learn things so we will create a simple data loader, and feed it with toy data.
 // For this particular case lets user silding window to retrive the data in batch.
 class DataLoader
@@ -293,13 +296,7 @@ class DataLoader
     bool drop_last;
     const std::vector<int> &data;
 
-public:
-    DataLoader(int batch_size, const std::vector<int> &data, bool drop_last = true)
-        : batch_size(batch_size), data(data), drop_last(drop_last)
-    {
-        dataPointer.s1 = 0;
-        dataPointer.s2 += batch_size;
-    }
+private:
     // We can consider this like a iterator
     std::vector<int> getData()
     {
@@ -337,6 +334,32 @@ public:
         this->dataPointer.s2 += pt2Inc;
 
         return batch;
+    }
+
+public:
+    DataLoader(int batch_size, const std::vector<int> &data, bool drop_last = true)
+        : batch_size(batch_size), data(data), drop_last(drop_last)
+    {
+        dataPointer.s1 = 0;
+        dataPointer.s2 += batch_size;
+    }
+
+    // I almost forgot about that siliding window, hang tight
+    // previosuly I was doing batch by batch but that is costly
+    // espically in parallel that goes through PCIe BUS which is slow.
+
+    std::vector<std::vector<int>> getBatch()
+    {
+        std::vector<std::vector<int>> data;
+
+        std::vector<int> currentBatch;
+
+        while (!(currentBatch = getData()).empty())
+        {
+            data.push_back(currentBatch);
+        }
+
+        return data;
     }
 };
 
