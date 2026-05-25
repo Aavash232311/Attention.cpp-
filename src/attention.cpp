@@ -3,6 +3,7 @@
 #include <iostream>
 #include <memory>
 #include <cstdio>
+#include <chrono>
 
 // Again my background is beginner here with little concept from C
 
@@ -22,6 +23,7 @@ public:
     int vocab_size;
     int seq_len;
     std::unique_ptr<Utility> utils = std::make_unique<Utility>();
+    std::unique_ptr<Initializer> initilizer = std::make_unique<Initializer>();
 
     Embeddings(int d_model, int vocab_size, int seq_len)
     {
@@ -51,19 +53,21 @@ public:
 
     /* I am not sure if we want to make positional encoding and other arrays flat
     because the memory strip on hardware level is flat itself and GPU on parallel handels things in flat way. */
-    void generateEmbeddings()
+    void generateEmbeddings(std::vector<int> batch)
     {
         // Allocate the memory on the host
         int shape = d_model * seq_len;
 
-        // Now generate token encoding
-        std::unique_ptr<Initializer> initilizer = std::make_unique<Initializer>();
         // this gets changed in the backpropagation
         auto tokenEmbeddings = initilizer->HeInit(this->vocab_size, this->d_model); // token embeddings
 
         float *sinosudialEncoding = this->positionalEncoding(); // in moden torch this also gets chaged but are using sinosudial encoding for simplicity here.
         // This lnag itself is difficult so I wont comment abuut the concept much to keep it clearn, I have notes on note.org
+
+        utils->print_vector(batch);
+
         free(sinosudialEncoding);
+        // We have the token emb with some numbers, and their row is basically our encoded id (based on position or whatever). We fetch those rows according to the seq_len and add those two.
     }
 };
 
@@ -91,7 +95,7 @@ public:
     };
 
 public:
-    void forward()
+    void forward(std::vector<int> batch)
     {
 
         if (d_model % num_heads != 0)
@@ -100,21 +104,25 @@ public:
             return;
         }
 
-        embeddings->generateEmbeddings();
+        embeddings->generateEmbeddings(batch);
     };
 };
 
 int main()
 {
+    cudaDeviceSynchronize();
+    auto start = std::chrono::high_resolution_clock::now();
 
-    int d_model = 512;
+    int d_model = 128;
     int vocab_size; // that depends upon the data that you are passing.
     int num_heads = 64;
     int batch_size = 33;
-    int seq_len = 56;
+    int seq_len = 8;
     bool drop_last = true;
 
     std::string path = "./src/data/chunk.txt";
+
+    auto utils = std::make_unique<Utility>();
 
     auto textEncoderFile = std::make_unique<EncoderText>();
 
@@ -126,6 +134,7 @@ int main()
     vocab_size = charPool.size();
 
     const std::vector<int> &encodedData = helper->getEncodedList();
+
     /* For something like attention we need heap allocation. */
     std::unique_ptr<Attention> attention = std::make_unique<Attention>(
         d_model,
@@ -138,9 +147,14 @@ int main()
     std::vector<int> currentBatch;
     while (!(currentBatch = dataLoader->getData()).empty())
     {
+        attention->forward(currentBatch);
     }
 
-    attention->forward();
+    auto end = std::chrono::high_resolution_clock::now();
+
+    cudaDeviceSynchronize(); // CPU is waiting for the GPU to finish
+    std::chrono::duration<double, std::milli> duration = end - start;
+    std::cout << "Total time (with sync overhead): " << duration.count() << " ms\n";
 
     return 0;
 }

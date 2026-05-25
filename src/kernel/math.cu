@@ -65,6 +65,13 @@ __global__ void addVec(const float *a, const float *b, float *c, int N) {
 }
 
 
+// For adding up embeddings
+__global__ void addEmbeddingsKernel()
+{
+    
+}
+
+
 extern "C"
 {
     void softmax(float *arr, float *out, int N)
