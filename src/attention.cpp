@@ -72,7 +72,14 @@ public:
     {
         int batch_size = x[0].size(); // this is the batch_size
         // this adding we need that to do be done inside of the gpu because its a repeating procress.
+        // We never wnat to think through CUDA until and unless there is a serious performace benifit, that is hard.
+        // What does our algorithm says. in X we have cols as token id so col length is upto the sequence length
+        // we can loop through the sequence length and grab the chunk out of it, it shouldn't hurt much.
 
+        // for (int i = 0; i < seq_len; ++i)
+        // {
+        //     // comeone not much costly
+        // }
 
 
         // int* hostX = utils->TwoDVectorToFlatMem(x);
