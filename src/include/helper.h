@@ -321,13 +321,25 @@ struct posDataPtr
     int s2;
 } dataPointerTrack;
 
+struct IO
+{
+    std::vector<std::vector<int>> x;
+    std::vector<std::vector<int>> y;
+
+    bool empty() const
+    {
+        return x.empty() && y.empty();
+    }
+} io;
+
 // For this transformer our goal is to learn things so we will create a simple data loader, and feed it with toy data.
 // For this particular case lets user silding window to retrive the data in batch.
+// Why not kernel launch for this, if this happens in 1ms then its fine, this happens only once not something that happens all the time.
 class DataLoader
 {
     int batch_size;
     posDataPtr batchPointer;
-    int filePointer;
+    int filePointerX;
     bool drop_last;
     const std::vector<int> &data;
     int seq_len;
@@ -336,30 +348,35 @@ class DataLoader
 private:
     // I am not sure how I am I going to explain it to you when I am in the state of flow.
     // Even I wont understand this after a while I need to think deep.
-    void populateColsInBatch(int &filePointer, std::vector<std::vector<int>> &arr)
+    void populateColsInBatch(int &filePointerX, std::vector<std::vector<int>> &x, std::vector<std::vector<int>> &y) // lets make this return y.
     {
-        int row = arr.size();
-        int cols = arr[0].size();
+        int row = x.size();
+        int cols = x[0].size();
 
         for (int i = 0; i < cols; ++i)
         {
             for (int j = 0; j < row; ++j)
             {
-                if (!(filePointer <= data.size()))
+                if (!(filePointerX <= data.size() - 1)) // making sure that never reaches the end, so that we can prepare y acoordingly.
                 {
-                    filePointer = 0;
+                    filePointerX = 0;
                 }
-                arr[j][i] = this->data[filePointer];
-                filePointer++; // this approach is obviously not fissible and flexible if you are using different kind of tokenizer
+                
+                x[j][i] = this->data[filePointerX];
+                y[j][i] = this->data[(filePointerX + 1) <= data.size() ? (filePointerX + 1) : 0]; // loop back around this is one of the solution.
+                filePointerX++; // this approach is obviously not fissible and flexible if you are using different kind of tokenizer
             }
         }
     }
 
-    // We can consider this like a iterator
-    std::vector<std::vector<int>> getData()
+    // We can consider this like a iterator, again I am a beginner I go in flow state in my first project.
+    IO getData()
     {
         int dataSize = data.size();
         int pt2Inc = batch_size;
+
+        std::unique_ptr<IO> ioSeq = std::make_unique<IO>();
+
         // Check for the edge case of data being empty;
         if (data.empty())
         {
@@ -387,9 +404,12 @@ private:
 
                 const int cols = decisionHeight - batchPointer.s1;
 
-                std::vector<std::vector<int>> vec(this->seq_len, std::vector<int>(cols, 0)); // I can think the hardway here but I am not sure if that's the right appoprach.
-                populateColsInBatch(filePointer, vec);
-                return vec;
+                std::vector<std::vector<int>> vecX(this->seq_len, std::vector<int>(cols)); // I can think the hardway here but I am not sure if that's the right appoprach.
+                std::vector<std::vector<int>> vecY(this->seq_len, std::vector<int>(cols));
+                populateColsInBatch(filePointerX, vecX, vecY);
+                io.x = vecX;
+                io.y = vecY;
+                return io;
             }
             else
             {
@@ -397,25 +417,31 @@ private:
                 pt2Inc = (dataSize % batch_size);
                 const int cols = this->batchPointer.s2 - this->batchPointer.s1;
 
-                std::vector<std::vector<int>> vec(this->seq_len, std::vector<int>(cols, 0));
-                populateColsInBatch(filePointer, vec);
+                std::vector<std::vector<int>> vecX(this->seq_len, std::vector<int>(cols)); // this is for the x
+                std::vector<std::vector<int>> vecY(this->seq_len, std::vector<int>(cols)); // same size for the y
+                populateColsInBatch(filePointerX, vecX, vecY);
 
                 this->batchPointer.s1 += batch_size;
                 this->batchPointer.s2 += pt2Inc;
 
-                return vec;
+                io.x = vecX;
+                io.y = vecY;
+                return io;
             }
         }
 
         const int cols = this->batchPointer.s2 - this->batchPointer.s1;
 
-        std::vector<std::vector<int>> vec(this->seq_len, std::vector<int>(cols, 0));
-        populateColsInBatch(filePointer, vec);
+        std::vector<std::vector<int>> vecX(this->seq_len, std::vector<int>(cols));
+        std::vector<std::vector<int>> vecY(this->seq_len, std::vector<int>(cols));
+        populateColsInBatch(filePointerX, vecX, vecY);
 
         this->batchPointer.s1 += batch_size;
         this->batchPointer.s2 += pt2Inc;
 
-        return vec;
+        io.x = vecX;
+        io.y = vecY;
+        return io;
     }
 
 public:
@@ -431,15 +457,14 @@ public:
     // previosuly I was doing batch by batch but that is costly
     // espically in parallel that goes through PCIe BUS which is slow.
 
-    std::vector<std::vector<std::vector<int>>> getBatch()
+    std::unique_ptr<std::vector<IO>> getBatch()
     {
-        std::vector<std::vector<std::vector<int>>> data;
-
-        std::vector<std::vector<int>> currentBatch;
+        auto data = std::make_unique<std::vector<IO>>();
+        IO currentBatch;
 
         while (!(currentBatch = getData()).empty())
         {
-            data.push_back(currentBatch);
+            data->push_back(currentBatch);
         }
 
         return data;

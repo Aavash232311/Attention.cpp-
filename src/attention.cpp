@@ -64,11 +64,9 @@ public:
         float *sinosudialEncoding = this->positionalEncoding(); // in moden torch this also gets chaged but are using sinosudial encoding for simplicity here.
         // This lnag itself is difficult so I wont comment abuut the concept much to keep it clearn, I have notes on note.org
 
-
         // Now inorder to get the array from token embeddings i.e rows the runtime complexity if O(1)
         /* Lookup happens in the parallel */
-
-
+        utils->Print2DVector(tokenEmbeddings, true);
         free(sinosudialEncoding);
         // We have the token emb with some numbers, and their row is basically our encoded id (based on position or whatever). We fetch those rows according to the seq_len and add those two.
     }
@@ -147,11 +145,17 @@ int main()
 
     std::unique_ptr<DataLoader> dataLoader = std::make_unique<DataLoader>(batch_size, encodedData, seq_len, drop_last);
 
-    std::vector<std::vector<std::vector<int>>> getBatch = dataLoader->getBatch();
-    utils->Print3DVector(getBatch, true);
- 
-    auto end = std::chrono::high_resolution_clock::now();
+    std::unique_ptr<std::vector<IO>> dataList = dataLoader->getBatch();
 
+    // for (auto &list : *dataList)
+    // {
+    //     std::cout << "X" << std::endl;
+    //     utils->Print2DVector(list.x);
+    //     std::cout << "Y" << std::endl;
+    //     utils->Print2DVector(list.y);
+    // }
+
+    auto end = std::chrono::high_resolution_clock::now();
     cudaDeviceSynchronize(); // CPU is waiting for the GPU to finish
     std::chrono::duration<double, std::milli> duration = end - start;
     std::cout << "Total time (with sync overhead): " << duration.count() << " ms\n";
