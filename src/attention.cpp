@@ -120,8 +120,8 @@ int main()
     int vocab_size; // that depends upon the data that you are passing.
     int num_heads = 64;
     int batch_size = 32;
-    int seq_len = 4;
-    bool drop_last = true;
+    int seq_len = 16;
+    bool drop_last = false;
 
     std::string path = "./src/data/chunk.txt";
 

@@ -289,24 +289,40 @@ struct posDataPtr
     int s2;
 } dataPointerTrack;
 
-struct Vector
-{
-    int x;
-    int y;
-};
-
 // For this transformer our goal is to learn things so we will create a simple data loader, and feed it with toy data.
 // For this particular case lets user silding window to retrive the data in batch.
 class DataLoader
 {
     int batch_size;
-    posDataPtr dataPointer;
+    posDataPtr batchPointer;
+    int filePointer;
     bool drop_last;
     const std::vector<int> &data;
     int seq_len;
     std::unique_ptr<Utility> utils = std::make_unique<Utility>();
 
 private:
+    // I am not sure how I am I going to explain it to you when I am in the state of flow.
+    // Even I wont understand this after a while I need to think deep.
+    void populateColsInBatch(int &filePointer, std::vector<std::vector<int>> &arr)
+    {
+        int row = arr.size();
+        int cols = arr[0].size();
+
+        for (int i = 0; i < cols; ++i)
+        {
+            for (int j = 0; j < row; ++j)
+            {
+                if (!(filePointer <= data.size())) 
+                {
+                    filePointer = 0;
+                }
+                arr[j][i] = this->data[filePointer];
+                filePointer++; // this approach is obviously not fissible and flexible if you are using different kind of tokenizer 
+            }
+        }
+    }
+
     // We can consider this like a iterator
     std::vector<std::vector<int>> getData()
     {
@@ -322,45 +338,50 @@ private:
             throw std::invalid_argument("We wont deal with batch_size greater than data_size case at the moment.");
         }
 
-
-        if (this->dataPointer.s2 > dataSize)
+        if (this->batchPointer.s2 > dataSize)
         {
             return {};
         }
 
         int decisionHeight = dataSize - (dataSize % batch_size);
 
-        if (decisionHeight == this->dataPointer.s2) // this will be 0 if the data goes in cleanly
+        if (decisionHeight == this->batchPointer.s2) // this will be 0 if the data goes in cleanly
         {
             // one bug was here if 891 == 891 example then without taking out the slice we are returning empty that wont work
             if (drop_last == true)
             {
                 // std::cout << dataPointer.s1 << " : " << decisionHeight << std::endl;
-                this->dataPointer.s2 += decisionHeight; // if not this then it will return infinitely just make this grater than data size.
+                this->batchPointer.s2 += decisionHeight; // if not this then it will return infinitely just make this grater than data size.
 
-                std::vector<std::vector<int>> vec(this->seq_len, std::vector<int>(decisionHeight - dataPointer.s1, 0));
+                const int cols = decisionHeight - batchPointer.s1;
+
+                std::vector<std::vector<int>> vec(this->seq_len, std::vector<int>(cols, 0)); // I can think the hardway here but I am not sure if that's the right appoprach.
+                populateColsInBatch(filePointer, vec);
                 return vec;
             }
             else
             {
                 // if the drop_last is false then we increment the pointer2 by remaining amount
                 pt2Inc = (dataSize % batch_size);
+                const int cols = this->batchPointer.s2 - this->batchPointer.s1;
 
-                std::vector<std::vector<int>> vec(this->seq_len, std::vector<int>(this->dataPointer.s2 - this->dataPointer.s1, 0));
+                std::vector<std::vector<int>> vec(this->seq_len, std::vector<int>(cols, 0));
+                populateColsInBatch(filePointer, vec);
 
-                this->dataPointer.s1 += batch_size;
-                this->dataPointer.s2 += pt2Inc;
+                this->batchPointer.s1 += batch_size;
+                this->batchPointer.s2 += pt2Inc;
 
                 return vec;
             }
         }
 
-        std::vector<int> batch(data.begin() + dataPointer.s1, data.begin() + dataPointer.s2);
+        const int cols = this->batchPointer.s2 - this->batchPointer.s1;
 
-        std::vector<std::vector<int>> vec(this->seq_len, std::vector<int>(this->dataPointer.s2 - this->dataPointer.s1, 0));
+        std::vector<std::vector<int>> vec(this->seq_len, std::vector<int>(cols, 0));
+        populateColsInBatch(filePointer, vec);
 
-        this->dataPointer.s1 += batch_size;
-        this->dataPointer.s2 += pt2Inc;
+        this->batchPointer.s1 += batch_size;
+        this->batchPointer.s2 += pt2Inc;
 
         return vec;
     }
@@ -369,8 +390,8 @@ public:
     DataLoader(int batch_size, const std::vector<int> &data, int seq_len, bool drop_last = true)
         : batch_size(batch_size), data(data), drop_last(drop_last)
     {
-        dataPointer.s1 = 0;
-        dataPointer.s2 += batch_size;
+        batchPointer.s1 = 0;
+        batchPointer.s2 += batch_size;
         this->seq_len = seq_len;
     }
 
@@ -389,9 +410,7 @@ public:
         while (!(currentBatch = getData()).empty())
         {
             data.push_back(currentBatch);
-            this->utils->Print2DVector(currentBatch, true);
         }
-
 
         return currentBatch;
     }
