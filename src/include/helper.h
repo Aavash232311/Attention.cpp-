@@ -1,4 +1,5 @@
 #include <vector>
+#include <memory>
 #include <random>
 #include <cstdio>
 #include <math.h>
@@ -8,9 +9,8 @@
 #include <iostream>
 #include <unordered_map>
 
-
 // I will be really honest it takes time for me to think deeply, but I will figure it out
-// till this day AI hallucination is common on task that requires deep thinking. 
+// till this day AI hallucination is common on task that requires deep thinking.
 // whatever even if this market is brutal I am investing my effort into thinking.
 class Helper
 {
@@ -303,10 +303,12 @@ class DataLoader
     posDataPtr dataPointer;
     bool drop_last;
     const std::vector<int> &data;
+    int seq_len;
+    std::unique_ptr<Utility> utils = std::make_unique<Utility>();
 
 private:
     // We can consider this like a iterator
-    std::vector<int> getData()
+    std::vector<std::vector<int>> getData()
     {
         int dataSize = data.size();
         int pt2Inc = batch_size;
@@ -319,6 +321,7 @@ private:
         {
             throw std::invalid_argument("We wont deal with batch_size greater than data_size case at the moment.");
         }
+
 
         if (this->dataPointer.s2 > dataSize)
         {
@@ -334,37 +337,41 @@ private:
             {
                 // std::cout << dataPointer.s1 << " : " << decisionHeight << std::endl;
                 this->dataPointer.s2 += decisionHeight; // if not this then it will return infinitely just make this grater than data size.
-                std::vector<int> batch(data.begin() + dataPointer.s1, data.begin() + decisionHeight);
-                return batch;
+
+                std::vector<std::vector<int>> vec(this->seq_len, std::vector<int>(decisionHeight - dataPointer.s1, 0));
+                return vec;
             }
             else
             {
                 // if the drop_last is false then we increment the pointer2 by remaining amount
                 pt2Inc = (dataSize % batch_size);
 
-                std::vector<int> batch(data.begin() + dataPointer.s1, data.begin() + dataPointer.s2);
+                std::vector<std::vector<int>> vec(this->seq_len, std::vector<int>(this->dataPointer.s2 - this->dataPointer.s1, 0));
 
                 this->dataPointer.s1 += batch_size;
                 this->dataPointer.s2 += pt2Inc;
 
-                return batch;
+                return vec;
             }
         }
 
         std::vector<int> batch(data.begin() + dataPointer.s1, data.begin() + dataPointer.s2);
 
+        std::vector<std::vector<int>> vec(this->seq_len, std::vector<int>(this->dataPointer.s2 - this->dataPointer.s1, 0));
+
         this->dataPointer.s1 += batch_size;
         this->dataPointer.s2 += pt2Inc;
 
-        return batch;
+        return vec;
     }
 
 public:
-    DataLoader(int batch_size, const std::vector<int> &data, bool drop_last = true)
+    DataLoader(int batch_size, const std::vector<int> &data, int seq_len, bool drop_last = true)
         : batch_size(batch_size), data(data), drop_last(drop_last)
     {
         dataPointer.s1 = 0;
         dataPointer.s2 += batch_size;
+        this->seq_len = seq_len;
     }
 
     // I almost forgot about that siliding window, hang tight
@@ -373,16 +380,20 @@ public:
 
     std::vector<std::vector<int>> getBatch()
     {
-        std::vector<std::vector<int>> data;
+        std::vector<std::vector<std::vector<int>>> data;
 
-        std::vector<int> currentBatch;
+        std::vector<std::vector<int>> currentBatch;
+
+
 
         while (!(currentBatch = getData()).empty())
         {
             data.push_back(currentBatch);
+            this->utils->Print2DVector(currentBatch, true);
         }
 
-        return data;
+
+        return currentBatch;
     }
 };
 

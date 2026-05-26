@@ -121,7 +121,7 @@ int main()
     int num_heads = 64;
     int batch_size = 32;
     int seq_len = 4;
-    bool drop_last = false;
+    bool drop_last = true;
 
     std::string path = "./src/data/chunk.txt";
 
@@ -145,11 +145,9 @@ int main()
         num_heads,
         seq_len);
 
-    std::unique_ptr<DataLoader> dataLoader = std::make_unique<DataLoader>(batch_size, encodedData, drop_last);
+    std::unique_ptr<DataLoader> dataLoader = std::make_unique<DataLoader>(batch_size, encodedData, seq_len, drop_last);
 
     std::vector<std::vector<int>> getBatch = dataLoader->getBatch();
-
-    // utils->Print2DVector(getBatch);
  
     auto end = std::chrono::high_resolution_clock::now();
 
