@@ -68,12 +68,25 @@ public:
         return positionalEncodingOut;
     }
 
-    /* I am not sure if we want to make positional encoding and other arrays flat
-    because the memory strip on hardware level is flat itself and GPU on parallel handels things in flat way. */
-    void embeddings(std::vector<std::vector<int>> x)
+    void forward(std::vector<std::vector<int>> x)
     {
-        // We have the token emb with some numbers, and their row is basically our encoded id (based on position or whatever). We fetch those rows according to the seq_len and add those two.
+        int batch_size = x[0].size(); // this is the batch_size
+        // this adding we need that to do be done inside of the gpu because its a repeating procress.
+
+
+
+        // int* hostX = utils->TwoDVectorToFlatMem(x);
+        // float* hostEmbeddings = utils->TwoDVectorToFlatMem(this->tokenEmbeddings);
+        // float* finalEmbeddings = (float *)malloc(seq_len * batch_size * this->d_model);
+
+
+
+
+        // delete[] hostX; // we will assign this or reconvert back to a 2d shape
+        // delete[] hostEmbeddings;
+        // free(finalEmbeddings);
     }
+
 };
 
 class Attention
@@ -108,8 +121,7 @@ public:
             std::cout << "The number of heads must be perfectly divisible by dimesnion " << std::endl;
             return;
         }
-
-        embeddings->embeddings(x);
+        embeddings->forward(x);
     };
 };
 

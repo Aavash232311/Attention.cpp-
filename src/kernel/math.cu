@@ -49,6 +49,8 @@ __global__ void positional_embedding_kernel(float *out, int seq_len, int d_model
     if (pos >= seq_len || k >= d_model)
         return;
 
+    // Lets understand the shape of this positional embddings (d_model, seq_len)
+
     int i = k / 2;
     float denom = powf(10000.0f, 2 * i / d_model);
 
@@ -66,12 +68,36 @@ __global__ void addVec(const float *a, const float *b, float *c, int N)
     }
 }
 
-// // When adding the embdding constantly looping over the colum is costly for each epoch so we MUST do a kernel launch here.
+// come on youre smart you will make it.
+__global__ void finalEmbeddings(
+    float *x,
+    float *embeddings, 
+    float *encoding, 
+    float *finalEmbeddings,
+    int d_model,
+    int seq_len,
+    int vocab_size,
+    int batch_size
+)
+{
+    // First of all its flat.
+    // If it was not flat then lets imagine the shape of each paramaters here.
+    // x(seq_len, batch_size) embeddings(vocab_size, d_model) encoding(d_model, seq_len) finalEmbeddings(seq_len, batch_size, d_model)
+    // ITS HARD! to even think of or to visuzlize or get an idea and to keep track of all the things.
 
-// __global__ void finalEmbeddings()
-// {
+    int rows = blockIdx.y * blockDim.y + threadIdx.y; // rows
+    int cols = blockIdx.x * blockDim.x + threadIdx.x; // cols
 
-// }
+
+    // we need to create a loopup mechanism here, look through the cols of x, and then check that in the embeddings table.
+    
+    if (!(rows < seq_len && cols < batch_size)) 
+        return;
+    
+    int index_x = rows * batch_size + cols; // cols
+    int embedding_row = x[index_x]; // okay are doing the lookup here.
+
+}
 
 extern "C"
 {

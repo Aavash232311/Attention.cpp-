@@ -257,25 +257,45 @@ public:
 
         return vec2d;
     } // opreation in the parallel happens through the flat strip of memory so just to check and see I am writing this.
-
-    float *TwoDVectorToFlatMem(const std::vector<std::vector<float>> &arr, bool shape = false)
+      // This is a performace bottlneck in the code but for the sake of learning you cant really think in terms of flat memory.
+    // I am keeping this here. Once the model is working we will modifiy and make this flat we might.
+    template <typename T>
+    T *TwoDVectorToFlatMem(const std::vector<std::vector<T>> &arr,
+                           bool shape = false) // This is a bottleneck in the perforamce I know the fact that we should use flat vector but for the sake of learning I am using this.
     {
-        int rows = arr.size();
-        int cols = arr[0].size();
+        if (arr.empty())
+            return nullptr;
 
-        float *newArr = new float[rows * cols];
-        if (shape)
-            std::cout << "Shape: (" << rows << ", " << cols << ")\n";
+        size_t rows = arr.size();
+        size_t cols = arr[0].size();
 
-        for (int r = 0; r < rows; r++)
+        for (const auto &row : arr)
         {
-            for (int c = 0; c < cols; c++)
+            if (row.size() != cols)
+            {
+                throw std::runtime_error(
+                    "TwoDVectorToFlatMem: jagged vectors are not supported.");
+            }
+        }
+
+        T *newArr = new T[rows * cols];
+
+        if (shape)
+        {
+            std::cout << "Shape: ("
+                      << rows << ", "
+                      << cols << ")\n";
+        }
+
+        for (size_t r = 0; r < rows; ++r)
+        {
+            for (size_t c = 0; c < cols; ++c)
             {
                 newArr[r * cols + c] = arr[r][c];
             }
         }
 
-        return newArr; // rule of thumb call delete because we are forced to do manual memory allocation here.
+        return newArr;
     }
 };
 
@@ -361,10 +381,10 @@ private:
                 {
                     filePointerX = 0;
                 }
-                
+
                 x[j][i] = this->data[filePointerX];
                 y[j][i] = this->data[(filePointerX + 1) <= data.size() ? (filePointerX + 1) : 0]; // loop back around this is one of the solution.
-                filePointerX++; // this approach is obviously not fissible and flexible if you are using different kind of tokenizer
+                filePointerX++;                                                                   // this approach is obviously not fissible and flexible if you are using different kind of tokenizer
             }
         }
     }
