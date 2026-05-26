@@ -321,7 +321,7 @@ struct posDataPtr
     int s2;
 } dataPointerTrack;
 
-struct IO
+struct IO // this x, and y are stored for one batch.
 {
     std::vector<std::vector<int>> x;
     std::vector<std::vector<int>> y;

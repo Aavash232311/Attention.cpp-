@@ -10,6 +10,7 @@
 // nvcc src/attention.cpp src/kernel/math.cu -o src/bin/attention
 // ./src/bin/attention
 
+// flat memory are efficient but the project for a beginner is so complicated that it will be fine just to get the model running.
 // NVIDA cuda core kernel functions
 extern "C" void positionalEmbeddings(float *out, int seq_len, int d_model);
 class Embeddings
@@ -53,7 +54,7 @@ public:
 
     /* I am not sure if we want to make positional encoding and other arrays flat
     because the memory strip on hardware level is flat itself and GPU on parallel handels things in flat way. */
-    void generateEmbeddings(std::vector<int> batch)
+    void generateEmbeddings(std::vector<std::vector<int>> batch)
     {
         // Allocate the memory on the host
         int shape = d_model * seq_len;
@@ -96,7 +97,7 @@ public:
     };
 
 public:
-    void forward(std::vector<int> batch)
+    void forward(std::vector<std::vector<int>> x)
     {
 
         if (d_model % num_heads != 0)
@@ -105,7 +106,7 @@ public:
             return;
         }
 
-        embeddings->generateEmbeddings(batch);
+        // embeddings->generateEmbeddings(x);
     };
 };
 
@@ -119,6 +120,7 @@ int main()
     int num_heads = 64;
     int batch_size = 32;
     int seq_len = 16;
+    int epoch = 12;
     bool drop_last = false;
 
     std::string path = "./src/data/chunk.txt";
@@ -147,13 +149,16 @@ int main()
 
     std::unique_ptr<std::vector<IO>> dataList = dataLoader->getBatch();
 
-    // for (auto &list : *dataList)
-    // {
-    //     std::cout << "X" << std::endl;
-    //     utils->Print2DVector(list.x);
-    //     std::cout << "Y" << std::endl;
-    //     utils->Print2DVector(list.y);
-    // }
+    for (int i = 0; i < epoch; ++i)
+    {
+        for(auto& currentBatch : *dataList)
+        {
+            // so we have the x, and y here
+            // My understanding is batches are SEQUENTIAL
+            // but the procress within the batches are done in parallel.
+            attention->forward(currentBatch.x);
+        }
+    }
 
     auto end = std::chrono::high_resolution_clock::now();
     cudaDeviceSynchronize(); // CPU is waiting for the GPU to finish

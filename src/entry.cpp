@@ -87,8 +87,6 @@ int main()
     cudaMemcpy(psoitional_encoding_out, device_positional_encoding, total_shape_positional_encoding * sizeof(float), cudaMemcpyDeviceToHost);
 
    
-
-
     cudaFree(device_positional_encoding);
     device_positional_encoding = nullptr;
     free(psoitional_encoding_out);
