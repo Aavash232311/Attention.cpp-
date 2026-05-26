@@ -66,17 +66,11 @@ __global__ void addVec(const float *a, const float *b, float *c, int N)
     }
 }
 
-// For adding up embeddings
-// __global__ void lookUpEncodingKernel(int *batch, float encoding, int N)
-// {
-//     int i = blockDim.x * blockIdx.x + threadIdx.x; // here this is the index ref to current pos
+// // When adding the embdding constantly looping over the colum is costly for each epoch so we MUST do a kernel launch here.
 
-//     if (i < N)
-//     {
-//         int idx = batch[i]; // this is flat.
-//         // we get that from the encoding even though its flat, we just get it in O(1).
-        
-//     }
+// __global__ void finalEmbeddings()
+// {
+
 // }
 
 extern "C"

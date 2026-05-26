@@ -12,6 +12,7 @@
 
 // flat memory are efficient but the project for a beginner is so complicated that it will be fine just to get the model running.
 // NVIDA cuda core kernel functions
+// again optimising this might be even more difficult anyway lets just make it work.
 extern "C" void positionalEmbeddings(float *out, int seq_len, int d_model);
 class Embeddings
 {
@@ -23,52 +24,54 @@ public:
     int d_model;
     int vocab_size;
     int seq_len;
+    float *sinosudialEncoding;
     std::unique_ptr<Utility> utils = std::make_unique<Utility>();
     std::unique_ptr<Initializer> initilizer = std::make_unique<Initializer>();
+    std::vector<std::vector<float>> tokenEmbeddings;
 
     Embeddings(int d_model, int vocab_size, int seq_len)
     {
         this->d_model = d_model;
         this->vocab_size = vocab_size;
         this->seq_len = seq_len;
+
+        // Allocate the memory on the host
+        int shape = d_model * seq_len;
+        this->sinosudialEncoding = this->positionalEncoding(); // these are learned emebddings in modern day torch. I cannot handle much pain so I am doing this one.
+
+
+        // this gets changed in the backpropagation
+        this->tokenEmbeddings = initilizer->HeInit(this->vocab_size, this->d_model); // token embeddings
     };
+
+    ~Embeddings()
+    {
+        free(sinosudialEncoding);
+    }
 
     float *positionalEncoding()
     {
         int shape = d_model * seq_len;
-        float *positionalEncodingOut = (float *)malloc(shape * sizeof(float));
+        float *positionalEncodingOut = (float *)malloc(shape * sizeof(float)); // host memeory
 
         float *devicePositionalEncoding;
-        cudaMalloc((void **)&devicePositionalEncoding, shape * sizeof(float));
+        cudaMalloc((void **)&devicePositionalEncoding, shape * sizeof(float)); // GPU memory
 
-        positionalEmbeddings(devicePositionalEncoding, seq_len, d_model);
+        positionalEmbeddings(devicePositionalEncoding, seq_len, d_model); // Kernal launch
 
-        cudaMemcpy(positionalEncodingOut,
+        cudaMemcpy(positionalEncodingOut, // copy back
                    devicePositionalEncoding,
                    shape * sizeof(float),
                    cudaMemcpyDeviceToHost);
 
-        cudaFree(devicePositionalEncoding);
+        cudaFree(devicePositionalEncoding); // free gpu memory
         return positionalEncodingOut;
     }
 
     /* I am not sure if we want to make positional encoding and other arrays flat
     because the memory strip on hardware level is flat itself and GPU on parallel handels things in flat way. */
-    void generateEmbeddings(std::vector<std::vector<int>> batch)
+    void embeddings(std::vector<std::vector<int>> x)
     {
-        // Allocate the memory on the host
-        int shape = d_model * seq_len;
-
-        // this gets changed in the backpropagation
-        std::vector<std::vector<float>> tokenEmbeddings = initilizer->HeInit(this->vocab_size, this->d_model); // token embeddings
-
-        float *sinosudialEncoding = this->positionalEncoding(); // in moden torch this also gets chaged but are using sinosudial encoding for simplicity here.
-        // This lnag itself is difficult so I wont comment abuut the concept much to keep it clearn, I have notes on note.org
-
-        // Now inorder to get the array from token embeddings i.e rows the runtime complexity if O(1)
-        /* Lookup happens in the parallel */
-        utils->Print2DVector(tokenEmbeddings, true);
-        free(sinosudialEncoding);
         // We have the token emb with some numbers, and their row is basically our encoded id (based on position or whatever). We fetch those rows according to the seq_len and add those two.
     }
 };
@@ -80,7 +83,7 @@ public:
     int &vocab_size;
     int &num_heads;
     int &seq_len;
-    std::unique_ptr<Embeddings> embeddings;
+    std::unique_ptr<Embeddings> embeddings; // called in the constructor good.
 
     Attention(int &d_model, int &vocab_size, int &num_heads, int &seq_len) : d_model(d_model), vocab_size(vocab_size), num_heads(num_heads), seq_len(seq_len)
     {
@@ -106,7 +109,7 @@ public:
             return;
         }
 
-        // embeddings->generateEmbeddings(x);
+        embeddings->embeddings(x);
     };
 };
 
@@ -143,7 +146,7 @@ int main()
         d_model,
         vocab_size,
         num_heads,
-        seq_len);
+        seq_len); // called once good.
 
     std::unique_ptr<DataLoader> dataLoader = std::make_unique<DataLoader>(batch_size, encodedData, seq_len, drop_last);
 
@@ -151,7 +154,7 @@ int main()
 
     for (int i = 0; i < epoch; ++i)
     {
-        for(auto& currentBatch : *dataList)
+        for (auto &currentBatch : *dataList)
         {
             // so we have the x, and y here
             // My understanding is batches are SEQUENTIAL

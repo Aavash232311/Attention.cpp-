@@ -99,3 +99,26 @@ tn
 
 
 #+END_SRC
+
+*** Understanding the loop up mechanism better with the input x
+
+In our input x we have the two dimensional matrix, keeping it two dimensional for simpliity while trading off little bit of efficiency.
+
+#+BEGIN_SRC Python
+
+x = [
+    ....
+    ....
+] # in column we have ids, seq_len x batch_size
+#+END_SRC
+
+**** Lets look at the embedding loopup table
+
+#+BEGIN_SRC Python
+emb = [
+    .... row 1
+    .... row n
+] # dimension is vocab_size x d_model
+#+END_SRC
+
+So we basically look at row from emb vector from the col of x
