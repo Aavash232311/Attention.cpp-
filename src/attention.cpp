@@ -147,7 +147,8 @@ int main()
 
     std::unique_ptr<DataLoader> dataLoader = std::make_unique<DataLoader>(batch_size, encodedData, seq_len, drop_last);
 
-    std::vector<std::vector<int>> getBatch = dataLoader->getBatch();
+    std::vector<std::vector<std::vector<int>>> getBatch = dataLoader->getBatch();
+    utils->Print3DVector(getBatch, true);
  
     auto end = std::chrono::high_resolution_clock::now();
 

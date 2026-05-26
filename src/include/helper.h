@@ -168,6 +168,38 @@ public:
                   << (vec.empty() ? 0 : vec[0].size())
                   << ")\n";
     }
+    template <typename T>
+    void Print3DVector(const std::vector<std::vector<std::vector<T>>> &vec, bool shape_only = false)
+    {
+        if (!shape_only)
+        {
+            for (const auto &matrix : vec)
+            {
+                for (const auto &row : matrix)
+                {
+                    for (const auto &value : row)
+                    {
+                        std::cout << value << " ";
+                    }
+
+                    std::cout << '\n';
+                }
+
+                std::cout << '\n';
+            }
+        }
+
+        std::string shapeAnnotation =
+            shape_only ? "Shape: (" : "\nShape: (";
+
+        std::cout << shapeAnnotation
+                  << vec.size()
+                  << ", "
+                  << (vec.empty() ? 0 : vec[0].size())
+                  << ", "
+                  << ((vec.empty() || vec[0].empty()) ? 0 : vec[0][0].size())
+                  << ")\n";
+    }
 
     template <typename T>
     void print_vector(const std::vector<T> &vec)
@@ -313,12 +345,12 @@ private:
         {
             for (int j = 0; j < row; ++j)
             {
-                if (!(filePointer <= data.size())) 
+                if (!(filePointer <= data.size()))
                 {
                     filePointer = 0;
                 }
                 arr[j][i] = this->data[filePointer];
-                filePointer++; // this approach is obviously not fissible and flexible if you are using different kind of tokenizer 
+                filePointer++; // this approach is obviously not fissible and flexible if you are using different kind of tokenizer
             }
         }
     }
@@ -399,20 +431,18 @@ public:
     // previosuly I was doing batch by batch but that is costly
     // espically in parallel that goes through PCIe BUS which is slow.
 
-    std::vector<std::vector<int>> getBatch()
+    std::vector<std::vector<std::vector<int>>> getBatch()
     {
         std::vector<std::vector<std::vector<int>>> data;
 
         std::vector<std::vector<int>> currentBatch;
-
-
 
         while (!(currentBatch = getData()).empty())
         {
             data.push_back(currentBatch);
         }
 
-        return currentBatch;
+        return data;
     }
 };
 
