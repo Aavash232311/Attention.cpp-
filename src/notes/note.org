@@ -143,38 +143,155 @@ And for our rows and cols our position is (1, 1)
 
 *** Understanding the execution of our code in the Kernel
 
-The computation happens in parallel. We have group of blocks known as the grid and inside of block there may be multiple threads.
-
 #+BEGIN_SRC C
-  int row = blockIdx.x;
-  int col = blockIdx.y;
+__global__ void kernel(float *A, float *B, float *C)
+{
+    int row = blockIdx.x;
+    int col = blockIdx.y;
+
+    int index = (row * 3) + col;
+    float val = A[index];
+
+    int threadIx = threadIdx.x;
+
+    printf("Rows: %d Cols: %d ThreadIx: %d value %.1f \n", row, col, threadIx, val);
+}
+
+int main()
+{
+    float A[9] = {
+        0, 1, 2,
+        3, 4, 5,
+        6, 7, 8};
+
+    float B[9] = {0};
+    float C[9];
+
+    /*
+      A = {
+        {1, 2, 3},
+        {4, 5, 6},
+        {7, 8, 9}
+    } smilialry for B
+
+    ,*/
+
+    float *device_arr_A, *device_arr_B, *device_arr_C;
+    cudaMalloc((void **)&device_arr_A, 9 * sizeof(float));
+    cudaMalloc((void **)&device_arr_B, 9 * sizeof(float));
+    cudaMalloc((void **)&device_arr_C, 9 * sizeof(float));
+
+
+    cudaMemcpy(device_arr_A, A, 9 * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(device_arr_B, B, 9 * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(device_arr_C, C, 9 * sizeof(float), cudaMemcpyHostToDevice);
+
+
+    dim3 grid(3, 3);
+    dim3 block(1);
+
+
+    kernel<<<grid, block>>>(device_arr_A, device_arr_B, device_arr_C);
+
+    cudaDeviceSynchronize();
+    cudaMemcpy(device_arr_C, C, 9 * sizeof(float), cudaMemcpyDeviceToHost);
+
+    cudaFree(device_arr_A);
+    cudaFree(device_arr_B);
+    cudaFree(device_arr_C);
+}
 #+END_SRC
 
-The above code gives us the row and col of a 1D kernel launch. The thread Id in the kernel is given by
+In our Kernel launch above we have 3x3 grid with each having one thread to compute that perfectly covers our array. And will be easy for us to think of.
+
+Now lets visualize the formula
 
 #+BEGIN_SRC C
-int e = threadIdx.x;
+int index = (row * 3) + col;
+float val = A[index];
 #+END_SRC
 
-Now what we are trying to do is create a lookup. It tricks me because I am not used to think in termms of the GPU.
+#+BEGIN_SRC Python
+
+At Pos(0, 0)
+
+int index = 0*3 + 0 = 0
+val = A[0] = 1
+
+At Pos(0, 1)
+int index = 0*3 + 1 = 1
+A[1] = 2 # This is a flat strip of memory
+
+At Pos(0, 2)
+int index = 0*3 + 2 = 2
+A[2] = 3
+
+#+END_SRC
+
+If we have multiple threads then that formula might not work so what we can do is.
 
 #+BEGIN_SRC C
-int token_id = A[row * gridDim.y + e];
+
+int rows = blockIdx.y * blockDim.y + threadIdx.y; // rows
+int cols = blockIdx.x * blockDim.x + threadIdx.x; // cols
 #+END_SRC
 
-In our model the shape of A is seq_len x batch_size.
+#+BEGIN_SRC Python
+# At position P(0, 0) thread = 0
 
-That gridDim.y is the same as batch_size
+rows = 0 + 3 + 0 = 0
+cols = 0 + 3 + 0 = 0
 
-So we need to keep in mind that our memory is flat, which it is in the hardware level.
+At position P(0, 0) thread = 1 # in the case where we have two thread per block
 
-Imagine a case where we are in position(0, 0)
-
-A[0 * 3 + 0] = A[0] = 0
-B[0 * 6 + 0] = B[0] = 1.0
+rows = 0 + 3 + 1 = 1
+cols = o + 3 + 1 = 1
 
 
-Now lets go to the case wwhere we are in position(0, 0) in the gird but thread id is 1;
 
-A[0 * 3 + 0] = A[0] = 0
-B[0 * 6 + 1] = B[1] = 2.0f
+#+END_SRC
+
+**** Understanding the boundary check in the cuda kernel
+
+Here we have more than 1 thread that is overkilled, we can notive that we have multiple zero's which is reading the garbage data.
+
+#+BEGIN_SRC Bash
+Rows: 0 Cols: 4 ThreadIx: 0 value 4.0
+Rows: 0 Cols: 5 ThreadIx: 1 value 5.0
+Rows: 1 Cols: 2 ThreadIx: 0 value 5.0
+Rows: 1 Cols: 3 ThreadIx: 1 value 6.0
+Rows: 0 Cols: 0 ThreadIx: 0 value 0.0
+Rows: 0 Cols: 1 ThreadIx: 1 value 1.0
+Rows: 2 Cols: 0 ThreadIx: 0 value 6.0
+Rows: 2 Cols: 1 ThreadIx: 1 value 7.0
+Rows: 1 Cols: 0 ThreadIx: 0 value 3.0
+Rows: 1 Cols: 1 ThreadIx: 1 value 4.0
+Rows: 2 Cols: 4 ThreadIx: 0 value 0.0
+Rows: 2 Cols: 5 ThreadIx: 1 value 0.0
+Rows: 1 Cols: 4 ThreadIx: 0 value 7.0
+Rows: 1 Cols: 5 ThreadIx: 1 value 8.0
+Rows: 2 Cols: 2 ThreadIx: 0 value 8.0
+Rows: 2 Cols: 3 ThreadIx: 1 value 0.0
+Rows: 0 Cols: 2 ThreadIx: 0 value 2.0
+Rows: 0 Cols: 3 ThreadIx: 1 value 3.0
+#+END_SRC
+
+After implementing the bounday check
+
+#+BEGIN_SRC C
+if (!(rows < 3 &&  cols < 3)) return;
+
+/*
+Rows: 1 Cols: 2 ThreadIx: 0 value 5.0
+Rows: 0 Cols: 2 ThreadIx: 0 value 2.0
+Rows: 2 Cols: 2 ThreadIx: 0 value 8.0
+Rows: 2 Cols: 0 ThreadIx: 0 value 6.0
+Rows: 2 Cols: 1 ThreadIx: 1 value 7.0
+Rows: 0 Cols: 0 ThreadIx: 0 value 0.0
+Rows: 0 Cols: 1 ThreadIx: 1 value 1.0
+Rows: 1 Cols: 0 ThreadIx: 0 value 3.0
+Rows: 1 Cols: 1 ThreadIx: 1 value 4.0
+
+We have the clean output.
+,*/
+#+END_SRC
