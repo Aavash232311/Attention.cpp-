@@ -125,37 +125,6 @@ So we basically look at row from emb vector from the col of x
 
 ** Lets learn how does this work in GPU Kernel.
 
-#+BEGIN_SRC C
-__global__ void finalEmbeddings(
-    float *x,
-    float *embeddings,
-    float *encoding,
-    float *finalEmbeddings,
-    int d_model,
-    int seq_len,
-    int vocab_size,
-    int batch_size
-)
-{
-
-    int rows = blockIdx.y * blockDim.y + threadIdx.y; // rows
-    int cols = blockIdx.x * blockDim.x + threadIdx.x; // cols
-
-
-    if (!(rows < seq_len && cols < batch_size))
-        return;
-
-    int index_x = rows * batch_size + cols;
-
-}
-#+END_SRC
-
-For x our shape is (seq_len x batch_size). I like to imagine this as hanging tokens in the batch rope.
-
-Lets imagine a case in the above code.
-
-we have a data grid of x of lets say.
-
 #+BEGIN_SRC Python
 
 x shape = (seq_len, batch_size) = (16, 32)
