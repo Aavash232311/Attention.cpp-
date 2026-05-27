@@ -228,28 +228,7 @@ A[2] = 3
 
 #+END_SRC
 
-If we have multiple threads then that formula might not work so what we can do is.
 
-#+BEGIN_SRC C
-
-int rows = blockIdx.y * blockDim.y + threadIdx.y; // rows
-int cols = blockIdx.x * blockDim.x + threadIdx.x; // cols
-#+END_SRC
-
-#+BEGIN_SRC Python
-# At position P(0, 0) thread = 0
-
-rows = 0 + 3 + 0 = 0
-cols = 0 + 3 + 0 = 0
-
-At position P(0, 0) thread = 1 # in the case where we have two thread per block
-
-rows = 0 + 3 + 1 = 1
-cols = o + 3 + 1 = 1
-
-
-
-#+END_SRC
 
 **** Understanding the boundary check in the cuda kernel
 
@@ -295,3 +274,61 @@ Rows: 1 Cols: 1 ThreadIx: 1 value 4.0
 We have the clean output.
 ,*/
 #+END_SRC
+
+#+RESULTS:
+
+
+Before creating a lookup table lets see whats going on here
+
+#+BEGIN_SRC C
+__global__ void kernel(int *A, float *B, float *C)
+{
+    int rows = blockIdx.y * blockDim.y + threadIdx.y;
+    int cols = blockIdx.x * blockDim.x + threadIdx.x;
+    int e = threadIdx.x;
+
+    if (!(rows < 3 && cols < 3))
+        return;
+
+    int index = (rows * 3) + cols;
+    int val = A[index];
+
+    int indexB = (val * 6) + e;
+    float valB = B[indexB];
+
+    int threadIx = threadIdx.x;
+
+    printf("Rows: %d Cols: %d ThreadIx: %d value %d valB %.1f \n", rows, cols, threadIx, val, valB);
+}
+/*
+Rows: 1 Cols: 2 ThreadIx: 0 value 0 valB 1.0
+Rows: 2 Cols: 0 ThreadIx: 0 value 1 valB 7.0
+Rows: 2 Cols: 1 ThreadIx: 1 value 2 valB 14.0
+Rows: 0 Cols: 0 ThreadIx: 0 value 0 valB 1.0
+Rows: 0 Cols: 1 ThreadIx: 1 value 1 valB 8.0
+Rows: 1 Cols: 0 ThreadIx: 0 value 2 valB 13.0
+Rows: 1 Cols: 1 ThreadIx: 1 value 1 valB 8.0
+Rows: 0 Cols: 2 ThreadIx: 0 value 2 valB 13.0
+Rows: 2 Cols: 2 ThreadIx: 0 value 1 valB 7.0
+*/
+#+END_SRC
+
+Here in the above example we are just looking at that the first values of the row.
+
+Now How do we insrt in a flat array by rows and cols.
+
+#+BEGIN_SRC C
+
+int A[9] = {
+      0, 1, 2,
+      2, 1, 0,
+      1, 2, 1};
+
+// {0, 1, 2, 2, 1, 0, 1, 2, 1} This is the flat array
+#+END_SRC
+
+We have index = (r * width) + c
+
+lets say we want to insert as (0, 1)
+
+index = (0 * 3) + 1 = index 1 on a commented array and so on and so forth.

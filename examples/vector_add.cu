@@ -64,6 +64,8 @@ __global__ void embedding_lookup(
 
   // write to C
   // C is (seq_len x batch_size x embed_dim)
+  // grid  = (seq_len, batch_size) y batch_size is that. 
+  printf("TokenId %d val %f.1% \n", token_id, val);
   C[row * gridDim.y * embed_dim + col * embed_dim + e] = val;
 }
 
@@ -180,7 +182,7 @@ int main()
 
   cudaMalloc(&d_A, seq_len * batch_size * sizeof(int));
   cudaMalloc(&d_B, 6 * embed_dim * sizeof(float));
-  cudaMalloc(&d_C, seq_len * batch_size * embed_dim * sizeof(float));
+  cudaMalloc(&d_C, batch_size * seq_len * embed_dim * sizeof(float));
 
   // copy to GPU
   cudaMemcpy(d_A, A, seq_len * batch_size * sizeof(int), cudaMemcpyHostToDevice);
