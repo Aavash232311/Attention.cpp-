@@ -71,31 +71,25 @@ __global__ void addVec(const float *a, const float *b, float *c, int N)
 // come on youre smart you will make it.
 __global__ void finalEmbeddings(
     float *x,
-    float *embeddings, 
-    float *encoding, 
+    float *embeddings,
+    float *encoding,
     float *finalEmbeddings,
     int d_model,
     int seq_len,
     int vocab_size,
-    int batch_size
-)
+    int batch_size)
 {
-    // First of all its flat.
-    // If it was not flat then lets imagine the shape of each paramaters here.
-    // x(seq_len, batch_size) embeddings(vocab_size, d_model) encoding(d_model, seq_len) finalEmbeddings(seq_len, batch_size, d_model)
-    // ITS HARD! to even think of or to visuzlize or get an idea and to keep track of all the things.
-
     int rows = blockIdx.y * blockDim.y + threadIdx.y; // rows
     int cols = blockIdx.x * blockDim.x + threadIdx.x; // cols
 
+    /*
+        Side note        x(seq_len, batch_size)
+                  encoding(vocab_size, batch_size)
+    */
 
-    // we need to create a loopup mechanism here, look through the cols of x, and then check that in the embeddings table.
+    if (rows < seq_len && cols < batch_size) return;
+
     
-    if (!(rows < seq_len && cols < batch_size)) 
-        return;
-    
-    int index_x = rows * batch_size + cols; // cols
-    int embedding_row = x[index_x]; // okay are doing the lookup here.
 
 }
 

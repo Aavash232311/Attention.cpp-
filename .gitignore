@@ -3,6 +3,7 @@ main
 vector_add
 bin
 data
+pg
 
 # Ignore Visual Studio / VS Code settings
 .vs/

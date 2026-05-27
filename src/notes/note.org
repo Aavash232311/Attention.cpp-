@@ -172,15 +172,40 @@ t15    │ 813 │  829 │  845 │ ... │  511 │
 
 And for our rows and cols our position is (1, 1)
 
+*** Understanding the execution of our code in the Kernel
+
+The computation happens in parallel. We have group of blocks known as the grid and inside of block there may be multiple threads.
+
 #+BEGIN_SRC C
-int index_x = rows * batch_size + cols;
-
-// we have row = 1, cols = 1 then it will map to 1 * 32 + 1 = 33
+  int row = blockIdx.x;
+  int col = blockIdx.y;
 #+END_SRC
 
-How is the location assigned? Important to understand here. Its assigned like a periodic table here. so that formula will help us land in that position. Everything else is happenning in parallel.
+The above code gives us the row and col of a 1D kernel launch. The thread Id in the kernel is given by
 
-#+BEGIN_SRC Python
-Row 0:   (0,0)=0   (0,1)=1   (0,2)=2   ... (0,31)=31
-Row 1:   (1,0)=32  (1,1)=33  (1,2)=34  ... (1,31)=63
+#+BEGIN_SRC C
+int e = threadIdx.x;
 #+END_SRC
+
+Now what we are trying to do is create a lookup. It tricks me because I am not used to think in termms of the GPU.
+
+#+BEGIN_SRC C
+int token_id = A[row * gridDim.y + e];
+#+END_SRC
+
+In our model the shape of A is seq_len x batch_size.
+
+That gridDim.y is the same as batch_size
+
+So we need to keep in mind that our memory is flat, which it is in the hardware level.
+
+Imagine a case where we are in position(0, 0)
+
+A[0 * 3 + 0] = A[0] = 0
+B[0 * 6 + 0] = B[0] = 1.0
+
+
+Now lets go to the case wwhere we are in position(0, 0) in the gird but thread id is 1;
+
+A[0 * 3 + 0] = A[0] = 0
+B[0 * 6 + 1] = B[1] = 2.0f
