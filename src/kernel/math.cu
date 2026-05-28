@@ -52,7 +52,7 @@ __global__ void positional_embedding_kernel(float *out, int seq_len, int d_model
     // Lets understand the shape of this positional embddings (d_model, seq_len)
 
     int i = k / 2;
-    float denom = powf(10000.0f, 2 * i / d_model);
+    float denom = powf(10000.0f, 2.0f * i / d_model);
 
     float sin_val, cos_val;
     sincosf(pos / denom, &sin_val, &cos_val); // to prevent the branch divergence
@@ -69,28 +69,17 @@ __global__ void addVec(const float *a, const float *b, float *c, int N)
 }
 
 // come on youre smart you will make it.
-__global__ void finalEmbeddings(
+__global__ void LookUpKernel(
     float *x,
     float *embeddings,
-    float *encoding,
-    float *finalEmbeddings,
+    float *C,
     int d_model,
     int seq_len,
     int vocab_size,
-    int batch_size)
+    int batch_size
+)
 {
-    int rows = blockIdx.y * blockDim.y + threadIdx.y; // rows
-    int cols = blockIdx.x * blockDim.x + threadIdx.x; // cols
-
-    /*
-        Side note        x(seq_len, batch_size)
-                  encoding(vocab_size, batch_size)
-    */
-
-    if (rows < seq_len && cols < batch_size) return;
-
     
-
 }
 
 extern "C"

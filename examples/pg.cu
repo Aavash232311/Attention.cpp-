@@ -1,10 +1,16 @@
 #include <stdio.h>
+#include "../src/include/helper.h"
 #include <iostream>
 #include <random>
 #include <cuda_runtime.h>
 #include <ranges>
 #include <fstream>
 #include <iomanip>
+
+// Just ignore this mesh this is for me to unit test, becase
+// a trasnformer running in training on batch epoch and flying in heven when using
+// parallel computing hard to debug so I will test the thing here.
+// test the equivalent code in python and then add the feature.
 
 using namespace std;
 
@@ -13,7 +19,6 @@ __global__ void kernel(int *A, float *B, float *C, int embedding)
     int rows = blockIdx.y;
     int cols = blockIdx.x;
     int e = threadIdx.x;
-
 
     int index = (rows * 3) + cols;
     int val = A[index];
@@ -32,7 +37,25 @@ __global__ void kernel(int *A, float *B, float *C, int embedding)
     */
 }
 
-int main()
+__global__ void positional_embedding_kernel(float *out, int seq_len, int d_model)
+{
+    int pos = blockIdx.y * blockDim.y + threadIdx.y; // row
+    int k = blockIdx.x * blockDim.x + threadIdx.x; // col
+
+    if (pos >= seq_len || k >= d_model)
+        return;
+
+    int i = k / 2;
+    float denom = powf(10000.0f, 2.0f * i / d_model);
+
+    float sin_val, cos_val;
+    sincosf(pos / denom, &sin_val, &cos_val);
+    out[pos * d_model + k] = (k % 2 == 0) ? sin_val : cos_val;
+}
+
+unique_ptr<Utility> utils = make_unique<Utility>();
+
+void loopUpTest()
 {
     int A[9] = {
         0, 1, 2,
@@ -92,4 +115,42 @@ int main()
             printf("]\n");
         }
     }
+}
+
+
+void positionalEncodingTest()
+{
+    int d_model = 8;
+    int seq_len = 4;
+    int shape = d_model * seq_len;
+    float *positionalEncodingOut = (float *)malloc(shape * sizeof(float)); // host memeory
+
+    float *devicePositionalEncoding;
+    cudaMalloc((void **)&devicePositionalEncoding, shape * sizeof(float)); // GPU memory
+
+    dim3 block(16, 16); // 16x16=256 threads in total.
+
+    dim3 grid(
+        (d_model + 15) / 16, // this celling division determines how many of those 16x16 grid are needed to cover entire dimension.
+        (seq_len + 15) / 16);
+
+    positional_embedding_kernel<<<grid, block>>>(devicePositionalEncoding, seq_len, d_model);
+
+    cudaDeviceSynchronize();
+
+    cudaMemcpy(positionalEncodingOut, // copy back
+               devicePositionalEncoding,
+               shape * sizeof(float),
+               cudaMemcpyDeviceToHost);
+
+    cudaFree(devicePositionalEncoding); 
+
+    utils->print_full_matrix(positionalEncodingOut, seq_len, d_model);
+    free(positionalEncodingOut); // in the attention.cpp this is free in distructor which is fine since it is created in constructor
+}
+
+int main()
+{
+    // loopUpTest();
+    positionalEncodingTest();
 }

@@ -24,21 +24,22 @@ public:
     int d_model;
     int vocab_size;
     int seq_len;
+    int batch_size;
     float *sinosudialEncoding;
     std::unique_ptr<Utility> utils = std::make_unique<Utility>();
     std::unique_ptr<Initializer> initilizer = std::make_unique<Initializer>();
     std::vector<std::vector<float>> tokenEmbeddings;
 
-    Embeddings(int d_model, int vocab_size, int seq_len)
+    Embeddings(int d_model, int vocab_size, int seq_len, int batch_size)
     {
         this->d_model = d_model;
         this->vocab_size = vocab_size;
         this->seq_len = seq_len;
+        this->batch_size = batch_size;
 
         // Allocate the memory on the host
         int shape = d_model * seq_len;
         this->sinosudialEncoding = this->positionalEncoding(); // these are learned emebddings in modern day torch. I cannot handle much pain so I am doing this one.
-
 
         // this gets changed in the backpropagation
         this->tokenEmbeddings = initilizer->HeInit(this->vocab_size, this->d_model); // token embeddings
@@ -81,19 +82,14 @@ public:
         //     // comeone not much costly
         // }
 
-
         // int* hostX = utils->TwoDVectorToFlatMem(x);
         // float* hostEmbeddings = utils->TwoDVectorToFlatMem(this->tokenEmbeddings);
         // float* finalEmbeddings = (float *)malloc(seq_len * batch_size * this->d_model);
-
-
-
 
         // delete[] hostX; // we will assign this or reconvert back to a 2d shape
         // delete[] hostEmbeddings;
         // free(finalEmbeddings);
     }
-
 };
 
 class Attention
@@ -103,14 +99,16 @@ public:
     int &vocab_size;
     int &num_heads;
     int &seq_len;
+    int &batch_size;
     std::unique_ptr<Embeddings> embeddings; // called in the constructor good.
 
-    Attention(int &d_model, int &vocab_size, int &num_heads, int &seq_len) : d_model(d_model), vocab_size(vocab_size), num_heads(num_heads), seq_len(seq_len)
+    Attention(int &d_model, int &vocab_size, int &num_heads, int &seq_len, int &batch_size) : d_model(d_model), vocab_size(vocab_size), num_heads(num_heads), seq_len(seq_len), batch_size(batch_size)
     {
         this->embeddings = std::make_unique<Embeddings>(
             this->d_model,
             this->vocab_size,
-            this->seq_len);
+            this->seq_len,
+            this->batch_size);
 
         // Just to test and keep track of things
         std::cout << "d_model: " << d_model << std::endl;
@@ -165,7 +163,8 @@ int main()
         d_model,
         vocab_size,
         num_heads,
-        seq_len); // called once good.
+        seq_len,
+        batch_size); // called once good.
 
     std::unique_ptr<DataLoader> dataLoader = std::make_unique<DataLoader>(batch_size, encodedData, seq_len, drop_last);
 
