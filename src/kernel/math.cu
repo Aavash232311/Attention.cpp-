@@ -70,16 +70,34 @@ __global__ void addVec(const float *a, const float *b, float *c, int N)
 
 // come on youre smart you will make it.
 __global__ void LookUpKernel(
-    float *x,
-    float *embeddings,
-    float *C,
+    int *x, // Shape(seq_len, batch_size)
+    float *embeddings, // Shape(vocab_size, d_mdoel)
+    float *C, // Shape(seq_len, d_model)
     int d_model,
     int seq_len,
     int vocab_size,
     int batch_size
 )
 {
-    
+    // We want the loopup into embeddings table.
+    int rows = blockIdx.x;
+    int cols = blockIdx.y;
+    int e = threadIdx.x;
+
+    if (rows >= seq_len || cols >= batch_size || e >= d_model) return;
+
+    int index = (rows * batch_size) + cols;
+    int valX = x[index]; // now this value will be used to search on lookup table.
+
+    int indexB = (valX * d_model) + e; // when the kenrnel launches its distrubuted acrosss the matrix B in our case in embeddins so we are accounting for threads.
+    float valB = embeddings[indexB];
+
+    // Final shape of the output we would want it to be Shape(seq_len, batch_size, d_model)
+    C[rows * batch_size * d_model + cols * d_model + e] = valB;
+    // if we were do another kenel launch then data gets transfered from PCIe express BUS that is costly lets so that here. 
+    // Lets think through here.
+    // Things are happenning in parallel and we could end up writing one memory address many times so
+    // Leave it we will do in different kernel launch. 
 }
 
 extern "C"
