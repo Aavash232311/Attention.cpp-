@@ -14,7 +14,7 @@
 // NVIDA cuda core kernel functions
 // again optimising this might be even more difficult anyway lets just make it work.
 extern "C" void positionalEmbeddings(float *out, int seq_len, int d_model);
-extern "C"  void lookup(int *x, float *embeddings, float *C, int d_model, int seq_len, int vocab_size, int batch_size);
+extern "C"  void lookup(int *x, float *embeddings, float *C, int d_model, int seq_len, int batch_size);
 class Embeddings
 {
 
@@ -31,6 +31,13 @@ public:
     std::unique_ptr<Initializer> initilizer = std::make_unique<Initializer>();
     std::vector<std::vector<float>> tokenEmbeddings;
 
+
+    // Size of come commonly used types
+    int sizeInputX;
+    int sizeSinosudialEncoding;
+    int sizeTokenEmbeddings;
+
+
     Embeddings(int d_model, int vocab_size, int seq_len, int batch_size)
     {
         this->d_model = d_model;
@@ -39,11 +46,16 @@ public:
         this->batch_size = batch_size;
 
         // Allocate the memory on the host
-        int shape = d_model * seq_len;
         this->sinosudialEncoding = this->positionalEncoding(); // these are learned emebddings in modern day torch. I cannot handle much pain so I am doing this one.
 
         // this gets changed in the backpropagation
         this->tokenEmbeddings = initilizer->HeInit(this->vocab_size, this->d_model); // token embeddings
+
+        // Defination of some memory size types
+        sizeInputX = seq_len * batch_size * sizeof(int);
+        sizeSinosudialEncoding = seq_len * d_model * sizeof(float);
+        sizeTokenEmbeddings = vocab_size * d_model * sizeof(float);
+
     };
 
     ~Embeddings()
@@ -53,17 +65,16 @@ public:
 
     float *positionalEncoding()
     {
-        int shape = d_model * seq_len;
-        float *positionalEncodingOut = (float *)malloc(shape * sizeof(float)); // host memeory
+        float *positionalEncodingOut = (float *)malloc(this->sizeSinosudialEncoding); // host memeory
 
         float *devicePositionalEncoding;
-        cudaMalloc((void **)&devicePositionalEncoding, shape * sizeof(float)); // GPU memory
+        cudaMalloc((void **)&devicePositionalEncoding, this->sizeSinosudialEncoding); // GPU memory
 
         positionalEmbeddings(devicePositionalEncoding, seq_len, d_model); // Kernal launch
 
         cudaMemcpy(positionalEncodingOut, // copy back
                    devicePositionalEncoding,
-                   shape * sizeof(float),
+                   this->sizeSinosudialEncoding,
                    cudaMemcpyDeviceToHost);
 
         cudaFree(devicePositionalEncoding); // free gpu memory
@@ -73,23 +84,36 @@ public:
     void forward(std::vector<std::vector<int>> x)
     {
         int batch_size = x[0].size(); // this is the batch_size
-        // this adding we need that to do be done inside of the gpu because its a repeating procress.
-        // We never wnat to think through CUDA until and unless there is a serious performace benifit, that is hard.
-        // What does our algorithm says. in X we have cols as token id so col length is upto the sequence length
-        // we can loop through the sequence length and grab the chunk out of it, it shouldn't hurt much.
+        int sizeFinalEmbeddings = seq_len * d_model * batch_size * sizeof(float);
+        // x(seq_len, batch_size)
+        int* hostX = utils->TwoDVectorToFlatMem(x);
+        float* hostEmbeddings = utils->TwoDVectorToFlatMem(this->tokenEmbeddings);
+        float* finalEmbeddings = (float *)malloc(sizeFinalEmbeddings);
 
-        // for (int i = 0; i < seq_len; ++i)
-        // {
-        //     // comeone not much costly
-        // }
+        int* deviceX;
+        float* deviceEmbeddings;
+        float* deviceFinalEmbeddings;
 
-        // int* hostX = utils->TwoDVectorToFlatMem(x);
-        // float* hostEmbeddings = utils->TwoDVectorToFlatMem(this->tokenEmbeddings);
-        // float* finalEmbeddings = (float *)malloc(seq_len * batch_size * this->d_model);
+        cudaMalloc((void **)&deviceX, sizeInputX);
+        cudaMalloc((void **)&deviceEmbeddings, sizeTokenEmbeddings);
+        cudaMalloc((void **)&deviceFinalEmbeddings, sizeFinalEmbeddings);
 
-        // delete[] hostX; // we will assign this or reconvert back to a 2d shape
-        // delete[] hostEmbeddings;
-        // free(finalEmbeddings);
+
+        cudaMemcpy(deviceX, hostX, sizeInputX, cudaMemcpyHostToDevice);
+        cudaMemcpy(deviceEmbeddings, hostEmbeddings, sizeTokenEmbeddings, cudaMemcpyHostToDevice);
+
+        // Kernel launch 
+        lookup(deviceX, deviceEmbeddings, deviceFinalEmbeddings, d_model, seq_len, batch_size);
+
+        cudaMemcpy(finalEmbeddings, deviceFinalEmbeddings, sizeFinalEmbeddings, cudaMemcpyDeviceToHost);
+
+        cudaFree(deviceX);
+        cudaFree(deviceEmbeddings);
+        cudaFree(deviceFinalEmbeddings);
+
+        delete[] hostX; // we will assign this or reconvert back to a 2d shape
+        delete[] hostEmbeddings;
+        free(finalEmbeddings);
     }
 };
 

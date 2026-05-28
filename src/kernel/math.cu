@@ -70,21 +70,20 @@ __global__ void addVec(const float *a, const float *b, float *c, int N)
 
 // come on youre smart you will make it.
 __global__ void LookUpKernel(
-    int *x, // Shape(seq_len, batch_size)
+    int *x,            // Shape(seq_len, batch_size)
     float *embeddings, // Shape(vocab_size, d_mdoel)
-    float *C, 
+    float *C,
     int d_model,
     int seq_len,
-    int vocab_size,
-    int batch_size
-)
+    int batch_size)
 {
     // We want the loopup into embeddings table.
     int rows = blockIdx.x;
     int cols = blockIdx.y;
     int e = threadIdx.x;
 
-    if (rows >= seq_len || cols >= batch_size || e >= d_model) return;
+    if (rows >= seq_len || cols >= batch_size || e >= d_model)
+        return;
 
     int index = (rows * batch_size) + cols;
     int valX = x[index]; // now this value will be used to search on lookup table.
@@ -94,15 +93,16 @@ __global__ void LookUpKernel(
 
     // Final shape of the output we would want it to be Shape(seq_len, batch_size, d_model)
     C[rows * batch_size * d_model + cols * d_model + e] = valB;
-    // if we were do another kenel launch then data gets transfered from PCIe express BUS that is costly lets so that here. 
+    // if we were do another kenel launch then data gets transfered from PCIe express BUS that is costly lets so that here.
     // Lets think through here.
     // Things are happenning in parallel and we could end up writing one memory address many times so
-    // Leave it we will do in different kernel launch. 
+    // Leave it we will do in different kernel launch.
 }
+
 
 extern "C"
 {
-    void lookup(int *x, float *embeddings, float *C, int d_model, int seq_len, int vocab_size, int batch_size)
+    void lookup(int *x, float *embeddings, float *C, int d_model, int seq_len, int batch_size)
     {
         // We are launching it such that each element in the x maps to every element in the embeddings
         // Its definately going to take some time for me to derive the problem.
@@ -112,9 +112,8 @@ extern "C"
 
         // whever you get confused think of A[0] as 0 lets say that needs to be mapped d_moel times in order to write the rows.
 
-        LookUpKernel<<<grid, block>>>(x, embeddings, C, d_model, seq_len, vocab_size, batch_size);
+        LookUpKernel<<<grid, block>>>(x, embeddings, C, d_model, seq_len, batch_size);
         cudaDeviceSynchronize();
-
     }
     void softmax(float *arr, float *out, int N)
     {

@@ -256,7 +256,10 @@ public:
         }
 
         return vec2d;
-    } // opreation in the parallel happens through the flat strip of memory so just to check and see I am writing this.
+    } 
+    
+    // IMPORTANT NOTE HERE:-
+    // opreation in the parallel happens through the flat strip of memory so just to check and see I am writing this.
       // This is a performace bottlneck in the code but for the sake of learning you cant really think in terms of flat memory.
     // I am keeping this here. Once the model is working we will modifiy and make this flat we might.
     template <typename T>
