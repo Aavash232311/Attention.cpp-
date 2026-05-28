@@ -14,7 +14,7 @@
 // NVIDA cuda core kernel functions
 // again optimising this might be even more difficult anyway lets just make it work.
 extern "C" void positionalEmbeddings(float *out, int seq_len, int d_model);
-extern "C"  void lookup(int *x, float *embeddings, float *C, int d_model, int seq_len, int batch_size);
+extern "C" void lookup(int *x, float *embeddings, float *C, int d_model, int seq_len, int batch_size, int vocab_size);
 class Embeddings
 {
 
@@ -31,12 +31,11 @@ public:
     std::unique_ptr<Initializer> initilizer = std::make_unique<Initializer>();
     std::vector<std::vector<float>> tokenEmbeddings;
 
+    // This is for debudding
+    bool k = true;
 
     // Size of come commonly used types
-    int sizeInputX;
     int sizeSinosudialEncoding;
-    int sizeTokenEmbeddings;
-
 
     Embeddings(int d_model, int vocab_size, int seq_len, int batch_size)
     {
@@ -52,10 +51,7 @@ public:
         this->tokenEmbeddings = initilizer->HeInit(this->vocab_size, this->d_model); // token embeddings
 
         // Defination of some memory size types
-        sizeInputX = seq_len * batch_size * sizeof(int);
         sizeSinosudialEncoding = seq_len * d_model * sizeof(float);
-        sizeTokenEmbeddings = vocab_size * d_model * sizeof(float);
-
     };
 
     ~Embeddings()
@@ -86,24 +82,26 @@ public:
         int batch_size = x[0].size(); // this is the batch_size
         int sizeFinalEmbeddings = seq_len * d_model * batch_size * sizeof(float);
         // x(seq_len, batch_size)
-        int* hostX = utils->TwoDVectorToFlatMem(x);
-        float* hostEmbeddings = utils->TwoDVectorToFlatMem(this->tokenEmbeddings);
-        float* finalEmbeddings = (float *)malloc(sizeFinalEmbeddings);
+        int *hostX = utils->TwoDVectorToFlatMem(x);
+        float *hostEmbeddings = utils->TwoDVectorToFlatMem(this->tokenEmbeddings);
+        float *finalEmbeddings = (float *)malloc(sizeFinalEmbeddings);
 
-        int* deviceX;
-        float* deviceEmbeddings;
-        float* deviceFinalEmbeddings;
+        int *deviceX;
+        float *deviceEmbeddings;
+        float *deviceFinalEmbeddings;
+
+        int sizeInputX = seq_len * batch_size * sizeof(int);
+        int sizeTokenEmbeddings = seq_len * batch_size * d_model * sizeof(float);
 
         cudaMalloc((void **)&deviceX, sizeInputX);
         cudaMalloc((void **)&deviceEmbeddings, sizeTokenEmbeddings);
         cudaMalloc((void **)&deviceFinalEmbeddings, sizeFinalEmbeddings);
 
-
         cudaMemcpy(deviceX, hostX, sizeInputX, cudaMemcpyHostToDevice);
         cudaMemcpy(deviceEmbeddings, hostEmbeddings, sizeTokenEmbeddings, cudaMemcpyHostToDevice);
 
-        // Kernel launch 
-        lookup(deviceX, deviceEmbeddings, deviceFinalEmbeddings, d_model, seq_len, batch_size);
+        // Kernel launch
+        lookup(deviceX, deviceEmbeddings, deviceFinalEmbeddings, d_model, seq_len, batch_size, vocab_size);
 
         cudaMemcpy(finalEmbeddings, deviceFinalEmbeddings, sizeFinalEmbeddings, cudaMemcpyDeviceToHost);
 
@@ -111,9 +109,32 @@ public:
         cudaFree(deviceEmbeddings);
         cudaFree(deviceFinalEmbeddings);
 
+        if (k == true)
+        {
+
+            std::cout << "Lookup result " << std::endl;
+            utils->printFlatArray2D(hostEmbeddings, vocab_size, d_model);
+
+            std::cout << "Input x " << std::endl;
+            utils->printFlatArray2D(hostX, seq_len, batch_size);
+
+            std::cout << "Look up result " << batch_size << std::endl;
+            utils->printFlatArray3D(finalEmbeddings, seq_len, batch_size, d_model);
+
+            std::cout << "seq_len=" << seq_len
+                      << " batch_size=" << batch_size
+                      << " d_model=" << d_model
+                      << " vocab_size=" << vocab_size
+                      << " sizeInputX=" << sizeInputX
+                      << " sizeFinalEmbeddings=" << sizeFinalEmbeddings
+                      << std::endl;
+        }
+
         delete[] hostX; // we will assign this or reconvert back to a 2d shape
         delete[] hostEmbeddings;
         free(finalEmbeddings);
+
+        k = false;
     }
 };
 
@@ -160,11 +181,11 @@ int main()
     cudaDeviceSynchronize();
     auto start = std::chrono::high_resolution_clock::now();
 
-    int d_model = 128;
+    int d_model = 16;
     int vocab_size; // that depends upon the data that you are passing.
-    int num_heads = 64;
-    int batch_size = 32;
-    int seq_len = 16;
+    int num_heads = 2;
+    int batch_size = 4;
+    int seq_len = 8;
     int epoch = 12;
     bool drop_last = false;
 

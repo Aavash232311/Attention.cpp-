@@ -75,14 +75,15 @@ __global__ void LookUpKernel(
     float *C,
     int d_model,
     int seq_len,
-    int batch_size)
+    int batch_size,
+    int vocab_size)
 {
     // We want the loopup into embeddings table.
     int rows = blockIdx.x;
     int cols = blockIdx.y;
     int e = threadIdx.x;
 
-    if (rows >= seq_len || cols >= batch_size || e >= d_model)
+    if (rows >= seq_len || cols >= batch_size)
         return;
 
     int index = (rows * batch_size) + cols;
@@ -100,19 +101,31 @@ __global__ void LookUpKernel(
 }
 
 
+
+
 extern "C"
 {
-    void lookup(int *x, float *embeddings, float *C, int d_model, int seq_len, int batch_size)
+    void lookup(
+        int *x,
+        float *embeddings,
+        float *C,
+        int d_model,
+        int seq_len,
+        int batch_size,
+        int vocab_size)
     {
         // We are launching it such that each element in the x maps to every element in the embeddings
         // Its definately going to take some time for me to derive the problem.
         // Util and unless I am not able to derive things its not the actual problem solving.
         dim3 grid(seq_len, batch_size);
-        dim3 block(d_model);
+        int threads = min(d_model, 1024);
+        dim3 block(threads); // we have a hardware limit here so.
 
         // whever you get confused think of A[0] as 0 lets say that needs to be mapped d_moel times in order to write the rows.
 
-        LookUpKernel<<<grid, block>>>(x, embeddings, C, d_model, seq_len, batch_size);
+        LookUpKernel<<<grid, block>>>(x, embeddings, C, d_model, seq_len, batch_size, vocab_size);
+
+
         cudaDeviceSynchronize();
     }
     void softmax(float *arr, float *out, int N)

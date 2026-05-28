@@ -69,6 +69,35 @@ __global__ void embedding_lookup(
   C[row * gridDim.y * embed_dim + col * embed_dim + e] = val;
 }
 
+// This is the refined unit I want to see whats going on here.
+__global__ void LookUpKernel(
+    int *x,           
+    float *embeddings, 
+    float *C,
+    int d_model,
+    int seq_len,
+    int batch_size)
+{
+
+    int rows = blockIdx.x;
+    int cols = blockIdx.y;
+    int e = threadIdx.x;
+
+    if (rows >= seq_len || cols >= batch_size)
+        return;
+
+    int index = (rows * batch_size) + cols;
+    int valX = x[index]; 
+
+    int indexB = (valX * d_model) + e; 
+    float valB = embeddings[indexB];
+
+
+    C[rows * batch_size * d_model + cols * d_model + e] = valB;
+
+}
+
+
 int main()
 {
   int N = 10000;
@@ -194,7 +223,7 @@ int main()
   dim3 grid(seq_len, batch_size);
   dim3 block(embed_dim);
 
-  embedding_lookup<<<grid, block>>>(d_A, d_B, d_C, embed_dim);
+  LookUpKernel<<<grid, block>>>(d_A, d_B, d_C, 3*3, 3, 3);
 
   // copy result back
   float C[seq_len * batch_size * embed_dim];

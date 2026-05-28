@@ -213,7 +213,8 @@ public:
         std::cout << "]\n";
     }
 
-    void print_full_matrix(const float *matrix, int seq_len, int d_model)
+    template <typename T>
+    void printFlatArray2D(const T *matrix, int seq_len, int d_model)
     {
 
         std::cout << std::fixed << std::setprecision(4);
@@ -241,6 +242,23 @@ public:
         std::cout << "\n] Shape: (" << seq_len << ", " << d_model << ")\n";
     }
 
+    void printFlatArray3D(const float *arr, int seq_len, int batch_size, int embed_dim)
+    {
+        for (int r = 0; r < seq_len; r++)
+        {
+            printf("t%d:\n", r);
+            for (int c = 0; c < batch_size; c++)
+            {
+                printf("  col%d: [", c);
+                for (int e = 0; e < embed_dim; e++)
+                {
+                    printf("%.1f ", arr[r * batch_size * embed_dim + c * embed_dim + e]);
+                }
+                printf("]\n");
+            }
+        }
+    }
+
     // For now lets make this method convert the flat array which is computed by the GPU to 2D array of vectors
     template <typename T>
     std::vector<std::vector<T>> flatArrToVec(const float *arr, int rows, int cols)
@@ -256,11 +274,11 @@ public:
         }
 
         return vec2d;
-    } 
-    
+    }
+
     // IMPORTANT NOTE HERE:-
     // opreation in the parallel happens through the flat strip of memory so just to check and see I am writing this.
-      // This is a performace bottlneck in the code but for the sake of learning you cant really think in terms of flat memory.
+    // This is a performace bottlneck in the code but for the sake of learning you cant really think in terms of flat memory.
     // I am keeping this here. Once the model is working we will modifiy and make this flat we might.
     template <typename T>
     T *TwoDVectorToFlatMem(const std::vector<std::vector<T>> &arr,
