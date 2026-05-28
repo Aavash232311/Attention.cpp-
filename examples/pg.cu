@@ -14,6 +14,7 @@ __global__ void kernel(int *A, float *B, float *C, int embedding)
     int cols = blockIdx.x;
     int e = threadIdx.x;
 
+
     int index = (rows * 3) + cols;
     int val = A[index];
 

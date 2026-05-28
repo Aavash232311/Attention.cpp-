@@ -144,151 +144,11 @@ And for our rows and cols our position is (1, 1)
 *** Understanding the execution of our code in the Kernel
 
 #+BEGIN_SRC C
-__global__ void kernel(float *A, float *B, float *C)
+__global__ void kernel(int *A, float *B, float *C, int embedding)
 {
-    int row = blockIdx.x;
-    int col = blockIdx.y;
-
-    int index = (row * 3) + col;
-    float val = A[index];
-
-    int threadIx = threadIdx.x;
-
-    printf("Rows: %d Cols: %d ThreadIx: %d value %.1f \n", row, col, threadIx, val);
-}
-
-int main()
-{
-    float A[9] = {
-        0, 1, 2,
-        3, 4, 5,
-        6, 7, 8};
-
-    float B[9] = {0};
-    float C[9];
-
-    /*
-      A = {
-        {1, 2, 3},
-        {4, 5, 6},
-        {7, 8, 9}
-    } smilialry for B
-
-    ,*/
-
-    float *device_arr_A, *device_arr_B, *device_arr_C;
-    cudaMalloc((void **)&device_arr_A, 9 * sizeof(float));
-    cudaMalloc((void **)&device_arr_B, 9 * sizeof(float));
-    cudaMalloc((void **)&device_arr_C, 9 * sizeof(float));
-
-
-    cudaMemcpy(device_arr_A, A, 9 * sizeof(float), cudaMemcpyHostToDevice);
-    cudaMemcpy(device_arr_B, B, 9 * sizeof(float), cudaMemcpyHostToDevice);
-    cudaMemcpy(device_arr_C, C, 9 * sizeof(float), cudaMemcpyHostToDevice);
-
-
-    dim3 grid(3, 3);
-    dim3 block(1);
-
-
-    kernel<<<grid, block>>>(device_arr_A, device_arr_B, device_arr_C);
-
-    cudaDeviceSynchronize();
-    cudaMemcpy(device_arr_C, C, 9 * sizeof(float), cudaMemcpyDeviceToHost);
-
-    cudaFree(device_arr_A);
-    cudaFree(device_arr_B);
-    cudaFree(device_arr_C);
-}
-#+END_SRC
-
-In our Kernel launch above we have 3x3 grid with each having one thread to compute that perfectly covers our array. And will be easy for us to think of.
-
-Now lets visualize the formula
-
-#+BEGIN_SRC C
-int index = (row * 3) + col;
-float val = A[index];
-#+END_SRC
-
-#+BEGIN_SRC Python
-
-At Pos(0, 0)
-
-int index = 0*3 + 0 = 0
-val = A[0] = 1
-
-At Pos(0, 1)
-int index = 0*3 + 1 = 1
-A[1] = 2 # This is a flat strip of memory
-
-At Pos(0, 2)
-int index = 0*3 + 2 = 2
-A[2] = 3
-
-#+END_SRC
-
-
-
-**** Understanding the boundary check in the cuda kernel
-
-Here we have more than 1 thread that is overkilled, we can notive that we have multiple zero's which is reading the garbage data.
-
-#+BEGIN_SRC Bash
-Rows: 0 Cols: 4 ThreadIx: 0 value 4.0
-Rows: 0 Cols: 5 ThreadIx: 1 value 5.0
-Rows: 1 Cols: 2 ThreadIx: 0 value 5.0
-Rows: 1 Cols: 3 ThreadIx: 1 value 6.0
-Rows: 0 Cols: 0 ThreadIx: 0 value 0.0
-Rows: 0 Cols: 1 ThreadIx: 1 value 1.0
-Rows: 2 Cols: 0 ThreadIx: 0 value 6.0
-Rows: 2 Cols: 1 ThreadIx: 1 value 7.0
-Rows: 1 Cols: 0 ThreadIx: 0 value 3.0
-Rows: 1 Cols: 1 ThreadIx: 1 value 4.0
-Rows: 2 Cols: 4 ThreadIx: 0 value 0.0
-Rows: 2 Cols: 5 ThreadIx: 1 value 0.0
-Rows: 1 Cols: 4 ThreadIx: 0 value 7.0
-Rows: 1 Cols: 5 ThreadIx: 1 value 8.0
-Rows: 2 Cols: 2 ThreadIx: 0 value 8.0
-Rows: 2 Cols: 3 ThreadIx: 1 value 0.0
-Rows: 0 Cols: 2 ThreadIx: 0 value 2.0
-Rows: 0 Cols: 3 ThreadIx: 1 value 3.0
-#+END_SRC
-
-After implementing the bounday check
-
-#+BEGIN_SRC C
-if (!(rows < 3 &&  cols < 3)) return;
-
-/*
-Rows: 1 Cols: 2 ThreadIx: 0 value 5.0
-Rows: 0 Cols: 2 ThreadIx: 0 value 2.0
-Rows: 2 Cols: 2 ThreadIx: 0 value 8.0
-Rows: 2 Cols: 0 ThreadIx: 0 value 6.0
-Rows: 2 Cols: 1 ThreadIx: 1 value 7.0
-Rows: 0 Cols: 0 ThreadIx: 0 value 0.0
-Rows: 0 Cols: 1 ThreadIx: 1 value 1.0
-Rows: 1 Cols: 0 ThreadIx: 0 value 3.0
-Rows: 1 Cols: 1 ThreadIx: 1 value 4.0
-
-We have the clean output.
-,*/
-#+END_SRC
-
-#+RESULTS:
-
-
-Before creating a lookup table lets see whats going on here
-
-#+BEGIN_SRC C
-__global__ void kernel(int *A, float *B, float *C)
-{
-    int rows = blockIdx.y * blockDim.y + threadIdx.y;
-    int cols = blockIdx.x * blockDim.x + threadIdx.x;
+    int rows = blockIdx.y;
+    int cols = blockIdx.x;
     int e = threadIdx.x;
-
-    if (!(rows < 3 && cols < 3))
-        return;
 
     int index = (rows * 3) + cols;
     int val = A[index];
@@ -296,39 +156,130 @@ __global__ void kernel(int *A, float *B, float *C)
     int indexB = (val * 6) + e;
     float valB = B[indexB];
 
-    int threadIx = threadIdx.x;
+    C[rows * gridDim.x * embedding + cols * embedding + e] = valB;
+    /*
 
-    printf("Rows: %d Cols: %d ThreadIx: %d value %d valB %.1f \n", rows, cols, threadIx, val, valB);
+    rows * gridDim.x * embeddings
+    skip row, each one of them has 3 position and final embeddings have 15 values.
+
+    + how for how many cols to skip cols * embeddings + threadId
+
+    */
 }
-/*
-Rows: 1 Cols: 2 ThreadIx: 0 value 0 valB 1.0
-Rows: 2 Cols: 0 ThreadIx: 0 value 1 valB 7.0
-Rows: 2 Cols: 1 ThreadIx: 1 value 2 valB 14.0
-Rows: 0 Cols: 0 ThreadIx: 0 value 0 valB 1.0
-Rows: 0 Cols: 1 ThreadIx: 1 value 1 valB 8.0
-Rows: 1 Cols: 0 ThreadIx: 0 value 2 valB 13.0
-Rows: 1 Cols: 1 ThreadIx: 1 value 1 valB 8.0
-Rows: 0 Cols: 2 ThreadIx: 0 value 2 valB 13.0
-Rows: 2 Cols: 2 ThreadIx: 0 value 1 valB 7.0
-*/
+
+int main()
+{
+    int A[9] = {
+        0, 1, 2,
+        2, 1, 0,
+        1, 2, 1};
+
+    float B[36] = {
+        1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f,
+        7.0f, 8.0f, 9.0f, 10.0f, 11.0f, 12.0f,
+        13.0f, 14.0f, 15.0f, 16.0f, 17.0f, 18.0f,
+        19.0f, 20.0f, 21.0f, 22.0f, 23.0f, 24.0f,
+        25.0f, 26.0f, 27.0f, 28.0f, 29.0f, 30.0f,
+        31.0f, 32.0f, 33.0f, 34.0f, 35.0f, 36.0f};
+
+    /*
+    We can imagine this float A matrix as something like this
+
+    A = {
+        {1, 2, 3},
+        {4, 5, 6},
+        {7, 8, 9}
+    } smilialry for B
+
+    */
+
+    int *device_arr_A;
+    float *device_arr_B, *device_arr_C;
+    cudaMalloc((void **)&device_arr_A, 9 * sizeof(int));
+    cudaMalloc((void **)&device_arr_B, 36 * sizeof(float));
+    cudaMalloc((void **)&device_arr_C, 3 * 3 * 6 * sizeof(float));
+
+    cudaMemcpy(device_arr_A, A, 9 * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(device_arr_B, B, 36 * sizeof(float), cudaMemcpyHostToDevice);
+
+    dim3 grid(3, 3);
+    dim3 block(6);
+    kernel<<<grid, block>>>(device_arr_A, device_arr_B, device_arr_C, 6);
+
+    cudaDeviceSynchronize();
+    float C[3 * 3 * 6];
+    cudaMemcpy(C, device_arr_C, 3 * 3 * 6 * sizeof(float), cudaMemcpyDeviceToHost);
+
+    cudaFree(device_arr_A);
+    cudaFree(device_arr_B);
+    cudaFree(device_arr_C);
+
+    for (int r = 0; r < 3; r++)
+    {
+        printf("t%d:\n", r);
+        for (int c = 0; c < 3; c++)
+        {
+            printf("  col%d: [", c);
+            for (int e = 0; e < 3; e++)
+            {
+                printf("%.1f ", C[r * 3 * 6 + c * 6 + e]);
+            }
+            printf("]\n");
+        }
+    }
+}
 #+END_SRC
 
-Here in the above example we are just looking at that the first values of the row.
+That is our unit test for kernel launch in the cuda kernel. With that we were able to create a simple lookup. Depending upon the type of kenrel launch cuda lets us use the row and cols our our current block. And, inside of block we can have multiple threads, to prevent that multiple threads from writing into garbage data we create a boundry check like row < something .... Okay so,
 
-Now How do we insrt in a flat array by rows and cols.
+Formula for getting current index is
+#+BEGIN_SRC C
+int index = (rows * 3) + cols; // (rows * width) + cols
+// Think of this as a higher dimensional matrix converted into a flat array
+
+/*
+
+  A = {
+     {1, 2, 3},
+     {4, 5, 6},
+     {7, 8, 9}
+  }
+
+  The flat version of this would be
+  A = {1, 2, 3, 4, 5, 6}
+
+,*/
+#+END_SRC
+
+So imagine we are on the position P(0, 0) row = 0, col = 0
+index = (0 * 3) + 0 = 0
+A[0] = 1 and so on. Simple math not something strict of a formula.
+
+**** Our goal is simple lookup table for now
+For now our goal is to understand how to create a simple lookup table. Inside of a transformer model training runs on batch and epoch so it will be hard for us to debug currently so what we can do is unit test be sure that things work then only add that unit.
+
+Because value of A is row of B we can find value of B easily as well.
+
+So for our matrix C we want it to be in the shape of seq_len x batch_size x d_model we want to write that flat srip of array to a 3d matrix.
+
+so here.
 
 #+BEGIN_SRC C
-
-int A[9] = {
-      0, 1, 2,
-      2, 1, 0,
-      1, 2, 1};
-
-// {0, 1, 2, 2, 1, 0, 1, 2, 1} This is the flat array
+  C[row * gridDim.y * embed_dim + col * embed_dim + e] = val;
+// C[row x batch_size x d_model + col x d_model + e]
 #+END_SRC
 
-We have index = (r * width) + c
+In our example our batch_size = 3, seq_len = 3 and d_model = 6
+#+BEGIN_SRC Python
 
-lets say we want to insert as (0, 1)
+Row 0: [....En] [...En][....] # This is a 3d matrix but in low level its a flat strip
+rows*batch_size*d + cols*d + e
 
-index = (0 * 3) + 1 = index 1 on a commented array and so on and so forth.
+# Expaded shape (rows x batch_size x d_model)
+
+#+END_SRC
+
+We are adding that matrix B part inside the inner most cell by skipping the outer dimension I would say.
+Lets think this 3d matrix as a flat array.
+
+So basically we have. rows (rows) and batch_size = column and d_model as the value inside of the cell. In order to skip that we would rows * batch_size * d_model + cols * (d_model) + e
