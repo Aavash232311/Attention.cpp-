@@ -72,7 +72,7 @@ __global__ void addVec(const float *a, const float *b, float *c, int N)
 __global__ void LookUpKernel(
     int *x, // Shape(seq_len, batch_size)
     float *embeddings, // Shape(vocab_size, d_mdoel)
-    float *C, // Shape(seq_len, d_model)
+    float *C, 
     int d_model,
     int seq_len,
     int vocab_size,
@@ -102,6 +102,20 @@ __global__ void LookUpKernel(
 
 extern "C"
 {
+    void lookup(int *x, float *embeddings, float *C, int d_model, int seq_len, int vocab_size, int batch_size)
+    {
+        // We are launching it such that each element in the x maps to every element in the embeddings
+        // Its definately going to take some time for me to derive the problem.
+        // Util and unless I am not able to derive things its not the actual problem solving.
+        dim3 grid(seq_len, batch_size);
+        dim3 block(d_model);
+
+        // whever you get confused think of A[0] as 0 lets say that needs to be mapped d_moel times in order to write the rows.
+
+        LookUpKernel<<<grid, block>>>(x, embeddings, C, d_model, seq_len, vocab_size, batch_size);
+        cudaDeviceSynchronize();
+
+    }
     void softmax(float *arr, float *out, int N)
     {
 

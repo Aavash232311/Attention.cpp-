@@ -14,6 +14,7 @@
 // NVIDA cuda core kernel functions
 // again optimising this might be even more difficult anyway lets just make it work.
 extern "C" void positionalEmbeddings(float *out, int seq_len, int d_model);
+extern "C"  void lookup(int *x, float *embeddings, float *C, int d_model, int seq_len, int vocab_size, int batch_size);
 class Embeddings
 {
 
