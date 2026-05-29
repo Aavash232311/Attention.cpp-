@@ -15,6 +15,8 @@
 // again optimising this might be even more difficult anyway lets just make it work.
 extern "C" void positionalEmbeddings(float *out, int seq_len, int d_model);
 extern "C" void lookup(int *x, float *embeddings, float *C, int d_model, int seq_len, int batch_size, int vocab_size);
+extern "C" void addEmbeddings(float *lookedUpEmbeddings, float *sinosudialEncoding, float *C, int d_model, int seq_len, int batch_size);
+
 class Embeddings
 {
 
@@ -34,8 +36,7 @@ public:
     // This is for debudding
     bool k = true;
 
-    // Size of come commonly used types
-    int sizeSinosudialEncoding;
+
 
     Embeddings(int d_model, int vocab_size, int seq_len, int batch_size)
     {
@@ -50,8 +51,7 @@ public:
         // this gets changed in the backpropagation
         this->tokenEmbeddings = initilizer->HeInit(this->vocab_size, this->d_model); // token embeddings
 
-        // Defination of some memory size types
-        sizeSinosudialEncoding = seq_len * d_model * sizeof(float);
+
     };
 
     ~Embeddings()
@@ -61,16 +61,16 @@ public:
 
     float *positionalEncoding()
     {
-        float *positionalEncodingOut = (float *)malloc(this->sizeSinosudialEncoding); // host memeory
+        float *positionalEncodingOut = (float *)malloc(seq_len * d_model * sizeof(float)); // host memeory
 
         float *devicePositionalEncoding;
-        cudaMalloc((void **)&devicePositionalEncoding, this->sizeSinosudialEncoding); // GPU memory
+        cudaMalloc((void **)&devicePositionalEncoding, seq_len * d_model * sizeof(float)); // GPU memory
 
         positionalEmbeddings(devicePositionalEncoding, seq_len, d_model); // Kernal launch
 
         cudaMemcpy(positionalEncodingOut, // copy back
                    devicePositionalEncoding,
-                   this->sizeSinosudialEncoding,
+                   seq_len * d_model * sizeof(float),
                    cudaMemcpyDeviceToHost);
 
         cudaFree(devicePositionalEncoding); // free gpu memory
@@ -84,7 +84,7 @@ public:
         // x(seq_len, batch_size)
         int *hostX = utils->TwoDVectorToFlatMem(x);
         float *hostEmbeddings = utils->TwoDVectorToFlatMem(this->tokenEmbeddings);
-        float *finalEmbeddings = (float *)malloc(sizeFinalEmbeddings);
+        float *lookedUpEmbeddings = (float *)malloc(sizeFinalEmbeddings);
 
         int *deviceX;
         float *deviceEmbeddings;
@@ -100,41 +100,44 @@ public:
         cudaMemcpy(deviceX, hostX, sizeInputX, cudaMemcpyHostToDevice);
         cudaMemcpy(deviceEmbeddings, hostEmbeddings, sizeTokenEmbeddings, cudaMemcpyHostToDevice);
 
-        // Kernel launch
+        // kernel launch
         lookup(deviceX, deviceEmbeddings, deviceFinalEmbeddings, d_model, seq_len, batch_size, vocab_size);
 
-        cudaMemcpy(finalEmbeddings, deviceFinalEmbeddings, sizeFinalEmbeddings, cudaMemcpyDeviceToHost);
+        cudaMemcpy(lookedUpEmbeddings, deviceFinalEmbeddings, sizeFinalEmbeddings, cudaMemcpyDeviceToHost);
 
         cudaFree(deviceX);
         cudaFree(deviceEmbeddings);
         cudaFree(deviceFinalEmbeddings);
 
-        if (k == true)
-        {
+        float *addedEmbeddingsOut = (float *)malloc(sizeFinalEmbeddings); // this is the out.
 
-            std::cout << "Lookup result " << std::endl;
-            utils->printFlatArray2D(hostEmbeddings, vocab_size, d_model);
+        float *deviceSinosudialEncoding;
+        float *deviceLookedUpEmbeddings; // Note:- it after we lookup in embddings from x
+        float *deviceAddedEmbeddingsOut;
 
-            std::cout << "Input x " << std::endl;
-            utils->printFlatArray2D(hostX, seq_len, batch_size);
+        cudaMalloc((void **)&deviceSinosudialEncoding, seq_len * d_model * sizeof(float));
+        cudaMalloc((void **)&deviceAddedEmbeddingsOut, sizeFinalEmbeddings);
+        cudaMalloc((void **)&deviceLookedUpEmbeddings, sizeFinalEmbeddings);
 
-            std::cout << "Look up result " << batch_size << std::endl;
-            utils->printFlatArray3D(finalEmbeddings, seq_len, batch_size, d_model);
+        // copy to gpu
+        cudaMemcpy(deviceLookedUpEmbeddings, lookedUpEmbeddings, sizeFinalEmbeddings, cudaMemcpyHostToDevice);
+        cudaMemcpy(deviceSinosudialEncoding, this->sinosudialEncoding, seq_len * d_model * sizeof(float), cudaMemcpyHostToDevice);
 
-            std::cout << "seq_len=" << seq_len
-                      << " batch_size=" << batch_size
-                      << " d_model=" << d_model
-                      << " vocab_size=" << vocab_size
-                      << " sizeInputX=" << sizeInputX
-                      << " sizeFinalEmbeddings=" << sizeFinalEmbeddings
-                      << std::endl;
-        }
+        addEmbeddings(deviceLookedUpEmbeddings, this->sinosudialEncoding, deviceAddedEmbeddingsOut, d_model, seq_len, batch_size);
+
+        cudaMemcpy(addedEmbeddingsOut, deviceAddedEmbeddingsOut, sizeFinalEmbeddings, cudaMemcpyDeviceToHost);
+
+        cudaFree(deviceSinosudialEncoding);
+        cudaFree(deviceAddedEmbeddingsOut);
+        cudaFree(deviceLookedUpEmbeddings);
+
+
 
         delete[] hostX; // we will assign this or reconvert back to a 2d shape
         delete[] hostEmbeddings;
-        free(finalEmbeddings);
 
-        k = false;
+        free(lookedUpEmbeddings);
+        free(addedEmbeddingsOut);
     }
 };
 

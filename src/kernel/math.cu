@@ -98,13 +98,49 @@ __global__ void LookUpKernel(
     // Lets think through here.
     // Things are happenning in parallel and we could end up writing one memory address many times so
     // Leave it we will do in different kernel launch.
+    // if we were to implement adding the embeddings here as well then it would be known as kernel fusion.
 }
 
+__global__ void FinalEmbeddingKernel(
+    float *lookedUpEmbeddings, // Shape (batch_size, seq_len, d_model)
+    float *sinosudialEncoding, // Shape (seq_len, d_model)
+    float *C,                  // Shape(batch_size, seq_len, d_model)
+    int d_model,
+    int seq_len,
+    int batch_size)
+{
+    int rows = blockIdx.x; // This gives the row and col of grid.
+    int cols = blockIdx.y;
+    int e = threadIdx.x;
 
+    if (rows >= seq_len || cols >= batch_size)
+        return;
 
+    int idxSinosudialEncoding = (rows * d_model) + e; // width = d_model of sinosudial encoding
+
+    int idxLookedUpEmbeddings = rows * batch_size * d_model + cols * d_model + e;
+
+    C[idxLookedUpEmbeddings] = lookedUpEmbeddings[idxLookedUpEmbeddings] + sinosudialEncoding[idxSinosudialEncoding];
+}
 
 extern "C"
 {
+    void addEmbeddings(
+        float *lookedUpEmbeddings,
+        float *sinosudialEncoding,
+        float *C,
+        int d_model,
+        int seq_len,
+        int batch_size)
+    {
+        dim3 gird(seq_len, batch_size);
+        int threads = min(d_model, 1024);
+        dim3 block(threads);
+
+        FinalEmbeddingKernel<<<gird, block>>>(lookedUpEmbeddings, sinosudialEncoding, C, d_model, seq_len, batch_size);
+
+        cudaDeviceSynchronize();
+    }
     void lookup(
         int *x,
         float *embeddings,
@@ -124,7 +160,6 @@ extern "C"
         // whever you get confused think of A[0] as 0 lets say that needs to be mapped d_moel times in order to write the rows.
 
         LookUpKernel<<<grid, block>>>(x, embeddings, C, d_model, seq_len, batch_size, vocab_size);
-
 
         cudaDeviceSynchronize();
     }

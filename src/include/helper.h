@@ -214,49 +214,69 @@ public:
     }
 
     template <typename T>
-    void printFlatArray2D(const T *matrix, int seq_len, int d_model)
+    void printFlatArray2D(const T *arr, int seq_len, int d_model)
     {
+        const int M = 3;
 
-        std::cout << std::fixed << std::setprecision(4);
-
-        std::cout << "[\n";
-        for (int r = 0; r < seq_len; ++r)
-        {
-            std::cout << "  [";
-            for (int c = 0; c < d_model; ++c)
-            {
-
-                std::cout << std::setw(8) << matrix[r * d_model + c];
-                if (c < d_model - 1)
-                {
-                    std::cout << ", ";
-                }
-            }
-            std::cout << "]";
-
-            if (r < seq_len - 1)
-            {
-                std::cout << ",\n";
-            }
-        }
-        std::cout << "\n] Shape: (" << seq_len << ", " << d_model << ")\n";
-    }
-
-    void printFlatArray3D(const float *arr, int seq_len, int batch_size, int embed_dim)
-    {
+        printf("tensor([\n");
         for (int r = 0; r < seq_len; r++)
         {
-            printf("t%d:\n", r);
+            if (r == M && seq_len > M * 2)
+            {
+                printf("  ...,\n");
+                r = seq_len - M;
+            }
+            printf("  [");
+            for (int c = 0; c < d_model; c++)
+            {
+                if (c == M && d_model > M * 2)
+                {
+                    printf("..., ");
+                    c = d_model - M;
+                }
+                printf("%g%s", (double)arr[r * d_model + c], c < d_model - 1 ? ", " : "");
+            }
+            printf("],\n");
+        }
+        printf("], shape=[%d, %d])\n", seq_len, d_model);
+    }
+
+    template <typename T>
+    void printFlatArray3D(const T *arr, int seq_len, int batch_size, int embed_dim)
+    {
+        const int M = 3;
+
+        printf("tensor([\n");
+        for (int r = 0; r < seq_len; r++)
+        {
+            if (r == M && seq_len > M * 2)
+            {
+                printf("  ...,\n");
+                r = seq_len - M;
+            }
+            printf("  [\n");
             for (int c = 0; c < batch_size; c++)
             {
-                printf("  col%d: [", c);
+                if (c == M && batch_size > M * 2)
+                {
+                    printf("    ...,\n");
+                    c = batch_size - M;
+                }
+                printf("    [");
                 for (int e = 0; e < embed_dim; e++)
                 {
-                    printf("%.1f ", arr[r * batch_size * embed_dim + c * embed_dim + e]);
+                    if (e == M && embed_dim > M * 2)
+                    {
+                        printf("..., ");
+                        e = embed_dim - M;
+                    }
+                    printf("%g%s", (double)arr[r * batch_size * embed_dim + c * embed_dim + e], e < embed_dim - 1 ? ", " : "");
                 }
-                printf("]\n");
+                printf("],\n");
             }
+            printf("  ],\n");
         }
+        printf("], shape=[%d, %d, %d])\n", seq_len, batch_size, embed_dim);
     }
 
     // For now lets make this method convert the flat array which is computed by the GPU to 2D array of vectors
