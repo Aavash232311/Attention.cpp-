@@ -535,10 +535,6 @@ public:
 class Initializer
 {
 public:
-    Initializer()
-    {
-    }
-
     std::vector<std::vector<float>> HeInit(int vocabSize, int dModel)
     {
         float stdDev = std::sqrt(2.0f / dModel);

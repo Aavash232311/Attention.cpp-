@@ -1,8 +1,10 @@
 #include <iostream>
 #include <iterator>
 #include <math.h>
+#include <random>
 #include <vector>
 #include <cuda_runtime.h>
+#include <curand_kernel.h>
 
 /*
 We expect this to return a softmax function, for example x = [2, 1, 0]
@@ -121,6 +123,34 @@ __global__ void FinalEmbeddingKernel(
     int idxLookedUpEmbeddings = rows * batch_size * d_model + cols * d_model + e;
 
     C[idxLookedUpEmbeddings] = lookedUpEmbeddings[idxLookedUpEmbeddings] + sinosudialEncoding[idxSinosudialEncoding];
+}
+
+// For token embeddings we did it on CPU because its initliized once the consturcotr is loaded for this we will be using the GPU
+// curand_init is expensive and for each thread our performance will drop significantly
+
+__global__ void SetUpRnd(curandState *state, unsigned long seed, int max_threads)
+{
+    int idx = threadIdx.x + blockIdx.x * blockDim.x;
+    //        seed, idx=which subsequent thread gets this, 0 = offset, and write in state[idx]
+
+    if (idx >= max_threads)
+        return;
+
+    curand_init(seed, idx, 0, &state[idx]); // we can think of this as creating an instance of random class inside of global device memory.
+}
+
+__global__ void KaimingInit(float *arr, int fan_in, curandState *state, int max_threads)
+{
+    int idx = threadIdx.x + blockIdx.x * blockDim.x;
+    if (idx >= max_threads)
+        return;
+
+    // registers are ultra fast memory within SM's in the GPU
+    curandState local = state[idx]; // global mem to register ex pos 0
+    float std = sqrtf(2.0f / (float)fan_in);
+    arr[idx] = curand_normal(&local) * std; // local goes to pos 1
+
+    state[idx] = local;  // register -> global position 1, we need to write back the global because it is the only memory that survives after the Kernel ends.
 }
 
 extern "C"

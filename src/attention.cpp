@@ -77,7 +77,7 @@ public:
         return positionalEncodingOut;
     }
 
-    void forward(std::vector<std::vector<int>> x)
+    float* forward(std::vector<std::vector<int>> x)
     {
         int batch_size = x[0].size(); // this is the batch_size
         int sizeFinalEmbeddings = seq_len * d_model * batch_size * sizeof(float);
@@ -137,7 +137,31 @@ public:
         delete[] hostEmbeddings;
 
         free(lookedUpEmbeddings);
-        free(addedEmbeddingsOut);
+        return addedEmbeddingsOut;
+    }
+};
+
+
+class Linear
+{
+    int feature_in;
+    int feature_out;
+
+    float *weight;
+    float *bais;
+
+public:
+    Linear(int feature_in, int feature_out)
+    {
+        this->feature_in = feature_in;
+        this->feature_out = feature_out;
+
+        this->HeInit(feature_in, feature_out);
+    }
+
+    void HeInit(int rows, int cols)
+    {
+        
     }
 };
 
@@ -175,7 +199,9 @@ public:
             std::cout << "The number of heads must be perfectly divisible by dimesnion " << std::endl;
             return;
         }
-        embeddings->forward(x);
+        float* netEmbeddings = embeddings->forward(x);
+
+        free(netEmbeddings);
     };
 };
 
@@ -189,7 +215,7 @@ int main()
     int num_heads = 2;
     int batch_size = 4;
     int seq_len = 8;
-    int epoch = 12;
+    int epoch = 8;
     bool drop_last = false;
 
     std::string path = "./src/data/chunk.txt";
