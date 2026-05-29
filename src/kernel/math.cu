@@ -135,13 +135,13 @@ __global__ void SetUpRnd(curandState *state, unsigned long seed, int max_threads
 
     if (idx >= max_threads)
         return;
-
+    // Think of the global memory like a Queue.
     curand_init(seed, idx, 0, &state[idx]); // we can think of this as creating an instance of random class inside of global device memory.
 }
 
 __global__ void KaimingInit(float *arr, int fan_in, curandState *state, int max_threads)
 {
-    int idx = threadIdx.x + blockIdx.x * blockDim.x;
+    int idx = threadIdx.x + blockIdx.x * blockDim.x; // these are unique per thread.
     if (idx >= max_threads)
         return;
 
@@ -150,7 +150,12 @@ __global__ void KaimingInit(float *arr, int fan_in, curandState *state, int max_
     float std = sqrtf(2.0f / (float)fan_in);
     arr[idx] = curand_normal(&local) * std; // local goes to pos 1
 
+    // That opreation from global memory to register is physcially copied
+    // back and fourh between the register and global memory
     state[idx] = local;  // register -> global position 1, we need to write back the global because it is the only memory that survives after the Kernel ends.
+    // if the each thread have different position on the global memory then why do we care about writing it back?
+    // well the answer is if we using this KaimingInit again and the data is physically
+    
 }
 
 extern "C"
