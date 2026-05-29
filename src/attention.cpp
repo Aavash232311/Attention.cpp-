@@ -1,4 +1,5 @@
 #include "include/helper.h"
+#include <curand_kernel.h>
 #include <cuda_runtime.h>
 #include <iostream>
 #include <memory>
@@ -16,6 +17,7 @@
 extern "C" void positionalEmbeddings(float *out, int seq_len, int d_model);
 extern "C" void lookup(int *x, float *embeddings, float *C, int d_model, int seq_len, int batch_size, int vocab_size);
 extern "C" void addEmbeddings(float *lookedUpEmbeddings, float *sinosudialEncoding, float *C, int d_model, int seq_len, int batch_size);
+extern "C" void KaimingInit(float *arr, curandState *state, int x, int y, unsigned long seed);
 
 class Embeddings
 {
@@ -36,8 +38,6 @@ public:
     // This is for debudding
     bool k = true;
 
-
-
     Embeddings(int d_model, int vocab_size, int seq_len, int batch_size)
     {
         this->d_model = d_model;
@@ -50,8 +50,6 @@ public:
 
         // this gets changed in the backpropagation
         this->tokenEmbeddings = initilizer->HeInit(this->vocab_size, this->d_model); // token embeddings
-
-
     };
 
     ~Embeddings()
@@ -77,7 +75,7 @@ public:
         return positionalEncodingOut;
     }
 
-    float* forward(std::vector<std::vector<int>> x)
+    float *forward(std::vector<std::vector<int>> x)
     {
         int batch_size = x[0].size(); // this is the batch_size
         int sizeFinalEmbeddings = seq_len * d_model * batch_size * sizeof(float);
@@ -131,8 +129,6 @@ public:
         cudaFree(deviceAddedEmbeddingsOut);
         cudaFree(deviceLookedUpEmbeddings);
 
-
-
         delete[] hostX; // we will assign this or reconvert back to a 2d shape
         delete[] hostEmbeddings;
 
@@ -141,27 +137,55 @@ public:
     }
 };
 
-
 class Linear
 {
-    int feature_in;
-    int feature_out;
-
     float *weight;
-    float *bais;
+    float *bias;
+    std::unique_ptr<Utility> utils = std::make_unique<Utility>();
 
 public:
     Linear(int feature_in, int feature_out)
     {
-        this->feature_in = feature_in;
-        this->feature_out = feature_out;
+        this->LinearParams(feature_in, feature_out);
+        // std::cout << "For weight" << std::endl; // do debug
+        // utils->printFlatArray2D(this->weight, feature_in, feature_out);
 
-        this->HeInit(feature_in, feature_out);
+        // std::cout << "For bias" << std::endl;
+        // utils->printFlatArray2D(this->bias, feature_out, 1);
     }
 
-    void HeInit(int rows, int cols)
+    ~Linear()
     {
-        
+        free(weight);
+        free(bias);
+    }
+
+    void LinearParams(int fan_in, int fan_out)
+    {
+        weight = (float *)malloc(fan_in * fan_out * sizeof(float)); // these are out for both weight and biases.
+        bias = (float *)malloc(fan_out * sizeof(float));
+
+        float *device_weight;
+        float *device_bias;
+        curandState *d_state_weight;
+        curandState *d_state_bias;
+
+        cudaMalloc((void **)&device_weight, fan_in * fan_out * sizeof(float));
+        cudaMalloc(&d_state_weight, fan_in * fan_out * sizeof(curandState));
+        cudaMalloc(&d_state_bias, fan_out * sizeof(curandState));
+        cudaMalloc((void **)&device_bias, fan_out * sizeof(float));
+
+        // we need tow kernal launches here
+        KaimingInit(device_weight, d_state_weight, fan_in, fan_out, 42);
+        KaimingInit(device_bias, d_state_bias, fan_in, fan_out, 43);
+
+        cudaMemcpy(weight, device_weight, fan_in * fan_out * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(bias, device_bias, fan_out * sizeof(float), cudaMemcpyDeviceToHost);
+
+        cudaFree(device_weight);
+        cudaFree(device_bias);
+        cudaFree(d_state_weight);
+        cudaFree(d_state_bias);
     }
 };
 
@@ -199,7 +223,7 @@ public:
             std::cout << "The number of heads must be perfectly divisible by dimesnion " << std::endl;
             return;
         }
-        float* netEmbeddings = embeddings->forward(x);
+        float *netEmbeddings = embeddings->forward(x);
 
         free(netEmbeddings);
     };
@@ -215,7 +239,7 @@ int main()
     int num_heads = 2;
     int batch_size = 4;
     int seq_len = 8;
-    int epoch = 8;
+    int epoch = 12;
     bool drop_last = false;
 
     std::string path = "./src/data/chunk.txt";

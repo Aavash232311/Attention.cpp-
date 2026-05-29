@@ -139,27 +139,45 @@ __global__ void SetUpRnd(curandState *state, unsigned long seed, int max_threads
     curand_init(seed, idx, 0, &state[idx]); // we can think of this as creating an instance of random class inside of global device memory.
 }
 
-__global__ void KaimingInit(float *arr, int fan_in, curandState *state, int max_threads)
+__global__ void KaimingInitKernel(float *arr, curandState *state, int x, int y)
 {
-    int idx = threadIdx.x + blockIdx.x * blockDim.x; // these are unique per thread.
-    if (idx >= max_threads)
+    int rows = blockIdx.x;
+    int cols = blockIdx.y;
+
+    int idx = cols * x + rows;
+    if (rows >= y || cols >= x)
         return;
 
     // registers are ultra fast memory within SM's in the GPU
     curandState local = state[idx]; // global mem to register ex pos 0
-    float std = sqrtf(2.0f / (float)fan_in);
+    float std = sqrtf(2.0f / (float)y);
     arr[idx] = curand_normal(&local) * std; // local goes to pos 1
 
     // That opreation from global memory to register is physcially copied
     // back and fourh between the register and global memory
-    state[idx] = local;  // register -> global position 1, we need to write back the global because it is the only memory that survives after the Kernel ends.
+    state[idx] = local; // register -> global position 1, we need to write back the global because it is the only memory that survives after the Kernel ends.
     // if the each thread have different position on the global memory then why do we care about writing it back?
     // well the answer is if we using this KaimingInit again and the data is physically
-    
 }
 
 extern "C"
 {
+    void KaimingInit(
+        float *arr,
+        curandState *state,
+        int x,
+        int y,
+        unsigned long seed)
+    {
+        int max_threads = 1;
+        dim3 grid(x, y);
+        dim3 block(max_threads);
+
+        SetUpRnd<<<x * y, max_threads>>>(state, seed, x * y);
+        KaimingInitKernel<<<grid, block>>>(arr, state, x, y);
+
+        cudaDeviceSynchronize();
+    }
     void addEmbeddings(
         float *lookedUpEmbeddings,
         float *sinosudialEncoding,
