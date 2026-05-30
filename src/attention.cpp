@@ -187,6 +187,16 @@ public:
         cudaFree(d_state_weight);
         cudaFree(d_state_bias);
     }
+
+    float *getBias()
+    {
+        return this->bias;
+    }
+
+    float *getWeight()
+    {
+        return this->weight;
+    }
 };
 
 class Attention
@@ -207,6 +217,13 @@ public:
             this->seq_len,
             this->batch_size);
 
+        // Lets seed Q,K,V
+        auto key = std::make_unique<Linear>(d_model, d_model);
+        auto query = std::make_unique<Linear>(d_model, d_model);
+        auto value = std::make_unique<Linear>(d_model, d_model);
+
+        auto outputProj = std::make_unique<Linear>(d_model, d_model);
+
         // Just to test and keep track of things
         std::cout << "d_model: " << d_model << std::endl;
         std::cout << "vocab_size: " << vocab_size << std::endl;
@@ -215,7 +232,7 @@ public:
     };
 
 public:
-    void forward(std::vector<std::vector<int>> x)
+    void forward(std::vector<std::vector<int>> input)
     {
 
         if (d_model % num_heads != 0)
@@ -223,9 +240,11 @@ public:
             std::cout << "The number of heads must be perfectly divisible by dimesnion " << std::endl;
             return;
         }
-        float *netEmbeddings = embeddings->forward(x);
+        float *x = embeddings->forward(input);
 
-        free(netEmbeddings);
+
+
+        free(x);
     };
 };
 
