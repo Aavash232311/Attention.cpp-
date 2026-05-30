@@ -160,6 +160,20 @@ __global__ void KaimingInitKernel(float *arr, curandState *state, int x, int y)
     // well the answer is if we using this KaimingInit again and the data is physically
 }
 
+// Z = WX + B but this time in the GPU
+// I am still learning to derive this sort of problem. If I can see the end-result then thats the defination of experience for me.
+__global__ void LinearTransformation(
+    float *x,
+    float *w,
+    float *b,
+    float *out)
+{
+    int rows = blockIdx.x;
+    int cols = blockIdx.y;
+
+    
+}
+
 extern "C"
 {
     void KaimingInit(

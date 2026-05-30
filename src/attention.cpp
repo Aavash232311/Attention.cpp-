@@ -141,6 +141,7 @@ class Linear
 {
     float *weight;
     float *bias;
+    float *x;
     std::unique_ptr<Utility> utils = std::make_unique<Utility>();
 
 public:
@@ -197,6 +198,12 @@ public:
     {
         return this->weight;
     }
+
+    float* forward(float *val)
+    {
+        this->x = val;
+        return x;
+    }
 };
 
 class Attention
@@ -208,6 +215,11 @@ public:
     int &seq_len;
     int &batch_size;
     std::unique_ptr<Embeddings> embeddings; // called in the constructor good.
+    std::unique_ptr<Linear> key;
+    std::unique_ptr<Linear> query;
+    std::unique_ptr<Linear> value;
+
+    std::unique_ptr<Linear> outputProj;
 
     Attention(int &d_model, int &vocab_size, int &num_heads, int &seq_len, int &batch_size) : d_model(d_model), vocab_size(vocab_size), num_heads(num_heads), seq_len(seq_len), batch_size(batch_size)
     {
@@ -218,11 +230,11 @@ public:
             this->batch_size);
 
         // Lets seed Q,K,V
-        auto key = std::make_unique<Linear>(d_model, d_model);
-        auto query = std::make_unique<Linear>(d_model, d_model);
-        auto value = std::make_unique<Linear>(d_model, d_model);
+        key = std::make_unique<Linear>(d_model, d_model);
+        query = std::make_unique<Linear>(d_model, d_model);
+        value = std::make_unique<Linear>(d_model, d_model);
 
-        auto outputProj = std::make_unique<Linear>(d_model, d_model);
+        outputProj = std::make_unique<Linear>(d_model, d_model);
 
         // Just to test and keep track of things
         std::cout << "d_model: " << d_model << std::endl;
@@ -242,9 +254,12 @@ public:
         }
         float *x = embeddings->forward(input);
 
-
+        float *Q = query->forward(x);
+        float *K = key->forward(x);
+        float *V = key->forward(x);
 
         free(x);
+
     };
 };
 
@@ -253,11 +268,11 @@ int main()
     cudaDeviceSynchronize();
     auto start = std::chrono::high_resolution_clock::now();
 
-    int d_model = 16;
+    int d_model = 8;
     int vocab_size; // that depends upon the data that you are passing.
     int num_heads = 2;
     int batch_size = 4;
-    int seq_len = 8;
+    int seq_len = 2;
     int epoch = 12;
     bool drop_last = false;
 

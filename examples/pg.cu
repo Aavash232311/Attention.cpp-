@@ -7,6 +7,8 @@
 #include <fstream>
 #include <iomanip>
 
+// THIS IS MY ROUGH WORK
+
 // Just ignore this mesh this is for me to unit test, becase
 // a trasnformer running in training on batch epoch and flying in heven when using
 // parallel computing hard to debug so I will test the thing here.
@@ -40,7 +42,7 @@ __global__ void kernel(int *A, float *B, float *C, int embedding)
 __global__ void positional_embedding_kernel(float *out, int seq_len, int d_model)
 {
     int pos = blockIdx.y * blockDim.y + threadIdx.y; // row
-    int k = blockIdx.x * blockDim.x + threadIdx.x; // col
+    int k = blockIdx.x * blockDim.x + threadIdx.x;   // col
 
     if (pos >= seq_len || k >= d_model)
         return;
@@ -117,7 +119,6 @@ void loopUpTest()
     }
 }
 
-
 void positionalEncodingTest()
 {
     int d_model = 8;
@@ -143,10 +144,52 @@ void positionalEncodingTest()
                shape * sizeof(float),
                cudaMemcpyDeviceToHost);
 
-    cudaFree(devicePositionalEncoding); 
+    cudaFree(devicePositionalEncoding);
 
-    utils->print_full_matrix(positionalEncodingOut, seq_len, d_model);
     free(positionalEncodingOut); // in the attention.cpp this is free in distructor which is fine since it is created in constructor
+}
+
+/*
+Lets keep track of the picture that we might have here.
+
+W = [[1,  2],     x = [[3],    b = [[1],
+     [-1, 3],          [1]]         [-2],
+     [4,  0]]                       [0]]
+
+z₁ = (1×3) + (2×1) + 1 = 3 + 2 + 1 = 6
+*/
+
+__global__ void LinearTransformation(
+    float *x,
+    float *w,
+    float *b,
+    float *out,
+    int rowsA,
+    int colA,
+    int rowB,
+    int colB,
+    int rowC,
+    int colC)
+{
+    int rows = blockIdx.x;
+    int cols = blockIdx.y;
+}
+
+void LinearTransformationTest()
+{
+    float W[4][3] = {
+        {2, 0, -1},
+        {1, 3, 2},
+        {-2, 1, 4},
+        {0, -1, 3}};
+
+    float X[3][3] = {
+        {4, 1, 0},
+        {-1, 2, 3},
+        {2, 5, -2}};
+
+    float b[4] = {1, -3, 2, 0};
+    dim3 grid();
 }
 
 int main()
