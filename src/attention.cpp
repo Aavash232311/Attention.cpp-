@@ -143,10 +143,12 @@ public:
 
 class Linear
 {
-    float *ws = nullptr; // weighted sum 
+    float *ws = nullptr; // weighted sum
     float *weight = nullptr;
     float *bias = nullptr;
     float *x = nullptr;
+
+    float *h_mha;
 
     float *d_x;
     float *d_w;
@@ -159,7 +161,10 @@ class Linear
     int batch_size;
     std::unique_ptr<Utility> utils = std::make_unique<Utility>();
 
-    float *mha; // multi headed attention 
+    float *mhead_out_host = nullptr; // output after multi head attention
+    float *mhead_out_device; // this is multi head attention out device
+    float *device_hhead_in; // copy to this from weighted sum
+
     float n_head;
     float head_dim;
 
@@ -189,6 +194,11 @@ public:
         cudaMemcpy(d_b, bias, f_out * sizeof(float), cudaMemcpyHostToDevice);
 
         /// allocate the memory for multi headed attention Shape(B, T, num_heads, head_dim)
+        cudaMalloc((void **)&device_hhead_in, seq_len * batch_size * f_out * sizeof(float)); // copy ws here
+
+        this->mhead_out_host = (float *)malloc(seq_len * batch_size * n_head * head_dim * sizeof(float));
+
+        cudaMalloc((void **)&mhead_out_device, seq_len * batch_size * n_head * head_dim * sizeof(float));
     }
 
     ~Linear()
@@ -196,10 +206,15 @@ public:
         (ws != nullptr ? free(ws) : void());
         (weight != nullptr ? free(weight) : void());
         (bias != nullptr ? free(bias) : void());
+
+        (mhead_out_host != nullptr ? free(mhead_out_host) : void());
+
         cudaFree(d_x);
         cudaFree(d_w);
         cudaFree(d_b);
         cudaFree(d_out);
+
+        cudaFree(mhead_out_device);
     }
 
     void LinearParams(int fan_in, int fan_out)
@@ -275,6 +290,8 @@ public:
 
     void view()
     {
+        // lets copy that weighted sum to dataInMultiHeadAtt
+
         utils->printFlatArray3D(this->ws, batch_size, seq_len, f_out);
     }
 };
@@ -394,9 +411,9 @@ int main()
         17.0f, 18.0f, 19.0f, 20.0f, 21.0f, 22.0f, 23.0f, 24.0f,
         25.0f, 26.0f, 27.0f, 28.0f, 29.0f, 30.0f, 31.0f, 32.0f};
     auto linear1 = std::make_unique<Linear>(
-        8, 
-        8, 
-        4, 
+        8,
+        8,
+        4,
         1,
         2 // n_heads
     );
