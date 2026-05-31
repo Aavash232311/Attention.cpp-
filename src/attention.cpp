@@ -145,6 +145,11 @@ class Linear
     float *bias = nullptr;
     float *x = nullptr;
 
+    float *d_x;
+    float *d_w;
+    float *d_b;
+    float *d_out;
+
     int f_in;
     int f_out;
     int seq_len;
@@ -159,6 +164,20 @@ public:
         this->f_in = feature_in;
         this->f_out = feature_out;
         this->LinearParams(feature_in, feature_out);
+
+        // pre-allocate memroy in the constructor
+        int m = batch_size * seq_len; // because we need to flattern this, x (batch_size, seq_len, d_model)
+
+        this->ws = (float *)malloc(seq_len * batch_size * f_out * sizeof(float));
+
+        cudaMalloc((void **)&d_x, seq_len * batch_size * f_in * sizeof(float));
+        cudaMalloc((void **)&d_w, f_in * f_out * sizeof(float)); // (M, K)
+        cudaMalloc((void **)&d_b, f_out * sizeof(float));
+        cudaMalloc((void **)&d_out, seq_len * batch_size * f_out * sizeof(float));
+
+        // copy to the device, those allocated weight and biases.
+        cudaMemcpy(d_w, weight, f_in * f_out * sizeof(float), cudaMemcpyHostToDevice);
+        cudaMemcpy(d_b, bias, f_out * sizeof(float), cudaMemcpyHostToDevice);
     }
 
     ~Linear()
@@ -166,6 +185,10 @@ public:
         (ws != nullptr ? free(ws) : void());
         (weight != nullptr ? free(weight) : void());
         (bias != nullptr ? free(bias) : void());
+        cudaFree(d_x);
+        cudaFree(d_w);
+        cudaFree(d_b);
+        cudaFree(d_out);
     }
 
     void LinearParams(int fan_in, int fan_out)
@@ -215,44 +238,22 @@ public:
     float *forward(float *val)
     {
         this->x = val;
-        this->ws = (float *)malloc(seq_len * batch_size * f_out * sizeof(float));
-        // Shape(batch_size, seq_len, d_model) (K, M, N)
-        // seq_len = M, batch_size = K fan_in = K
-        // K = fan_in
-        // N = fan_out
-        float *d_x;
-        float *d_w;
-        float *d_b;
-        float *d_out;
-
-        int m = batch_size * seq_len; // because we need to flattern this, x (batch_size, seq_len, d_model)
-
-        cudaMalloc((void **)&d_x, seq_len * batch_size * f_in * sizeof(float));
-        cudaMalloc((void **)&d_w, f_in * f_out * sizeof(float)); // (M, K)
-        cudaMalloc((void **)&d_b, f_out * sizeof(float));
-        cudaMalloc((void **)&d_out, seq_len * batch_size * f_out * sizeof(float));
+        int m = batch_size * seq_len;
 
         cudaMemcpy(d_x, x, seq_len * batch_size * f_in * sizeof(float), cudaMemcpyHostToDevice);
-        cudaMemcpy(d_w, weight, f_in * f_out * sizeof(float), cudaMemcpyHostToDevice);
-        cudaMemcpy(d_b, bias, f_out * sizeof(float), cudaMemcpyHostToDevice);
 
         WeightedSum(d_x, d_w, d_b, d_out, m, f_in, f_out);
 
         cudaMemcpy(ws, d_out, seq_len * batch_size * f_out * sizeof(float), cudaMemcpyDeviceToHost);
 
-        cudaFree(d_x);
-        cudaFree(d_w);
-        cudaFree(d_b);
-        cudaFree(d_out);
+        // std::cout << "Weight" << std::endl;
+        // utils->printFlatArray2D(weight, f_in, f_out);
 
-        std::cout << "Weight" << std::endl;
-        utils->printFlatArray2D(weight, f_in, f_out);
+        // std::cout << "Bias" << std::endl;
+        // utils->printFlatArray2D(bias, f_out, 1);
 
-        std::cout << "Bias" << std::endl;
-        utils->printFlatArray2D(bias, f_out, 1);
-
-        std::cout << "Weighted sum" << std::endl;
-        utils->printFlatArray3D(ws, seq_len, batch_size, f_out);
+        // std::cout << "Weighted sum" << std::endl;
+        // utils->printFlatArray3D(ws, seq_len, batch_size, f_out);
 
         return x;
     }
@@ -308,7 +309,7 @@ public:
 
         float *Q = query->forward(x);
         float *K = key->forward(x);
-        float *V = key->forward(x);
+        float *V = value->forward(x);
 
         free(x);
     };
@@ -343,42 +344,42 @@ int main()
     const std::vector<int> &encodedData = helper->getEncodedList();
 
     /* For something like attention we need heap allocation. */
-    // std::unique_ptr<Attention> attention = std::make_unique<Attention>(
-    //     d_model,
-    //     vocab_size,
-    //     num_heads,
-    //     seq_len,
-    //     batch_size); // called once good.
+    std::unique_ptr<Attention> attention = std::make_unique<Attention>(
+        d_model,
+        vocab_size,
+        num_heads,
+        seq_len,
+        batch_size); // called once good.
 
     std::unique_ptr<DataLoader> dataLoader = std::make_unique<DataLoader>(batch_size, encodedData, seq_len, drop_last);
 
     std::unique_ptr<std::vector<IO>> dataList = dataLoader->getBatch();
 
-    // for (int i = 0; i < epoch; ++i)
-    // {
-    //     for (auto &currentBatch : *dataList)
-    //     {
-    //         // so we have the x, and y here
-    //         // My understanding is batches are SEQUENTIAL
-    //         // but the procress within the batches are done in parallel.
-    //         attention->forward(currentBatch.x);
-    //     }
-    // }
+    for (int i = 0; i < epoch; ++i)
+    {
+        for (auto &currentBatch : *dataList)
+        {
+            // so we have the x, and y here
+            // My understanding is batches are SEQUENTIAL
+            // but the procress within the batches are done in parallel.
+            attention->forward(currentBatch.x);
+        }
+    }
 
-    float X[12] = {
-        1.0f, 2.0f, 3.0f,
-        4.0f, 5.0f, 6.0f,
-        7.0f, 8.0f, 9.0f,
-        10.0f, 11.0f, 12.0f};
+    // float X[12] = {
+    //     1.0f, 2.0f, 3.0f,
+    //     4.0f, 5.0f, 6.0f,
+    //     7.0f, 8.0f, 9.0f,
+    //     10.0f, 11.0f, 12.0f};
 
-    auto linear1 = std::make_unique<Linear>(
-        3,
-        4,
-        4,
-        1);
+    // auto linear1 = std::make_unique<Linear>(
+    //     3,
+    //     4,
+    //     4,
+    //     1);
 
-    linear1->forward(X);
-    
+    // linear1->forward(X);
+
     auto end = std::chrono::high_resolution_clock::now();
     cudaDeviceSynchronize(); // CPU is waiting for the GPU to finish
     std::chrono::duration<double, std::milli> duration = end - start;
