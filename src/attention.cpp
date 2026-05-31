@@ -18,6 +18,7 @@ extern "C" void positionalEmbeddings(float *out, int seq_len, int d_model);
 extern "C" void lookup(int *x, float *embeddings, float *C, int d_model, int seq_len, int batch_size, int vocab_size);
 extern "C" void addEmbeddings(float *lookedUpEmbeddings, float *sinosudialEncoding, float *C, int d_model, int seq_len, int batch_size);
 extern "C" void KaimingInit(float *arr, curandState *state, int x, int y, unsigned long seed);
+extern "C" void WeightedSum(float *x, float *w, float *b, float *c, int M, int K, int N);
 
 class Embeddings
 {
@@ -139,26 +140,32 @@ public:
 
 class Linear
 {
-    float *weight;
-    float *bias;
-    float *x;
+    float *ws = nullptr;
+    float *weight = nullptr;
+    float *bias = nullptr;
+    float *x = nullptr;
+
+    int f_in;
+    int f_out;
+    int seq_len;
+    int batch_size;
     std::unique_ptr<Utility> utils = std::make_unique<Utility>();
 
 public:
-    Linear(int feature_in, int feature_out)
+    Linear(int feature_in, int feature_out, int seq_len, int batch_size)
     {
+        this->seq_len = seq_len;
+        this->batch_size = batch_size;
+        this->f_in = feature_in;
+        this->f_out = feature_out;
         this->LinearParams(feature_in, feature_out);
-        // std::cout << "For weight" << std::endl; // do debug
-        // utils->printFlatArray2D(this->weight, feature_in, feature_out);
-
-        // std::cout << "For bias" << std::endl;
-        // utils->printFlatArray2D(this->bias, feature_out, 1);
     }
 
     ~Linear()
     {
-        free(weight);
-        free(bias);
+        (ws != nullptr ? free(ws) : void());
+        (weight != nullptr ? free(weight) : void());
+        (bias != nullptr ? free(bias) : void());
     }
 
     void LinearParams(int fan_in, int fan_out)
@@ -178,7 +185,7 @@ public:
 
         // we need tow kernal launches here
         KaimingInit(device_weight, d_state_weight, fan_in, fan_out, 42);
-        KaimingInit(device_bias, d_state_bias, fan_in, fan_out, 43);
+        KaimingInit(device_bias, d_state_bias, 1, fan_out, 43);
 
         cudaMemcpy(weight, device_weight, fan_in * fan_out * sizeof(float), cudaMemcpyDeviceToHost);
         cudaMemcpy(bias, device_bias, fan_out * sizeof(float), cudaMemcpyDeviceToHost);
@@ -187,6 +194,12 @@ public:
         cudaFree(device_bias);
         cudaFree(d_state_weight);
         cudaFree(d_state_bias);
+
+        // std::cout << "Weight" << std::endl;
+        // utils->printFlatArray2D(weight, fan_in, fan_out);
+        // std::cout << "Bias" << std::endl;
+        // utils->printFlatArray2D(this->bias, fan_out, 1);
+        // std::cout << "Fan in: " << fan_in << " Fan out: " << fan_out << std::endl;
     }
 
     float *getBias()
@@ -199,9 +212,48 @@ public:
         return this->weight;
     }
 
-    float* forward(float *val)
+    float *forward(float *val)
     {
         this->x = val;
+        this->ws = (float *)malloc(seq_len * batch_size * f_out * sizeof(float));
+        // Shape(batch_size, seq_len, d_model) (K, M, N)
+        // seq_len = M, batch_size = K fan_in = K
+        // K = fan_in
+        // N = fan_out
+        float *d_x;
+        float *d_w;
+        float *d_b;
+        float *d_out;
+
+        int m = batch_size * seq_len; // because we need to flattern this, x (batch_size, seq_len, d_model)
+
+        cudaMalloc((void **)&d_x, seq_len * batch_size * f_in * sizeof(float));
+        cudaMalloc((void **)&d_w, f_in * f_out * sizeof(float)); // (M, K)
+        cudaMalloc((void **)&d_b, f_out * sizeof(float));
+        cudaMalloc((void **)&d_out, seq_len * batch_size * f_out * sizeof(float));
+
+        cudaMemcpy(d_x, x, seq_len * batch_size * f_in * sizeof(float), cudaMemcpyHostToDevice);
+        cudaMemcpy(d_w, weight, f_in * f_out * sizeof(float), cudaMemcpyHostToDevice);
+        cudaMemcpy(d_b, bias, f_out * sizeof(float), cudaMemcpyHostToDevice);
+
+        WeightedSum(d_x, d_w, d_b, d_out, m, f_in, f_out);
+
+        cudaMemcpy(ws, d_out, seq_len * batch_size * f_out * sizeof(float), cudaMemcpyDeviceToHost);
+
+        cudaFree(d_x);
+        cudaFree(d_w);
+        cudaFree(d_b);
+        cudaFree(d_out);
+
+        std::cout << "Weight" << std::endl;
+        utils->printFlatArray2D(weight, f_in, f_out);
+
+        std::cout << "Bias" << std::endl;
+        utils->printFlatArray2D(bias, f_out, 1);
+
+        std::cout << "Weighted sum" << std::endl;
+        utils->printFlatArray3D(ws, seq_len, batch_size, f_out);
+
         return x;
     }
 };
@@ -230,11 +282,11 @@ public:
             this->batch_size);
 
         // Lets seed Q,K,V
-        key = std::make_unique<Linear>(d_model, d_model);
-        query = std::make_unique<Linear>(d_model, d_model);
-        value = std::make_unique<Linear>(d_model, d_model);
+        key = std::make_unique<Linear>(d_model, d_model, seq_len, batch_size);
+        query = std::make_unique<Linear>(d_model, d_model, seq_len, batch_size);
+        value = std::make_unique<Linear>(d_model, d_model, seq_len, batch_size);
 
-        outputProj = std::make_unique<Linear>(d_model, d_model);
+        outputProj = std::make_unique<Linear>(d_model, d_model, seq_len, batch_size);
 
         // Just to test and keep track of things
         std::cout << "d_model: " << d_model << std::endl;
@@ -259,7 +311,6 @@ public:
         float *V = key->forward(x);
 
         free(x);
-
     };
 };
 
@@ -292,28 +343,42 @@ int main()
     const std::vector<int> &encodedData = helper->getEncodedList();
 
     /* For something like attention we need heap allocation. */
-    std::unique_ptr<Attention> attention = std::make_unique<Attention>(
-        d_model,
-        vocab_size,
-        num_heads,
-        seq_len,
-        batch_size); // called once good.
+    // std::unique_ptr<Attention> attention = std::make_unique<Attention>(
+    //     d_model,
+    //     vocab_size,
+    //     num_heads,
+    //     seq_len,
+    //     batch_size); // called once good.
 
     std::unique_ptr<DataLoader> dataLoader = std::make_unique<DataLoader>(batch_size, encodedData, seq_len, drop_last);
 
     std::unique_ptr<std::vector<IO>> dataList = dataLoader->getBatch();
 
-    for (int i = 0; i < epoch; ++i)
-    {
-        for (auto &currentBatch : *dataList)
-        {
-            // so we have the x, and y here
-            // My understanding is batches are SEQUENTIAL
-            // but the procress within the batches are done in parallel.
-            attention->forward(currentBatch.x);
-        }
-    }
+    // for (int i = 0; i < epoch; ++i)
+    // {
+    //     for (auto &currentBatch : *dataList)
+    //     {
+    //         // so we have the x, and y here
+    //         // My understanding is batches are SEQUENTIAL
+    //         // but the procress within the batches are done in parallel.
+    //         attention->forward(currentBatch.x);
+    //     }
+    // }
 
+    float X[12] = {
+        1.0f, 2.0f, 3.0f,
+        4.0f, 5.0f, 6.0f,
+        7.0f, 8.0f, 9.0f,
+        10.0f, 11.0f, 12.0f};
+
+    auto linear1 = std::make_unique<Linear>(
+        3,
+        4,
+        4,
+        1);
+
+    linear1->forward(X);
+    
     auto end = std::chrono::high_resolution_clock::now();
     cudaDeviceSynchronize(); // CPU is waiting for the GPU to finish
     std::chrono::duration<double, std::milli> duration = end - start;

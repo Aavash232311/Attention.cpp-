@@ -159,41 +159,161 @@ W = [[1,  2],     x = [[3],    b = [[1],
 z₁ = (1×3) + (2×1) + 1 = 3 + 2 + 1 = 6
 */
 
-__global__ void LinearTransformation(
+/*
+
+w = [1, 2, -1, 3, 4, 0]
+
+x = [3, 1]
+
+B(1, N)
+W (M, K); X(k, N) Z(M,N) = output
+
+M = 2; K = 2
+K = 2, N = 1
+
+COMMON should be K in order for this to be a valid matrix multiplication
+
+At Position(0, 0)
+at l = 0;
+x[0 * 2 + 0] = 1
+w[0 * 1 + 0] = 3
+
+at l = 1
+x[0 * 2 + 1] = 2
+w[1 * 1 + 0] = 1
+
+sum = 5;
+
+
+// You may not unfload this code logic at once but if you think through then you can. Its not that hard.
+
+*/
+
+// __global__ void LinearTransformation(
+//     float *x,
+//     float *w,
+//     float *b,
+//     float *c,
+//     int M,
+//     int K,
+//     int N)
+// {
+//     /*
+//         W (M, K); X(k, N)
+
+//         M = 2; K = 2
+//         K = 2, N = 1
+//     */
+
+//     int rows = blockIdx.y * blockDim.y + threadIdx.y; // row
+//     int cols = blockIdx.x * blockDim.x + threadIdx.x; // col
+
+//     if (rows >= M || cols >= N)
+//         return;
+
+//     // formula for idx = (rows * width) + cols
+//     float sum = 0.0f;
+//     for (int row_b = 0; row_b < K; ++row_b)
+//     {
+
+//         float valA = x[(rows * K) + row_b];
+//         float valB = w[(row_b * N) + cols];
+//         sum += (valA * valB);
+//     }
+
+//     c[(rows * N) + cols] = sum + b[cols];
+// }
+
+__global__ void WeightedSumKernel(
     float *x,
-    float *w,
-    float *b,
-    float *out,
-    int rowsA,
-    int colA,
-    int rowB,
-    int colB,
-    int rowC,
-    int colC)
+    float *w, // Shape(M, K)
+    float *b, // Shape(K, N)
+    float *c, // Shape(M, N)
+    int M,
+    int K,
+    int N)
 {
-    int rows = blockIdx.x;
-    int cols = blockIdx.y;
+
+    int rows = blockIdx.y * blockDim.y + threadIdx.y;
+    int cols = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (rows >= M || cols >= N)
+        return;
+
+    float sum = 0.0f; // formula (row * width) + cols
+
+    for (int row_b = 0; row_b < K; ++row_b)
+    {
+        float valA = x[(rows * K) + row_b];
+        float valB = w[(row_b * N) + cols];
+        sum += valA * valB;
+    }
+
+    c[(rows * N) + cols] = sum + b[rows];
 }
 
 void LinearTransformationTest()
 {
-    float W[4][3] = {
-        {2, 0, -1},
-        {1, 3, 2},
-        {-2, 1, 4},
-        {0, -1, 3}};
+    float W[12] = {
+        2, 0, -1,
+        1, 3, 2,
+        -2, 1, 4,
+        0, -1, 3};
 
-    float X[3][3] = {
-        {4, 1, 0},
-        {-1, 2, 3},
-        {2, 5, -2}};
+    float X[9] = {
+        4, 1, 0,
+        -1, 2, 3,
+        2, 5, -2};
 
     float b[4] = {1, -3, 2, 0};
-    dim3 grid();
+    float res[4 * 3];
+
+    float *device_a;
+    float *device_b;
+    float *device_c;
+    float *device_out;
+
+    cudaMalloc((void **)&device_a, 4 * 3 * sizeof(float));
+    cudaMalloc((void **)&device_b, 3 * 3 * sizeof(float));
+    cudaMalloc((void **)&device_c, 4 * sizeof(float));
+    cudaMalloc((void **)&device_out, 4 * 3 * sizeof(float));
+
+    cudaMemcpy(device_a, W, 4 * 3 * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(device_b, X, 3 * 3 * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(device_c, b, 4 * sizeof(float), cudaMemcpyHostToDevice);
+
+
+    int M = 4;
+    int N = 3;
+    dim3 block(16, 16);
+    dim3 grid((N + block.x - 1) / block.x,  
+              (M + block.y - 1) / block.y); 
+
+    WeightedSumKernel<<<grid, block>>>(
+        device_a,
+        device_b,
+        device_c,
+        device_out,
+        4, // M
+        3, // K
+        3  // N
+    );
+    cudaDeviceSynchronize();
+
+    cudaMemcpy(res, device_out, 4 * 3 * sizeof(float), cudaMemcpyDeviceToHost);
+
+    cudaFree(device_a);
+    cudaFree(device_b);
+    cudaFree(device_c);
+    cudaFree(device_out);
+
+    utils->printFlatArray2D(res, 4, 3);
 }
 
 int main()
 {
     // loopUpTest();
-    positionalEncodingTest();
+    // positionalEncodingTest();
+
+    LinearTransformationTest();
 }

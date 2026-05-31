@@ -141,16 +141,13 @@ __global__ void SetUpRnd(curandState *state, unsigned long seed, int max_threads
 
 __global__ void KaimingInitKernel(float *arr, curandState *state, int x, int y)
 {
-    int rows = blockIdx.x;
-    int cols = blockIdx.y;
-
-    int idx = cols * x + rows;
-    if (rows >= y || cols >= x)
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= x * y)
         return;
 
     // registers are ultra fast memory within SM's in the GPU
     curandState local = state[idx]; // global mem to register ex pos 0
-    float std = sqrtf(2.0f / (float)y);
+    float std = sqrtf(2.0f / (float)x);
     arr[idx] = curand_normal(&local) * std; // local goes to pos 1
 
     // That opreation from global memory to register is physcially copied
@@ -162,20 +159,55 @@ __global__ void KaimingInitKernel(float *arr, curandState *state, int x, int y)
 
 // Z = WX + B but this time in the GPU
 // I am still learning to derive this sort of problem. If I can see the end-result then thats the defination of experience for me.
-__global__ void LinearTransformation(
-    float *x,
-    float *w,
-    float *b,
-    float *out)
-{
-    int rows = blockIdx.x;
-    int cols = blockIdx.y;
 
-    
+__global__ void WeightedSumKernel(
+    float *x,
+    float *w, // Shape(M, K)
+    float *b, // Shape(K, N)
+    float *c, // Shape(M, N)
+    int M,
+    int K,
+    int N)
+{
+
+    int rows = blockIdx.y * blockDim.y + threadIdx.y;
+    int cols = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (rows >= M || cols >= N)
+        return;
+
+    float sum = 0.0f; // formula (row * width) + cols
+
+    for (int row_b = 0; row_b < K; ++row_b)
+    {
+        float valA = x[(rows * K) + row_b];
+        float valB = w[(row_b * N) + cols];
+        sum += valA * valB;
+    }
+
+    c[(rows * N) + cols] = sum + b[rows];
 }
 
 extern "C"
 {
+    void WeightedSum(
+        float *x, // Shape(M, K)
+        float *w, // Shape(K, N)
+        float *b, // Shape(M, N)
+        float *c, // Shape(M×N)
+        int M,
+        int K,
+        int N)
+    {
+        dim3 block(16, 16);
+        dim3 grid((N + block.x - 1) / block.x,
+                  (M + block.y - 1) / block.y);
+
+        WeightedSumKernel<<<grid, block>>>(x, w, b, c, M, K, N);
+
+        cudaDeviceSynchronize();
+    }
+
     void KaimingInit(
         float *arr,
         curandState *state,
@@ -183,14 +215,12 @@ extern "C"
         int y,
         unsigned long seed)
     {
-        int max_threads = 1;
-        dim3 grid(x, y);
-        dim3 block(max_threads);
+        int total = x * y;
+        int threads = 256;
+        int blocks = (total + threads - 1) / threads;
 
-        SetUpRnd<<<x * y, max_threads>>>(state, seed, x * y);
-        KaimingInitKernel<<<grid, block>>>(arr, state, x, y);
-
-        cudaDeviceSynchronize();
+        SetUpRnd<<<blocks, threads>>>(state, seed, total);
+        KaimingInitKernel<<<blocks, threads>>>(arr, state, x, y);
     }
     void addEmbeddings(
         float *lookedUpEmbeddings,
