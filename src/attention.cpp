@@ -7,6 +7,9 @@
 #include <chrono>
 
 // Again my background is beginner here with little concept from C
+// Transformer are complex neural network artitecture so I will focus on
+// making the things right at first rather than micro level optimization
+// The goal is to learn the underlying concept we can always bring the performace up later on.
 
 // nvcc src/attention.cpp src/kernel/math.cu -o src/bin/attention
 // ./src/bin/attention
@@ -140,7 +143,7 @@ public:
 
 class Linear
 {
-    float *ws = nullptr;
+    float *ws = nullptr; // weighted sum 
     float *weight = nullptr;
     float *bias = nullptr;
     float *x = nullptr;
@@ -156,13 +159,19 @@ class Linear
     int batch_size;
     std::unique_ptr<Utility> utils = std::make_unique<Utility>();
 
+    float *mha; // multi headed attention 
+    float n_head;
+    float head_dim;
+
 public:
-    Linear(int feature_in, int feature_out, int seq_len, int batch_size)
+    Linear(int feature_in, int feature_out, int seq_len, int batch_size, int n_head)
     {
         this->seq_len = seq_len;
         this->batch_size = batch_size;
         this->f_in = feature_in;
         this->f_out = feature_out;
+        this->n_head = n_head;
+        this->head_dim = feature_out / n_head;
         this->LinearParams(feature_in, feature_out);
 
         // pre-allocate memroy in the constructor
@@ -178,6 +187,8 @@ public:
         // copy to the device, those allocated weight and biases.
         cudaMemcpy(d_w, weight, f_in * f_out * sizeof(float), cudaMemcpyHostToDevice);
         cudaMemcpy(d_b, bias, f_out * sizeof(float), cudaMemcpyHostToDevice);
+
+        /// allocate the memory for multi headed attention Shape(B, T, num_heads, head_dim)
     }
 
     ~Linear()
@@ -257,6 +268,15 @@ public:
 
         return x;
     }
+
+    void splitHead()
+    {
+    }
+
+    void view()
+    {
+        utils->printFlatArray3D(this->ws, batch_size, seq_len, f_out);
+    }
 };
 
 class Attention
@@ -283,11 +303,11 @@ public:
             this->batch_size);
 
         // Lets seed Q,K,V
-        key = std::make_unique<Linear>(d_model, d_model, seq_len, batch_size);
-        query = std::make_unique<Linear>(d_model, d_model, seq_len, batch_size);
-        value = std::make_unique<Linear>(d_model, d_model, seq_len, batch_size);
+        key = std::make_unique<Linear>(d_model, d_model, seq_len, batch_size, num_heads);
+        query = std::make_unique<Linear>(d_model, d_model, seq_len, batch_size, num_heads);
+        value = std::make_unique<Linear>(d_model, d_model, seq_len, batch_size, num_heads);
 
-        outputProj = std::make_unique<Linear>(d_model, d_model, seq_len, batch_size);
+        outputProj = std::make_unique<Linear>(d_model, d_model, seq_len, batch_size, num_heads);
 
         // Just to test and keep track of things
         std::cout << "d_model: " << d_model << std::endl;
@@ -307,9 +327,11 @@ public:
         }
         float *x = embeddings->forward(input);
 
-        float *Q = query->forward(x);
+        float *Q = query->forward(x); // We are doing a linear transformation here when we pass in the forward method.
         float *K = key->forward(x);
         float *V = value->forward(x);
+
+        value->view();
 
         free(x);
     };
@@ -344,41 +366,43 @@ int main()
     const std::vector<int> &encodedData = helper->getEncodedList();
 
     /* For something like attention we need heap allocation. */
-    std::unique_ptr<Attention> attention = std::make_unique<Attention>(
-        d_model,
-        vocab_size,
-        num_heads,
-        seq_len,
-        batch_size); // called once good.
+    // std::unique_ptr<Attention> attention = std::make_unique<Attention>(
+    //     d_model,
+    //     vocab_size,
+    //     num_heads,
+    //     seq_len,
+    //     batch_size); // called once good.
 
     std::unique_ptr<DataLoader> dataLoader = std::make_unique<DataLoader>(batch_size, encodedData, seq_len, drop_last);
 
     std::unique_ptr<std::vector<IO>> dataList = dataLoader->getBatch();
 
-    for (int i = 0; i < epoch; ++i)
-    {
-        for (auto &currentBatch : *dataList)
-        {
-            // so we have the x, and y here
-            // My understanding is batches are SEQUENTIAL
-            // but the procress within the batches are done in parallel.
-            attention->forward(currentBatch.x);
-        }
-    }
+    // for (int i = 0; i < epoch; ++i)
+    // {
+    //     for (auto &currentBatch : *dataList)
+    //     {
+    //         // so we have the x, and y here
+    //         // My understanding is batches are SEQUENTIAL
+    //         // but the procress within the batches are done in parallel.
+    //         attention->forward(currentBatch.x);
+    //     }
+    // }
 
-    // float X[12] = {
-    //     1.0f, 2.0f, 3.0f,
-    //     4.0f, 5.0f, 6.0f,
-    //     7.0f, 8.0f, 9.0f,
-    //     10.0f, 11.0f, 12.0f};
+    float X[32] = {
+        1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f,
+        9.0f, 10.0f, 11.0f, 12.0f, 13.0f, 14.0f, 15.0f, 16.0f,
+        17.0f, 18.0f, 19.0f, 20.0f, 21.0f, 22.0f, 23.0f, 24.0f,
+        25.0f, 26.0f, 27.0f, 28.0f, 29.0f, 30.0f, 31.0f, 32.0f};
+    auto linear1 = std::make_unique<Linear>(
+        8, 
+        8, 
+        4, 
+        1,
+        2 // n_heads
+    );
 
-    // auto linear1 = std::make_unique<Linear>(
-    //     3,
-    //     4,
-    //     4,
-    //     1);
-
-    // linear1->forward(X);
+    linear1->forward(X);
+    linear1->view();
 
     auto end = std::chrono::high_resolution_clock::now();
     cudaDeviceSynchronize(); // CPU is waiting for the GPU to finish
