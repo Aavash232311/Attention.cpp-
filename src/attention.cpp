@@ -318,6 +318,7 @@ public:
         // utils->printFlarArray4D(mhead_out_host, batch_size, n_head, seq_len, head_dim);
 
         // very hard to think if in higher dimension, mathematicans cannot imagine higher dimension
+        // Now our final resule shape would be Shape(batch_size, n_head, seq_len, d_head)
     }
 };
 

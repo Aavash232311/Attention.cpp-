@@ -371,5 +371,28 @@ rows and cols represent seq_len and n_head.
 
 rows = token_idx (batch * seq_len)
 cols = head_idx (num_heads)
+with element inside being d_head
 
+int in_idx = rows * (num_head * head_dim) +
+             cols * head_dim
+ + head_idx (current element in a thread)
 #+END_SRC
+
+the formula to land on current elemenet is
+idx = a * (B * C * D)
+    + b * (C * D)
+    + c * (D)
+    + d
+To get coordinate of that in a tensor
+int a = idx / (B * C * D);
+int b = (idx / (C * D)) % B;
+int c = (idx / D) % C;
+int d = idx % D;
+
+Draw something flat, sit down with a calculator it will make sense.
+It spins my head sometimes but thats it.
+
+multi_headed = [
+      batch size:     [8x64]
+            token 0: [n_head][n_head][n_head]
+            token 1: [n_head][n_head][n_head]
