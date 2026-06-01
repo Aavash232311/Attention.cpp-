@@ -283,3 +283,29 @@ We are adding that matrix B part inside the inner most cell by skipping the oute
 Lets think this 3d matrix as a flat array.
 
 So basically we have. rows (rows) and batch_size = column and d_model as the value inside of the cell. In order to skip that we would rows * batch_size * d_model + cols * (d_model) + e
+
+
+*** Multi-Headed attention
+
+This snippit will help us to understand the multi-headed attention mechanism. Lets understand the shape before and then after here.
+
+#+BEGIN_SRC Python
+ws = Shape(batch_size, seq_len, d_model);
+
+ws = [
+    batch size:
+           token 0: [..d_model]
+           token 1: [..d_model]
+
+    .... N batches
+]
+
+lets say we have 512 and N-head = 8
+
+
+multi headed = [
+      batch size:     [8x64]
+            token 0: [n_head][n_head][n_head]
+            token 1: [n_head][n_head][n_head]
+]
+#+END_SRC
