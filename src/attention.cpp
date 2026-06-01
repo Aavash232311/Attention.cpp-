@@ -289,7 +289,7 @@ public:
     {
     }
 
-    void view()
+    float* view()
     {
         // copy that weighted sum into device so we can split it down.
         cudaMemcpy(device_hhead_in, ws, seq_len * batch_size * f_out * sizeof(float), cudaMemcpyHostToDevice);
@@ -302,6 +302,7 @@ public:
         // utils->printFlatArray3D(ws, batch_size, seq_len, f_out);
 
         // utils->printFlarArray4D(mhead_out_host, batch_size, seq_len, n_head, head_dim);
+        return mhead_out_host;
     }
 };
 
@@ -356,6 +357,10 @@ public:
         float *Q = query->forward(x); // We are doing a linear transformation here when we pass in the forward method.
         float *K = key->forward(x);
         float *V = value->forward(x);
+
+        Q = query->view(); // why I want to make it look like torch syntaxx
+        K = query->view(); 
+        V = query->view();
 
         free(x);
     };
