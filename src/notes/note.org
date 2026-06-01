@@ -378,6 +378,7 @@ int in_idx = rows * (num_head * head_dim) +
  + head_idx (current element in a thread)
 #+END_SRC
 
+#+BEGIN_SRC Python
 the formula to land on current elemenet is
 idx = a * (B * C * D)
     + b * (C * D)
@@ -396,3 +397,5 @@ multi_headed = [
       batch size:     [8x64]
             token 0: [n_head][n_head][n_head]
             token 1: [n_head][n_head][n_head]
+
+ #+end_src

@@ -259,7 +259,7 @@ multi_headed = [
             token 1: [n_head][n_head][n_head]
 ]
 */
-
+// we can say that these kernel function are not flexible because it is hardcoded for each case, I know the fact but our goal is to understand this as much as possible.
 __global__ void TransposeKernel(
     int num_heads,
     int head_dim,
@@ -289,8 +289,44 @@ __global__ void TransposeKernel(
         out[out_idx] = arr[idx_curr];
 }
 
+__global__ void TransposeKeyKernel(
+    int num_heads,
+    int head_dim,
+    float *arr, // Shape (batch_size, n_head, seq_len, head_dim)
+    float *out, // Shape (batch_size, n_head, head_dim, seq_len)
+    int M,
+    int N,
+    int K,
+    bool reverse = true)
+{
+    int rows = blockIdx.x;
+    int cols = blockIdx.y;
+
+    int idx = threadIdx.x; // think of this as the position of where we are inside of the 3d matrix, like each cell of 2d matrix is an array but here its flat.
+
+    
+}
+
 extern "C"
 {
+    void TransposeKeyKernel(
+        int num_heads,
+        int head_dim,
+        float *arr, // Shape (batch_size, n_head, seq_len, head_dim)
+        float *out, // Shape (batch_size, n_head, head_dim, seq_len)
+        int M, // batch_size
+        int N, // d_head
+        int K, // seq_len
+        bool reverse
+    )
+    {
+        dim3 block(N);
+        dim3 grid (M * num_heads, head_dim);
+        
+        TransposeKeyKernel<<<grid, block>>>(num_heads, head_dim, arr, out, M, N, K, reverse);
+
+        cudaDeviceSynchronize();
+    }
     void SwapNS(
         int num_heads,
         int head_dim,
@@ -299,7 +335,7 @@ extern "C"
         int M, // batch_size
         int N, // d_head
         int K, // seq_len
-        bool reverse) 
+        bool reverse)
     {
         dim3 block(head_dim);
         dim3 grid(M * N, num_heads);

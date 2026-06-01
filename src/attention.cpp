@@ -320,6 +320,11 @@ public:
         // very hard to think if in higher dimension, mathematicans cannot imagine higher dimension
         // Now our final resule shape would be Shape(batch_size, n_head, seq_len, d_head)
     }
+
+    void tansposeKey()
+    {
+        
+    }
 };
 
 class Attention
