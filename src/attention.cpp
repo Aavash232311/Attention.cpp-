@@ -180,7 +180,7 @@ public:
         this->LinearParams(feature_in, feature_out);
 
         // pre-allocate memroy in the constructor
-        int m = batch_size * seq_len; // because we need to flattern this, x (batch_size, seq_len, d_model)
+        // because we need to flattern this, x (batch_size, seq_len, d_model)
 
         this->ws = (float *)malloc(seq_len * batch_size * f_out * sizeof(float));
 
@@ -290,9 +290,10 @@ public:
 
     void view()
     {
-        // lets copy that weighted sum to dataInMultiHeadAtt
+        // copy that weighted sum into device so we can split it down.
+        cudaMemcpy(device_hhead_in, ws, seq_len * batch_size * f_out * sizeof(float), cudaMemcpyHostToDevice);
 
-        utils->printFlatArray3D(this->ws, batch_size, seq_len, f_out);
+        utils->printFlatArray3D(ws, batch_size, seq_len, f_out);
     }
 };
 
@@ -347,8 +348,6 @@ public:
         float *Q = query->forward(x); // We are doing a linear transformation here when we pass in the forward method.
         float *K = key->forward(x);
         float *V = value->forward(x);
-
-        value->view();
 
         free(x);
     };

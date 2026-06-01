@@ -188,8 +188,71 @@ __global__ void WeightedSumKernel(
     c[(rows * N) + cols] = sum + b[rows];
 }
 
+/*
+
+ws = Shape(batch_size, seq_len, d_model)
+            M,            N       K
+This is a 3D tensor spins my head off lets compute this in this way.
+we consider batch_size x seq_len = m,k
+
+Shape ws(M, K)
+
+new_shape = Shape(batch_size, seq_len, num_heads, head_dim)
+
+ws = [
+    batch size:
+           token 0: [..d_model]
+           token 1: [..d_model]
+
+    .... N batches
+]
+
+lets say we have 512 and N-head = 8
+
+
+multi headed = [
+      batch size:     [8x64]
+            token 0: [n_head][n_head][n_head]
+            token 1: [n_head][n_head][n_head]
+]
+
+*/
+
+__global__ void multiHeadedAttentionKernel(
+    int num_head,
+    int head_dimension,
+    float *ws,
+    float *out,
+    int M,
+    int N,
+    int K)
+{
+    int token_idx = blockIdx.x; // which token (0 to M*N)
+    int head_idx = blockIdx.y;  // which head
+    int hd_idx = threadIdx.x;   // which elelemnt
+
+    // idx = (rows * width) + cols
+    int out_idx = token_idx * (num_head * head_dimension) + head_idx * (head_dimension) + hd_idx;
+    out[out_idx] = out[out_idx];
+}
+
 extern "C"
 {
+    void multiHeadedAttention(
+        int num_head,
+        int head_dimension,
+        float *ws,
+        float *out, //  B, T, C, n_head, head_dim
+        int M,      // batch_size
+        int K,      // d_model
+        int N)      // seq_len, say we have n_head=8, head_dim=64, d_model=512
+    {
+        dim3 block(head_dimension);
+        dim3 grid(M * N, num_head); // MXN will ignore btach_size, seq_len
+
+        multiHeadedAttention(num_head, head_dimension, ws, out, M, K, N);
+    }
+
     void WeightedSum(
         float *x, // Shape(M, K)
         float *w, // Shape(K, N)
