@@ -294,9 +294,9 @@ __global__ void TransposeKeyKernel(
     int head_dim,
     float *arr, // Shape (batch_size, n_head, seq_len, head_dim)
     float *out, // Shape (batch_size, n_head, head_dim, seq_len)
-    int M,
-    int N,
-    int K,
+    int M, // batch_size,
+    int N, // d_head
+    int K, // seq_len
     bool reverse = true)
 {
     int rows = blockIdx.x;
@@ -304,12 +304,12 @@ __global__ void TransposeKeyKernel(
 
     int idx = threadIdx.x; // think of this as the position of where we are inside of the 3d matrix, like each cell of 2d matrix is an array but here its flat.
 
-    
+
 }
 
 extern "C"
 {
-    void TransposeKeyKernel(
+    void TransposeKey(
         int num_heads,
         int head_dim,
         float *arr, // Shape (batch_size, n_head, seq_len, head_dim)
