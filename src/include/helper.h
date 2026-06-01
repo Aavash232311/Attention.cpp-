@@ -338,6 +338,28 @@ public:
 
         return newArr;
     }
+
+    // this is for debugging multi headed attention
+    // errors in the GPU are quiet, like me
+    template <typename T>
+    void printFlarArray4D(T *data, int B, int S, int num_heads, int head_dim)
+    {
+        std::cout << "shape: (" << B << ", " << S << ", " << num_heads << ", " << head_dim << ")\n";
+        std::cout << "total elements: " << B * S * num_heads * head_dim << "\n\n";
+
+        for (int b = 0; b < B; b++)
+            for (int s = 0; s < S; s++)
+                for (int h = 0; h < num_heads; h++)
+                {
+                    std::cout << "  [b=" << b << "][s=" << s << "][h=" << h << "] | ";
+                    for (int d = 0; d < head_dim; d++)
+                    {
+                        int idx = (b * S + s) * (num_heads * head_dim) + h * head_dim + d;
+                        std::cout << "[" << idx << "]=" << data[idx] << " ";
+                    }
+                    std::cout << "\n";
+                }
+    }
 };
 
 class EncoderText
@@ -345,10 +367,6 @@ class EncoderText
     std::vector<char> fileAsChar;
 
 public:
-    EncoderText()
-    {
-    }
-
     void loadTextChunk(std::string &path)
     {
         std::ifstream file(path);

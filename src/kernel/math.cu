@@ -250,7 +250,7 @@ extern "C"
         dim3 block(head_dimension);
         dim3 grid(M * N, num_head); // MXN will ignore btach_size, seq_len
 
-        multiHeadedAttention(num_head, head_dimension, ws, out, M, K, N);
+        multiHeadedAttentionKernel<<<grid, block>>>(num_head, head_dimension, ws, out, M, K, N);
     }
 
     void WeightedSum(

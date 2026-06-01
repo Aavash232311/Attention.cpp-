@@ -22,6 +22,7 @@ extern "C" void lookup(int *x, float *embeddings, float *C, int d_model, int seq
 extern "C" void addEmbeddings(float *lookedUpEmbeddings, float *sinosudialEncoding, float *C, int d_model, int seq_len, int batch_size);
 extern "C" void KaimingInit(float *arr, curandState *state, int x, int y, unsigned long seed);
 extern "C" void WeightedSum(float *x, float *w, float *b, float *c, int M, int K, int N);
+extern "C" void multiHeadedAttention(int num_head, int head_dimension, float *ws, float *out, int M, int N, int K);
 
 class Embeddings
 {
@@ -293,7 +294,14 @@ public:
         // copy that weighted sum into device so we can split it down.
         cudaMemcpy(device_hhead_in, ws, seq_len * batch_size * f_out * sizeof(float), cudaMemcpyHostToDevice);
 
-        utils->printFlatArray3D(ws, batch_size, seq_len, f_out);
+        multiHeadedAttention(n_head, head_dim, device_hhead_in, mhead_out_device, batch_size, f_out, seq_len);
+
+        cudaMemcpy(mhead_out_host, device_hhead_in, seq_len * batch_size * n_head * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
+
+        // std::cout << "Weighted sum " << std::endl;
+        // utils->printFlatArray3D(ws, batch_size, seq_len, f_out);
+
+        // utils->printFlarArray4D(mhead_out_host, batch_size, seq_len, n_head, head_dim);
     }
 };
 
@@ -382,43 +390,43 @@ int main()
     const std::vector<int> &encodedData = helper->getEncodedList();
 
     /* For something like attention we need heap allocation. */
-    // std::unique_ptr<Attention> attention = std::make_unique<Attention>(
-    //     d_model,
-    //     vocab_size,
-    //     num_heads,
-    //     seq_len,
-    //     batch_size); // called once good.
+    std::unique_ptr<Attention> attention = std::make_unique<Attention>(
+        d_model,
+        vocab_size,
+        num_heads,
+        seq_len,
+        batch_size); // called once good.
 
     std::unique_ptr<DataLoader> dataLoader = std::make_unique<DataLoader>(batch_size, encodedData, seq_len, drop_last);
 
     std::unique_ptr<std::vector<IO>> dataList = dataLoader->getBatch();
 
-    // for (int i = 0; i < epoch; ++i)
-    // {
-    //     for (auto &currentBatch : *dataList)
-    //     {
-    //         // so we have the x, and y here
-    //         // My understanding is batches are SEQUENTIAL
-    //         // but the procress within the batches are done in parallel.
-    //         attention->forward(currentBatch.x);
-    //     }
-    // }
+    for (int i = 0; i < epoch; ++i)
+    {
+        for (auto &currentBatch : *dataList)
+        {
+            // so we have the x, and y here
+            // My understanding is batches are SEQUENTIAL
+            // but the procress within the batches are done in parallel.
+            attention->forward(currentBatch.x);
+        }
+    }
 
-    float X[32] = {
-        1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f,
-        9.0f, 10.0f, 11.0f, 12.0f, 13.0f, 14.0f, 15.0f, 16.0f,
-        17.0f, 18.0f, 19.0f, 20.0f, 21.0f, 22.0f, 23.0f, 24.0f,
-        25.0f, 26.0f, 27.0f, 28.0f, 29.0f, 30.0f, 31.0f, 32.0f};
-    auto linear1 = std::make_unique<Linear>(
-        8,
-        8,
-        4,
-        1,
-        2 // n_heads
-    );
+    // float X[32] = {
+    //     1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f,
+    //     9.0f, 10.0f, 11.0f, 12.0f, 13.0f, 14.0f, 15.0f, 16.0f,
+    //     17.0f, 18.0f, 19.0f, 20.0f, 21.0f, 22.0f, 23.0f, 24.0f,
+    //     25.0f, 26.0f, 27.0f, 28.0f, 29.0f, 30.0f, 31.0f, 32.0f};
+    // auto linear1 = std::make_unique<Linear>(
+    //     8,
+    //     8,
+    //     4,
+    //     1,
+    //     2 // n_heads
+    // );
 
-    linear1->forward(X);
-    linear1->view();
+    // linear1->forward(X);
+    // linear1->view();
 
     auto end = std::chrono::high_resolution_clock::now();
     cudaDeviceSynchronize(); // CPU is waiting for the GPU to finish
