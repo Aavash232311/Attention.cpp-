@@ -200,7 +200,7 @@ Shape ws(M, K)
 new_shape = Shape(batch_size, seq_len, num_heads, head_dim)
 
 ws = [
-    batch size:
+    batch_size:
            token 0: [..d_model]
            token 1: [..d_model]
 
@@ -210,7 +210,7 @@ ws = [
 lets say we have 512 and N-head = 8
 
 
-multi headed = [
+multi_headed = [
       batch size:     [8x64]
             token 0: [n_head][n_head][n_head]
             token 1: [n_head][n_head][n_head]
@@ -236,8 +236,79 @@ __global__ void multiHeadedAttentionKernel(
     out[idx] = ws[idx];
 }
 
+/*
+if you have Shape(A, B, C, D)
+
+the formula to land on current elemenet is
+idx = a * (B * C * D)
+    + b * (C * D)
+    + c * (D)
+    + d
+To get coordinate of that in a tensor
+int a = idx / (B * C * D);
+int b = (idx / (C * D)) % B;
+int c = (idx / D) % C;
+int d = idx % D;
+
+Draw something flat, sit down with a calculator it will make sense.
+It spins my head sometimes but thats it.
+
+multi_headed = [
+      batch size:     [8x64]
+            token 0: [n_head][n_head][n_head]
+            token 1: [n_head][n_head][n_head]
+]
+*/
+
+__global__ void TransposeKernel(
+    int num_heads,
+    int head_dim,
+    float *arr, // Shape(batch_size, seq_len, n_head, d_head)
+    float *out, // Shape(batch_size, n_head, seq_len, d_model)
+    int M,      // batch_size
+    int N,      // d_model
+    int K,
+    bool reverse = true) // seq_len
+{
+    int rows = blockIdx.x; // we are launching in such a way that block(seq_len, n_head)
+    int cols = blockIdx.y;
+
+    int hd_idx = threadIdx.x; // current element idx
+
+    int batch_idx = rows / K; // K = seq_len
+    int seq_idx = rows % K;   // K = seq_len
+    // and each thread inside of this has d_head shpae for example 64
+    // our grid is (batch_size x seq_len, n_head, head_dim)
+    int idx_curr = rows * (num_heads * head_dim) + cols * head_dim + hd_idx;
+
+    // Shape(batch_size, n_head, seq_len, d_head)
+    int out_idx = batch_idx * (num_heads * K * head_dim) + cols * (K * head_dim) + seq_idx * head_dim + hd_idx;
+    if (reverse)
+        out[idx_curr] = arr[out_idx];
+    else
+        out[out_idx] = arr[idx_curr];
+}
+
 extern "C"
 {
+    void SwapNS(
+        int num_heads,
+        int head_dim,
+        float *arr,
+        float *out,
+        int M, // batch_size
+        int N, // d_head
+        int K, // seq_len
+        bool reverse) 
+    {
+        dim3 block(head_dim);
+        dim3 grid(M * N, num_heads);
+
+        TransposeKernel<<<grid, block>>>(num_heads, head_dim, arr, out, M, N, K, reverse);
+
+        cudaDeviceSynchronize();
+    }
+
     void multiHeadedAttention(
         int num_head,
         int head_dimension,
@@ -251,6 +322,8 @@ extern "C"
         dim3 grid(M * N, num_head); // MXN will ignore btach_size, seq_len
 
         multiHeadedAttentionKernel<<<grid, block>>>(num_head, head_dimension, ws, out, M, K, N);
+
+        cudaDeviceSynchronize();
     }
 
     void WeightedSum(

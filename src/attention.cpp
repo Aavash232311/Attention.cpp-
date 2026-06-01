@@ -23,7 +23,7 @@ extern "C" void addEmbeddings(float *lookedUpEmbeddings, float *sinosudialEncodi
 extern "C" void KaimingInit(float *arr, curandState *state, int x, int y, unsigned long seed);
 extern "C" void WeightedSum(float *x, float *w, float *b, float *c, int M, int K, int N);
 extern "C" void multiHeadedAttention(int num_head, int head_dimension, float *ws, float *out, int M, int N, int K);
-
+extern "C" void SwapNS(int num_head, int head_dimension, float *ws, float *out, int M, int K, int N, bool reverse);
 class Embeddings
 {
 
@@ -163,8 +163,8 @@ class Linear
     std::unique_ptr<Utility> utils = std::make_unique<Utility>();
 
     float *mhead_out_host = nullptr; // output after multi head attention
-    float *mhead_out_device; // this is multi head attention out device
-    float *device_hhead_in; // copy to this from weighted sum
+    float *mhead_out_device;         // this is multi head attention out device
+    float *device_hhead_in;          // copy to this from weighted sum
 
     float n_head;
     float head_dim;
@@ -285,11 +285,7 @@ public:
         return x;
     }
 
-    void splitHead()
-    {
-    }
-
-    float* view()
+    float *reshapeHead()
     {
         // copy that weighted sum into device so we can split it down.
         cudaMemcpy(device_hhead_in, ws, seq_len * batch_size * f_out * sizeof(float), cudaMemcpyHostToDevice);
@@ -303,6 +299,25 @@ public:
 
         // utils->printFlarArray4D(mhead_out_host, batch_size, seq_len, n_head, head_dim);
         return mhead_out_host;
+    }
+
+    // without tranpose it would attend to seq_len which is just tokenized
+    // if we swap it with n_head then it would attend to that which has values
+    // inillized from he init that as inside of the embeddings.
+    void swapHead()
+    {
+        // Before: Shape(batch_size, seq_len, n_head, d_head)
+        // After: Shape(batch_size, n_head, seq_len, d_head)
+        // std::cout << "Before transpose" << std::endl; 
+        // utils->printFlarArray4D(mhead_out_host, batch_size, seq_len, n_head, head_dim);
+        SwapNS(n_head, head_dim, mhead_out_host, mhead_out_device, batch_size, head_dim, seq_len, true);
+
+        cudaMemcpy(mhead_out_host, mhead_out_device, seq_len * batch_size * n_head * head_dim * sizeof(float), cudaMemcpyHostToDevice);
+
+        // std::cout << "After transpose" << std::endl;
+        // utils->printFlarArray4D(mhead_out_host, batch_size, n_head, seq_len, head_dim);
+
+        // very hard to think if in higher dimension, mathematicans cannot imagine higher dimension
     }
 };
 
@@ -358,9 +373,9 @@ public:
         float *K = key->forward(x);
         float *V = value->forward(x);
 
-        Q = query->view(); // why I want to make it look like torch syntaxx
-        K = query->view(); 
-        V = query->view();
+        Q = query->reshapeHead(); // Shape(batch_size, seq_len, n_head, head_dim)
+        K = query->reshapeHead();
+        V = query->reshapeHead();
 
         free(x);
     };
@@ -431,7 +446,8 @@ int main()
     // );
 
     // linear1->forward(X);
-    // linear1->view();
+    // linear1->reshapeHead();
+    // linear1->swapHead();
 
     auto end = std::chrono::high_resolution_clock::now();
     cudaDeviceSynchronize(); // CPU is waiting for the GPU to finish

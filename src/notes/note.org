@@ -360,3 +360,16 @@ idx = token_idx * (num_head) * head_dim + head_idx * (head_dim) + hd_idx
 
 # head_idx + (head_dim) skips entire head slices, like 8 head which is just flat strip in the memeory + hd_idx
 #+END_SRC
+
+*** Transposing n_head and seq_len
+
+#+BEGIN_SRC Python
+
+arr = (batch_size, seq_len, n_head, d_head)
+
+rows and cols represent seq_len and n_head.
+
+rows = token_idx (batch * seq_len)
+cols = head_idx (num_heads)
+
+#+END_SRC
