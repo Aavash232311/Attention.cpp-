@@ -232,8 +232,8 @@ __global__ void multiHeadedAttentionKernel(
     int hd_idx = threadIdx.x;   // which elelemnt
 
     // idx = (rows * width) + cols
-    int out_idx = token_idx * (num_head * head_dimension) + head_idx * (head_dimension) + hd_idx;
-    out[out_idx] = out[out_idx];
+    int idx = token_idx * (num_head * head_dimension) + head_idx * (head_dimension) + hd_idx;
+    out[idx] = ws[idx];
 }
 
 extern "C"

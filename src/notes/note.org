@@ -309,3 +309,54 @@ multi headed = [
             token 1: [n_head][n_head][n_head]
 ]
 #+END_SRC
+
+We are launching the kernel in such a way that it covers each element inside of the d_model.
+
+#+BEGIN_SRC C
+dim3 block(head_dimension);
+dim3 grid(M * N, num_head);
+#+END_SRC
+
+suppose our head dimension is 64 and num_head is 8
+we will have 64 threads there. And our final expected shape is
+
+#+BEGIN_SRC Python
+Shape(batch_size, seq_len, num_head, head_dim)
+#+END_SRC
+
+We are skipping that by saying MXN the batch_size and the seq_len part. So our kernel launch overs the final shape.
+
+#+BEGIN_SRC C
+__global__ void multiHeadedAttentionKernel(
+    int num_head,
+    int head_dimension,
+    float *ws,
+    float *out,
+    int M,
+    int N,
+    int K)
+{
+    int token_idx = blockIdx.x; // which token (0 to M*N)
+    int head_idx = blockIdx.y;  // which head
+    int hd_idx = threadIdx.x;   // which elelemnt
+
+
+    int idx = token_idx * (num_head * head_dimension) + head_idx * (head_dimension) + hd_idx;
+    out[idx] = ws[idx];
+}
+#+END_SRC
+
+Once again our kernel launch handles
+
+#+BEGIN_SRC Python
+
+ws = Shape(batch_size, seq_len, d_model)
+
+token_idx = batch_idx * seq_len + seq_idx
+# we can think of this like a zipper version of batch_size and seq_len
+
+
+idx = token_idx * (num_head) * head_dim + head_idx * (head_dim) + hd_idx
+
+# head_idx + (head_dim) skips entire head slices, like 8 head which is just flat strip in the memeory + hd_idx
+#+END_SRC
