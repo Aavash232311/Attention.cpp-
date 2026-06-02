@@ -27,6 +27,7 @@ extern "C" void SwapNS(int num_head, int head_dimension, float *ws, float *out, 
 extern "C" void TransposeKey(int num_heads, int head_dim, float *arr, float *out, int M, int N, int K, bool reverse);
 extern "C" void QKmatmul(float *Q, float *Kt, float *out, int M, int N, int batch_size, int num_heads);
 extern "C" void ScalerDvisionElem(float *arr, int batch, int n_head, int seq_len, int head_dim);
+extern "C" void UpperTriangularMasking(float *arr, float val, int batch_size, int n_head, int seq_len);
 class Embeddings
 {
 
@@ -428,11 +429,11 @@ public:
     // This method divides by sqrt of d_model so that atlast forward lgoic in this program looks readable to a normal human being.
     void scalerDvisionAcrossMat(float *QKt, int d_model)
     {
-        if (debug == true)
-        {
-            std::cout << "Before dvision by the scaler" << std::endl;
-            utils->printFlarArray4D(QKt, batch_size, num_heads, seq_len, seq_len);
-        }
+        // if (debug == true)
+        // {
+        //     std::cout << "Before dvision by the scaler" << std::endl;
+        //     utils->printFlarArray4D(QKt, batch_size, num_heads, seq_len, seq_len);
+        // }
 
         // copy that value from the pointer to device. dense looking C++ code to scare people. Just Kidiing!
         cudaMemcpy(deviceQKTSqrtD, QKt, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyHostToDevice);
@@ -447,12 +448,39 @@ public:
         // copy back to QKT
         cudaMemcpy(QKt, deviceQKTSqrtD, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
 
-        if (debug == true)
-        {
+        // if (debug == true)
+        // {
 
-            std::cout << "Afer division by the scaler " << std::endl;
-            utils->printFlarArray4D(QKt, batch_size, num_heads, seq_len, seq_len);
-        }
+        //     std::cout << "Afer division by the scaler " << std::endl;
+        //     utils->printFlarArray4D(QKt, batch_size, num_heads, seq_len, seq_len);
+        // }
+    }
+
+    void masking(float *arr, float val)
+    {
+
+        // copy to that deviceQKTSqrtD does not matter now. cudaDeviceSynchronize() waits until the GPU finishes. so use this as a memeory buffer. Later once we get the working result we can fix things like that.
+        cudaMemcpy(deviceQKTSqrtD, arr, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyHostToDevice);
+
+        UpperTriangularMasking(deviceQKTSqrtD, val, batch_size, num_heads, seq_len);
+
+        cudaError_t err = cudaGetLastError();
+        // if (err != cudaSuccess)
+        // {
+        //     printf("Kernel error: %s\n", cudaGetErrorString(err));
+        // }
+
+        // if (debug == true)
+        // {
+        //     utils->print2DMatrixLastTwo(hostQKT, batch_size, num_heads, seq_len, "QKT Before Mask");
+        // }
+        cudaMemcpy(arr, deviceQKTSqrtD, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyDeviceToHost); // we are copying to the same pointer does not matter if I am not wrong till this point.
+
+        // if (debug == true)
+        // {
+        //     std::cout << "Q K^T Masked" << std::endl;
+        //     utils->print2DMatrixLastTwo(hostQKT, batch_size, num_heads, seq_len, "QKT After Mask");
+        // }
     }
 
     void forward(std::vector<std::vector<int>> input)
@@ -480,13 +508,11 @@ public:
         QKmatmul(DeviceQ, DeviceKt, DeviceQKT, seq_len, head_dim, batch_size, num_heads);
 
         cudaMemcpy(hostQKT, DeviceQKT, seq_len * batch_size * num_heads * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
-        // if (debug == true)
-        // {
-        //     std::cout << "Q K^T" << std::endl;
-        //     utils->printFlarArray4D(hostQKT, batch_size, num_heads, seq_len, seq_len);
-        // }
 
         scalerDvisionAcrossMat(hostQKT, d_model);
+
+        // -1e9f
+        masking(hostQKT, -1e9f);
 
         debug = false;
         free(x);

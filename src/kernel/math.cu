@@ -359,11 +359,72 @@ __global__ void ScalerDvisionDModelKernel(
     if (idx < total_elem)
     {
         arr[idx] = arr[idx] / scaler;
+    } // I see potentional of Kenrel Fusion here but I want to learn cuda so I am writing a different kernel to make my mind usedto it.
+}
+/*
+    Note:- so that I do not get lost.
+    We have (seq_len seq_len) at the end which is the result of matrix multiplication from
+    QK^T matrix. A = Shape(batch_size, n_head, seq_len, head_dim), B = Shape(batch_size, n_head, head_dim, seq_len)
+    C = (batch, n_head, seq_len, seq_len) it is multiplied by head_dim which is from the embeddings from that higher dimensional vector.
+    So we are masking that last two seq_len,seq_len overtime I might find it weird on why we are masking this.
+
+    Example of masking.
+       (before mask)          mask              s (after masked_fill)
+    [ 0.5  0.8  0.3  0.9 ]   [ 1 0 0 0 ]     [ 0.5  -1e9  -1e9  -1e9 ]
+    [ 0.2  0.6  0.1  0.7 ]   [ 1 1 0 0 ]     [ 0.2   0.6  -1e9  -1e9 ]
+    [ 0.9  0.3  0.4  0.2 ]   [ 1 1 1 0 ]     [ 0.9   0.3   0.4  -1e9 ]
+    [ 0.1  0.5  0.8  0.6 ]   [ 1 1 1 1 ]     [ 0.1   0.5   0.8   0.6 ]
+
+    (0, 1) 1 > 0 true then mask it
+    (3, 2) 2 > 3 false do not mask it
+*/
+__global__ void UpperTriangularMaskingKernel(
+    float *arr, // (batch, n_head, seq_len, seq_len)
+                // (1, 1, T, T) so only two seq_len at the last are masked
+    float val,
+    int batch_size,
+    int n_head,
+    int seq_len)
+{
+    int batch_idx = blockIdx.z;
+    int nhead_idx = blockIdx.y;
+    int seq_len_idx1 = blockIdx.x;  // row
+    int seq_len_idx2 = threadIdx.x; // cols
+
+    // we care only about masking the (T, T) shape at the end. I really cannot visuize 4D in my head
+    // If I sit with calculator manually flattening these matrix then using this formula I will land in the
+    // correct place.
+
+    int idx = batch_idx   * (seq_len * n_head * seq_len)
+        + seq_len_idx1 * (n_head * seq_len)
+        + nhead_idx   * (seq_len)
+        + seq_len_idx2;
+
+    // so logic here is if this is row 0 in the TXT shape then after col zero every other value is masked.
+    // and if this is row 1 then  till col 1 it is unmaked else every other value is masked.
+    if (seq_len_idx2 > seq_len_idx1)
+    {
+        arr[idx] = val;
     }
 }
 
 extern "C"
 {
+    void UpperTriangularMasking(
+        float *arr, // Shape(batch_size, n_head, seq_len, seq_len)
+        float val,
+        int batch_size,
+        int n_head,
+        int seq_len)
+    {
+        dim3 block(seq_len);
+        //     blocIdx.x  blockIdx.y blockIdx.z
+        dim3 grid(seq_len, n_head, batch_size);
+
+        UpperTriangularMaskingKernel<<<grid, block>>>(arr, val, batch_size, n_head, seq_len);
+
+        cudaDeviceSynchronize();
+    }
     void ScalerDvisionElem(
         float *arr,
         int batch,
