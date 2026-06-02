@@ -1,6 +1,7 @@
 #include <iostream>
 #include <iterator>
 #include <math.h>
+#include <mma.h>
 #include <random>
 #include <vector>
 #include <cuda_runtime.h>
@@ -304,23 +305,67 @@ __global__ void TransposeKeyKernel(
     int s = blockIdx.x;
     int d = threadIdx.x;
 
-    int currentIdx = b * (num_heads * K * head_dim)
-               + h * (K * head_dim)
-               + s * (head_dim)
-               + d;
+    int currentIdx = b * (num_heads * K * head_dim) + h * (K * head_dim) + s * (head_dim) + d;
 
-    int idxOut = b * (num_heads * head_dim * K)
-            + h * (head_dim * K)
-            + d * (K)
-            + s;
+    int idxOut = b * (num_heads * head_dim * K) + h * (head_dim * K) + d * (K) + s;
     if (!(reverse))
         out[idxOut] = arr[currentIdx];
     else
         out[currentIdx] = arr[idxOut];
 }
 
+// Only the last two batch are multiplied here rest of them are taken along
+__global__ void QKmatmulKernel(
+    float *Q,  // Shape(batch_size, n_head, seq_len, head_dim)
+    float *Kt, // Shape(batch_size, n_head, head_dim, seq_len)
+    float *out, // (batch, n_head, seq_len, seq_len)
+    int M, // (seq_len, head_dim) = (M, N)
+    int N, // (head_dim, seq_len) = (N, M)
+    int n_head)
+{
+    int rows = blockIdx.y * blockDim.y + threadIdx.y;
+    int cols = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (rows >= M || cols >= N)
+        return;
+
+    int b = blockIdx.z / n_head;
+    int h = blockIdx.z % n_head;
+
+    float sum = 0.0f;
+    int skipQ = b * (n_head * M * N) + h * (M * N); // idx after skipping the first two tensors
+    int skipKt = b * (n_head * N * M) + h * (N * M);
+
+    for (int k = 0; k < N; ++k)
+    {
+        // offset because we do not account for first two and then (rows * width) + cols
+        float valA = Q[skipQ + rows * N + k];
+        float valB = Kt[skipKt + k * M + cols];
+        sum += valA * valB;
+    }
+    int out_offset = b * (n_head * M * M) + h * (M * M);
+    out[out_offset + rows * M + cols] = sum;
+}
+
 extern "C"
 {
+    void QKmatmul(
+        float *Q,
+        float *Kt,
+        float *out,
+        int M,
+        int N,
+        int batch_size,
+        int num_heads)
+    {
+        dim3 block(16, 16);
+        dim3 grid((N + 15) / 16, (M + 15) / 16, batch_size * num_heads);
+
+        QKmatmulKernel<<<grid, block>>>(Q, Kt, out, M, N, num_heads);
+
+        cudaDeviceSynchronize();
+    }
+
     void TransposeKey(
         int num_heads,
         int head_dim,
