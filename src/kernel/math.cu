@@ -294,17 +294,29 @@ __global__ void TransposeKeyKernel(
     int head_dim,
     float *arr, // Shape (batch_size, n_head, seq_len, head_dim)
     float *out, // Shape (batch_size, n_head, head_dim, seq_len)
-    int M, // batch_size,
-    int N, // d_head
-    int K, // seq_len
+    int M,      // batch_size,
+    int N,      // d_head
+    int K,      // seq_len
     bool reverse = true)
 {
-    int rows = blockIdx.x;
-    int cols = blockIdx.y;
+    int b = blockIdx.z;
+    int h = blockIdx.y;
+    int s = blockIdx.x;
+    int d = threadIdx.x;
 
-    int idx = threadIdx.x; // think of this as the position of where we are inside of the 3d matrix, like each cell of 2d matrix is an array but here its flat.
+    int currentIdx = b * (num_heads * K * head_dim)
+               + h * (K * head_dim)
+               + s * (head_dim)
+               + d;
 
-
+    int idxOut = b * (num_heads * head_dim * K)
+            + h * (head_dim * K)
+            + d * (K)
+            + s;
+    if (!(reverse))
+        out[idxOut] = arr[currentIdx];
+    else
+        out[currentIdx] = arr[idxOut];
 }
 
 extern "C"
@@ -312,17 +324,16 @@ extern "C"
     void TransposeKey(
         int num_heads,
         int head_dim,
-        float *arr, // Shape (batch_size, n_head, seq_len, head_dim)
+        float *arr, //  Shape(batch_size, n_head, seq_len, d_head)
         float *out, // Shape (batch_size, n_head, head_dim, seq_len)
-        int M, // batch_size
-        int N, // d_head
-        int K, // seq_len
-        bool reverse
-    )
+        int M,      // batch_size
+        int N,      // d_head
+        int K,      // seq_len
+        bool reverse)
     {
-        dim3 block(N);
-        dim3 grid (M * num_heads, head_dim);
-        
+        dim3 block(head_dim);
+        dim3 grid(K, num_heads, M);
+
         TransposeKeyKernel<<<grid, block>>>(num_heads, head_dim, arr, out, M, N, K, reverse);
 
         cudaDeviceSynchronize();
@@ -330,15 +341,15 @@ extern "C"
     void SwapNS(
         int num_heads,
         int head_dim,
-        float *arr,
-        float *out,
-        int M, // batch_size
-        int N, // d_head
-        int K, // seq_len
+        float *arr, //  Shape(batch_size, seq_len, n_head, d_head)
+        float *out, // Shape(batch_size, n_head, seq_len, d_head)
+        int M,      // batch_size
+        int N,      // d_head
+        int K,      // seq_len
         bool reverse)
     {
         dim3 block(head_dim);
-        dim3 grid(M * N, num_heads);
+        dim3 grid(M * K, num_heads);
 
         TransposeKernel<<<grid, block>>>(num_heads, head_dim, arr, out, M, N, K, reverse);
 
