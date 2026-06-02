@@ -316,11 +316,11 @@ __global__ void TransposeKeyKernel(
 
 // Only the last two batch are multiplied here rest of them are taken along
 __global__ void QKmatmulKernel(
-    float *Q,  // Shape(batch_size, n_head, seq_len, head_dim)
-    float *Kt, // Shape(batch_size, n_head, head_dim, seq_len)
+    float *Q,   // Shape(batch_size, n_head, seq_len, head_dim)
+    float *Kt,  // Shape(batch_size, n_head, head_dim, seq_len)
     float *out, // (batch, n_head, seq_len, seq_len)
-    int M, // (seq_len, head_dim) = (M, N)
-    int N, // (head_dim, seq_len) = (N, M)
+    int M,      // (seq_len, head_dim) = (M, N)
+    int N,      // (head_dim, seq_len) = (N, M)
     int n_head)
 {
     int rows = blockIdx.y * blockDim.y + threadIdx.y;
@@ -347,8 +347,40 @@ __global__ void QKmatmulKernel(
     out[out_offset + rows * M + cols] = sum;
 }
 
+// we can bind this into the same kernel but in order to build my thinking I am doing this.
+// I must learn to derive a problem, thats what I call true understanding. Even if I forget the synatax.
+__global__ void ScalerDvisionDModelKernel(
+    float *arr, // (batch, n_head, seq_len, seq_len)
+    int total_elem,
+    float scaler)
+{
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (idx < total_elem)
+    {
+        arr[idx] = arr[idx] / scaler;
+    }
+}
+
 extern "C"
 {
+    void ScalerDvisionElem(
+        float *arr,
+        int batch,
+        int n_head,
+        int seq_len,
+        int head_dim)
+    {
+        int total = batch * n_head * seq_len * seq_len;
+        float scale = sqrtf((float)head_dim);
+
+        dim3 block(256);
+
+        ScalerDvisionDModelKernel<<<(total + 255) / 256, block>>>(arr, total, scale);
+
+        cudaDeviceSynchronize();
+    }
+
     void QKmatmul(
         float *Q,
         float *Kt,

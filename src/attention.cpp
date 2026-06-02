@@ -26,6 +26,7 @@ extern "C" void multiHeadedAttention(int num_head, int head_dimension, float *ws
 extern "C" void SwapNS(int num_head, int head_dimension, float *ws, float *out, int M, int K, int N, bool reverse);
 extern "C" void TransposeKey(int num_heads, int head_dim, float *arr, float *out, int M, int N, int K, bool reverse);
 extern "C" void QKmatmul(float *Q, float *Kt, float *out, int M, int N, int batch_size, int num_heads);
+extern "C" void ScalerDvisionElem(float *arr, int batch, int n_head, int seq_len, int head_dim);
 class Embeddings
 {
 
@@ -376,6 +377,8 @@ public:
 
     bool debug = true;
 
+    float *deviceQKTSqrtD;
+
     Attention(int &d_model, int &vocab_size, int &num_heads, int &seq_len, int &batch_size) : d_model(d_model), vocab_size(vocab_size), num_heads(num_heads), seq_len(seq_len), batch_size(batch_size)
     {
         this->embeddings = std::make_unique<Embeddings>(
@@ -406,6 +409,8 @@ public:
 
         // Q K^T Host
         hostQKT = (float *)malloc(batch_size * num_heads * head_dim * seq_len * sizeof(float));
+
+        cudaMalloc((void **)&deviceQKTSqrtD, batch_size * num_heads * seq_len * seq_len * sizeof(float));
     };
 
     ~Attention()
@@ -414,10 +419,42 @@ public:
         cudaFree(DeviceQ);
         cudaFree(DeviceQKT);
 
+        cudaFree(deviceQKTSqrtD);
+
         (hostQKT != nullptr ? free(hostQKT) : void());
     }
 
 public:
+    // This method divides by sqrt of d_model so that atlast forward lgoic in this program looks readable to a normal human being.
+    void scalerDvisionAcrossMat(float *QKt, int d_model)
+    {
+        if (debug == true)
+        {
+            std::cout << "Before dvision by the scaler" << std::endl;
+            utils->printFlarArray4D(QKt, batch_size, num_heads, seq_len, seq_len);
+        }
+
+        // copy that value from the pointer to device. dense looking C++ code to scare people. Just Kidiing!
+        cudaMemcpy(deviceQKTSqrtD, QKt, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyHostToDevice);
+
+        ScalerDvisionElem(
+            deviceQKTSqrtD,
+            batch_size,
+            seq_len,
+            head_dim,
+            d_model);
+
+        // copy back to QKT
+        cudaMemcpy(QKt, deviceQKTSqrtD, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
+
+        if (debug == true)
+        {
+
+            std::cout << "Afer division by the scaler " << std::endl;
+            utils->printFlarArray4D(QKt, batch_size, num_heads, seq_len, seq_len);
+        }
+    }
+
     void forward(std::vector<std::vector<int>> input)
     {
 
@@ -443,11 +480,13 @@ public:
         QKmatmul(DeviceQ, DeviceKt, DeviceQKT, seq_len, head_dim, batch_size, num_heads);
 
         cudaMemcpy(hostQKT, DeviceQKT, seq_len * batch_size * num_heads * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
-        if (debug == true)
-        {
-            std::cout << "Q K^T" << std::endl;
-            utils->printFlarArray4D(hostQKT, batch_size, num_heads, seq_len, seq_len);
-        }
+        // if (debug == true)
+        // {
+        //     std::cout << "Q K^T" << std::endl;
+        //     utils->printFlarArray4D(hostQKT, batch_size, num_heads, seq_len, seq_len);
+        // }
+
+        scalerDvisionAcrossMat(hostQKT, d_model);
 
         debug = false;
         free(x);
