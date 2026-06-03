@@ -28,6 +28,7 @@ extern "C" void TransposeKey(int num_heads, int head_dim, float *arr, float *out
 extern "C" void QKmatmul(float *Q, float *Kt, float *out, int M, int N, int batch_size, int num_heads);
 extern "C" void ScalerDvisionElem(float *arr, int batch, int n_head, int seq_len, int head_dim);
 extern "C" void UpperTriangularMasking(float *arr, float val, int batch_size, int n_head, int seq_len);
+extern "C" void softmax(float *arr, float *out, int N);
 class Embeddings
 {
 
@@ -380,6 +381,9 @@ public:
 
     float *deviceQKTSqrtD;
 
+    float *deviceSoftmaxOut;
+    float *hostSoftmaxOut = nullptr;
+
     Attention(int &d_model, int &vocab_size, int &num_heads, int &seq_len, int &batch_size) : d_model(d_model), vocab_size(vocab_size), num_heads(num_heads), seq_len(seq_len), batch_size(batch_size)
     {
         this->embeddings = std::make_unique<Embeddings>(
@@ -412,6 +416,11 @@ public:
         hostQKT = (float *)malloc(batch_size * num_heads * head_dim * seq_len * sizeof(float));
 
         cudaMalloc((void **)&deviceQKTSqrtD, batch_size * num_heads * seq_len * seq_len * sizeof(float));
+
+        // for softmax's
+        this->hostSoftmaxOut = (float *)malloc(batch_size * num_heads * seq_len * seq_len * sizeof(float));
+        // I do not deserve an internship so what, people who are doing this wont understand this so I am writing c++ to scare people off.
+        cudaMalloc((void **)&deviceSoftmaxOut, batch_size * num_heads * seq_len * seq_len * sizeof(float));
     };
 
     ~Attention()
@@ -423,6 +432,10 @@ public:
         cudaFree(deviceQKTSqrtD);
 
         (hostQKT != nullptr ? free(hostQKT) : void());
+
+        (hostSoftmaxOut != nullptr ? free(hostSoftmaxOut) : void());
+
+        cudaFree(deviceSoftmaxOut);
     }
 
 public:
@@ -483,6 +496,11 @@ public:
         // }
     }
 
+    void softmaxActivation()
+    {
+
+    }
+
     void forward(std::vector<std::vector<int>> input)
     {
 
@@ -513,6 +531,24 @@ public:
 
         // -1e9f
         masking(hostQKT, -1e9f);
+
+        // apply softmax part!
+        cudaMemcpy(deviceQKTSqrtD, hostQKT, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyHostToDevice);
+        softmax(deviceQKTSqrtD, deviceSoftmaxOut, batch_size * num_heads * seq_len * seq_len);
+
+        // copy to host
+        cudaMemcpy(hostSoftmaxOut, deviceSoftmaxOut, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
+
+        // deviceQKTSqrtD Shape(batch_size, n_head, T, T)
+
+        // if (debug == true)
+        // {
+        //     std::cout << "Before softmax " << std::endl;
+        //     utils->printFlarArray4D(hostQKT, batch_size, num_heads, seq_len, seq_len);
+
+        //     std::cout << "After softmax " << std::endl;
+        //     utils->printFlarArray4D(hostSoftmaxOut, batch_size, num_heads, seq_len, seq_len);
+        // }
 
         debug = false;
         free(x);

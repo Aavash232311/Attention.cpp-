@@ -7,40 +7,6 @@
 #include <cuda_runtime.h>
 #include <curand_kernel.h>
 
-/*
-We expect this to return a softmax function, for example x = [2, 1, 0]
-softmax(x1) = e^2/e^2 + e^1 + e^0
-softmax(x2) = e^1/e^2 + e^1 + e^0
-softmax(x3) = e^0/e^2 + e^1 + e^0
-
-*/
-
-__global__ void softmax_kernel(float *arr, float *out, size_t N)
-{
-    __shared__ float total_sum; // memeory across all threads in the block
-
-    int i = blockDim.x * blockIdx.x + threadIdx.x;
-
-    if (threadIdx.x == 0)
-    {
-        total_sum = 0.0f; // initially
-    }
-
-    __syncthreads(); // since thread are computing in parallel, forces all thread in a block to wait until everyone reaches the same line.
-
-    if (i < N)
-    {
-        atomicAdd(&total_sum, expf(arr[i]));
-    }
-
-    __syncthreads();
-
-    if (i < N)
-    {
-        out[i] = expf(arr[i]) / total_sum;
-    }
-}
-
 // This is sinosudial positional embeddings. For simpilicity we wont used learned positional embeddings. We can learn about it later atleast.
 __global__ void positional_embedding_kernel(float *out, int seq_len, int d_model)
 {
@@ -395,10 +361,7 @@ __global__ void UpperTriangularMaskingKernel(
     // If I sit with calculator manually flattening these matrix then using this formula I will land in the
     // correct place.
 
-    int idx = batch_idx   * (seq_len * n_head * seq_len)
-        + seq_len_idx1 * (n_head * seq_len)
-        + nhead_idx   * (seq_len)
-        + seq_len_idx2;
+    int idx = batch_idx * (seq_len * n_head * seq_len) + seq_len_idx1 * (n_head * seq_len) + nhead_idx * (seq_len) + seq_len_idx2;
 
     // so logic here is if this is row 0 in the TXT shape then after col zero every other value is masked.
     // and if this is row 1 then  till col 1 it is unmaked else every other value is masked.
@@ -408,8 +371,34 @@ __global__ void UpperTriangularMaskingKernel(
     }
 }
 
+/*
+We expect this to return a softmax function, for example x = [2, 1, 0]
+softmax(x1) = e^2/e^2 + e^1 + e^0
+softmax(x2) = e^1/e^2 + e^1 + e^0
+softmax(x3) = e^0/e^2 + e^1 + e^0
+
+*/
+
+__global__ void softmaxKrenel(
+    float *arr,
+    float *out,
+    int rows,
+    int cols)
+{
+    
+}
+
 extern "C"
 {
+    void softmax(float *arr, float *out, int N)
+    {
+
+        const int threads_per_block = 256;
+        const int blocks_per_grid = (N + threads_per_block - 1) / threads_per_block;
+
+        // wait for GPU to finish so the print statements display
+        cudaDeviceSynchronize();
+    }
     void UpperTriangularMasking(
         float *arr, // Shape(batch_size, n_head, seq_len, seq_len)
         float val,
@@ -581,17 +570,7 @@ extern "C"
 
         cudaDeviceSynchronize();
     }
-    void softmax(float *arr, float *out, int N)
-    {
 
-        const int threads_per_block = 256;
-        const int blocks_per_grid = (N + threads_per_block - 1) / threads_per_block;
-
-        softmax_kernel<<<blocks_per_grid, threads_per_block>>>(arr, out, N);
-
-        // wait for GPU to finish so the print statements display
-        cudaDeviceSynchronize();
-    }
     void positionalEmbeddings(float *out, int seq_len, int d_model)
     {
         dim3 block(16, 16); // 16x16=256 threads in total.

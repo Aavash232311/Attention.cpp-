@@ -282,12 +282,11 @@ void LinearTransformationTest()
     cudaMemcpy(device_b, X, 3 * 3 * sizeof(float), cudaMemcpyHostToDevice);
     cudaMemcpy(device_c, b, 4 * sizeof(float), cudaMemcpyHostToDevice);
 
-
     int M = 4;
     int N = 3;
     dim3 block(16, 16);
-    dim3 grid((N + block.x - 1) / block.x,  
-              (M + block.y - 1) / block.y); 
+    dim3 grid((N + block.x - 1) / block.x,
+              (M + block.y - 1) / block.y);
 
     WeightedSumKernel<<<grid, block>>>(
         device_a,
@@ -310,10 +309,54 @@ void LinearTransformationTest()
     utils->printFlatArray2D(res, 4, 3);
 }
 
+__global__ void AddKernel(float *arr, int arrSize, float *output)
+{
+    int seg = blockIdx.x * (2 * blockDim.x); // blockDim.x gives num of thread per block
+    for (int i = 0; i <= blockDim.x; i *= 2)
+    {
+        if ((threadIdx.x % i) == 0)
+        {
+            int index = seg + 2 * threadIdx.x;
+
+            if (index < arrSize)
+            {
+                float temp = 0.0f;
+                if (index + i < arrSize)
+                {
+                    temp = arr[index + i];
+                }
+                arr[index] += temp;
+            }
+        }
+        __syncthreads();
+    }
+
+    if (threadIdx.x == 0)
+    {
+        atomicAdd(output, arr[seg]);
+    }
+}
+
+void ParellelReduction()
+{
+    float arr[8] = {1, 2, 3, 4, 5, 6, 7, 8};
+    float *dArr;
+
+    cudaMemcpy(arr, dArr, 8 * sizeof(float), cudaMemcpyDeviceToHost);
+
+    int block_dim = 512;
+    int threadPerBlock = 2 * block_dim;
+    int gridDim = (8 + threadPerBlock - 1) / (threadPerBlock);
+
+    // AddKernel<<<gridDim, block_dim>>>(dArr);
+}
+
 int main()
 {
     // loopUpTest();
     // positionalEncodingTest();
 
-    LinearTransformationTest();
+    // LinearTransformationTest();
+
+    ParellelReduction();
 }
