@@ -403,3 +403,41 @@ multi_headed = [
 ** Parellel reduction in CUDA kernels.
 
 We will use tree like kernel reduction algorithm to write a better softmax function.
+
+#+BEGIN_SRC C
+__global__ void softmaxKrenel(
+    float *arr, // (batch, n_head, seq_len, seq_len)
+    float *out,
+    int N,
+    int seq_len,
+    int n_head)
+{
+    int batch_idx = blockIdx.z;
+    int nhead_idx = blockIdx.y;
+    int seq_len_idx1 = blockIdx.x;  // row
+    int seq_len_idx2 = threadIdx.x; // cols 0-31 thread in a wrap
+
+    int idx = batch_idx * (n_head * seq_len * seq_len) + nhead_idx * (seq_len * seq_len) + seq_len_idx1 * seq_len + seq_len_idx2;
+
+    float val = (idx < N) ? arr[idx] : -FLT_MAX;
+
+    // wrap level reduction, because shared memory is little costly here.
+    for (int offset = 16; offset > 0; offset /= 2)                 // half half half and max is carried along I said in myyy wayyy
+        val = max(val, __shfl_down_sync(0xffffffff, val, offset)); // val and which thread do I want to read.
+    float max_val = __shfl_sync(0xffffffff, val, 0);               // max in warp, its not an array to be mistaken each thread has its own register to store the value.
+
+    // exp in register
+    float exp_val = (idx < N) ? expf(arr[idx] - max_val) : 0.0f;
+
+    // wrap level sum exp
+    for (int offset = 16; offset > 0; offset /= 2)
+        exp_val += __shfl_down_sync(0xffffffff, exp_val, offset);
+    float sum_val = __shfl_sync(0xffffffff, exp_val, 0); // sum in warp
+
+    // final formula
+    if (idx < N)
+        out[idx] = expf(arr[idx] - max_val) / sum_val;
+}
+#+END_SRC
+
+#+RESULTS:
