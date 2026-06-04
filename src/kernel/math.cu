@@ -4,8 +4,12 @@
 #include <mma.h>
 #include <random>
 #include <vector>
+#include <cfloat>
 #include <cuda_runtime.h>
 #include <curand_kernel.h>
+
+// We need more and more and more kernel fussion here since I am learning I did it in my way.
+// writing in GPU is hard and understanding takes a time so. we can refine it later :)
 
 // This is sinosudial positional embeddings. For simpilicity we wont used learned positional embeddings. We can learn about it later atleast.
 __global__ void positional_embedding_kernel(float *out, int seq_len, int d_model)
@@ -318,9 +322,16 @@ __global__ void QKmatmulKernel(
 __global__ void ScalerDvisionDModelKernel(
     float *arr, // (batch, n_head, seq_len, seq_len)
     int total_elem,
-    float scaler)
+    float scaler,
+    int n_head,
+    int seq_len)
 {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    int batch_idx = blockIdx.z;
+    int nhead_idx = blockIdx.y;
+    int seq_len_idx1 = blockIdx.x;  // row
+    int seq_len_idx2 = threadIdx.x; // cols
+
+    int idx = batch_idx * (n_head * seq_len * seq_len) + nhead_idx * (seq_len * seq_len) + seq_len_idx1 * (seq_len) + seq_len_idx2;
 
     if (idx < total_elem)
     {
@@ -343,6 +354,11 @@ __global__ void ScalerDvisionDModelKernel(
 
     (0, 1) 1 > 0 true then mask it
     (3, 2) 2 > 3 false do not mask it
+
+    idx = a * (B * C * D)
+    + b * (C * D)
+    + c * (D)
+    + d
 */
 __global__ void UpperTriangularMaskingKernel(
     float *arr, // (batch, n_head, seq_len, seq_len)
@@ -361,10 +377,11 @@ __global__ void UpperTriangularMaskingKernel(
     // If I sit with calculator manually flattening these matrix then using this formula I will land in the
     // correct place.
 
-    int idx = batch_idx * (seq_len * n_head * seq_len) + seq_len_idx1 * (n_head * seq_len) + nhead_idx * (seq_len) + seq_len_idx2;
+    int idx = batch_idx * (n_head * seq_len * seq_len) + nhead_idx * (seq_len * seq_len) + seq_len_idx1 * (seq_len) + seq_len_idx2;
 
     // so logic here is if this is row 0 in the TXT shape then after col zero every other value is masked.
     // and if this is row 1 then  till col 1 it is unmaked else every other value is masked.
+
     if (seq_len_idx2 > seq_len_idx1)
     {
         arr[idx] = val;
@@ -380,21 +397,46 @@ softmax(x3) = e^0/e^2 + e^1 + e^0
 */
 
 __global__ void softmaxKrenel(
-    float *arr,
+    float *arr, // (batch, n_head, seq_len, seq_len)
     float *out,
-    int rows,
-    int cols)
+    int N,
+    int seq_len,
+    int n_head)
 {
-    
+    int batch_idx = blockIdx.z;
+    int nhead_idx = blockIdx.y;
+    int seq_len_idx1 = blockIdx.x;  // row
+    int seq_len_idx2 = threadIdx.x; // cols 0-31 thread in a wrap
+
+    int idx = batch_idx * (n_head * seq_len * seq_len) + nhead_idx * (seq_len * seq_len) + seq_len_idx1 * seq_len + seq_len_idx2;
+
+    float val = (idx < N) ? arr[idx] : -FLT_MAX;
+
+    // wrap level reduction, because shared memory is little costly here.
+    for (int offset = 16; offset > 0; offset /= 2)                 // half half half and max is carried along I said in myyy wayyy
+        val = max(val, __shfl_down_sync(0xffffffff, val, offset)); // val and which thread do I want to read.
+    float max_val = __shfl_sync(0xffffffff, val, 0);               // max in warp, its not an array to be mistaken each thread has its own register to store the value.
+
+    // exp in register
+    float exp_val = (idx < N) ? expf(arr[idx] - max_val) : 0.0f;
+
+    // wrap level sum exp
+    for (int offset = 16; offset > 0; offset /= 2)
+        exp_val += __shfl_down_sync(0xffffffff, exp_val, offset);
+    float sum_val = __shfl_sync(0xffffffff, exp_val, 0); // sum in warp
+
+    // final formula
+    if (idx < N)
+        out[idx] = expf(arr[idx] - max_val) / sum_val;
 }
 
 extern "C"
 {
-    void softmax(float *arr, float *out, int N)
+    void softmax(float *arr, float *out, int N, int seq_len, int n_head, int batch_size)
     {
 
-        const int threads_per_block = 256;
-        const int blocks_per_grid = (N + threads_per_block - 1) / threads_per_block;
+        int num_rows = batch_size * n_head * seq_len;
+        softmaxKrenel<<<num_rows, seq_len>>>(arr, out, N, seq_len, n_head);
 
         // wait for GPU to finish so the print statements display
         cudaDeviceSynchronize();
@@ -406,16 +448,16 @@ extern "C"
         int n_head,
         int seq_len)
     {
-        dim3 block(seq_len);
         //     blocIdx.x  blockIdx.y blockIdx.z
         dim3 grid(seq_len, n_head, batch_size);
+        dim3 block(seq_len);
 
         UpperTriangularMaskingKernel<<<grid, block>>>(arr, val, batch_size, n_head, seq_len);
 
         cudaDeviceSynchronize();
     }
     void ScalerDvisionElem(
-        float *arr,
+        float *arr, // (batch, n_head, seq_len, seq_len)
         int batch,
         int n_head,
         int seq_len,
@@ -424,9 +466,10 @@ extern "C"
         int total = batch * n_head * seq_len * seq_len;
         float scale = sqrtf((float)head_dim);
 
-        dim3 block(256);
+        dim3 grid(seq_len, n_head, batch);
+        dim3 block(seq_len);
 
-        ScalerDvisionDModelKernel<<<(total + 255) / 256, block>>>(arr, total, scale);
+        ScalerDvisionDModelKernel<<<grid, block>>>(arr, total, scale, n_head, seq_len);
 
         cudaDeviceSynchronize();
     }

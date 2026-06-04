@@ -399,3 +399,7 @@ multi_headed = [
             token 1: [n_head][n_head][n_head]
 
  #+end_src
+
+** Parellel reduction in CUDA kernels.
+
+We will use tree like kernel reduction algorithm to write a better softmax function.

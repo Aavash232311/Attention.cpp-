@@ -312,7 +312,7 @@ void LinearTransformationTest()
 __global__ void AddKernel(float *arr, int arrSize, float *output)
 {
     int seg = blockIdx.x * (2 * blockDim.x); // blockDim.x gives num of thread per block
-    for (int i = 0; i <= blockDim.x; i *= 2)
+    for (int i = 1; i <= blockDim.x; i *= 2)
     {
         if ((threadIdx.x % i) == 0)
         {
@@ -339,16 +339,21 @@ __global__ void AddKernel(float *arr, int arrSize, float *output)
 
 void ParellelReduction()
 {
-    float arr[8] = {1, 2, 3, 4, 5, 6, 7, 8};
-    float *dArr;
+    float arr[16] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
+    // float *dArr;
 
-    cudaMemcpy(arr, dArr, 8 * sizeof(float), cudaMemcpyDeviceToHost);
+    // cudaMemcpy(arr, dArr, 8 * sizeof(float), cudaMemcpyDeviceToHost);
 
-    int block_dim = 512;
-    int threadPerBlock = 2 * block_dim;
-    int gridDim = (8 + threadPerBlock - 1) / (threadPerBlock);
-
+    // int block_dim = 512;
+    // int threadPerBlock = 2 * block_dim;
+    // int gridDim = (8 + threadPerBlock - 1) / (threadPerBlock);
     // AddKernel<<<gridDim, block_dim>>>(dArr);
+
+    for (size_t i = 16 / 2; i > 0; i /= 2)
+    {
+        std::cout << i << std::endl;
+    }
+
 }
 
 int main()

@@ -28,7 +28,7 @@ extern "C" void TransposeKey(int num_heads, int head_dim, float *arr, float *out
 extern "C" void QKmatmul(float *Q, float *Kt, float *out, int M, int N, int batch_size, int num_heads);
 extern "C" void ScalerDvisionElem(float *arr, int batch, int n_head, int seq_len, int head_dim);
 extern "C" void UpperTriangularMasking(float *arr, float val, int batch_size, int n_head, int seq_len);
-extern "C" void softmax(float *arr, float *out, int N);
+extern "C" void softmax(float *arr, float *out, int N, int seq_len, int n_head, int batch_size);
 class Embeddings
 {
 
@@ -451,12 +451,13 @@ public:
         // copy that value from the pointer to device. dense looking C++ code to scare people. Just Kidiing!
         cudaMemcpy(deviceQKTSqrtD, QKt, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyHostToDevice);
 
+        // // (batch, n_head, seq_len, seq_len)
         ScalerDvisionElem(
             deviceQKTSqrtD,
             batch_size,
+            num_heads,
             seq_len,
-            head_dim,
-            d_model);
+            head_dim);
 
         // copy back to QKT
         cudaMemcpy(QKt, deviceQKTSqrtD, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
@@ -491,14 +492,15 @@ public:
 
         // if (debug == true)
         // {
-        //     std::cout << "Q K^T Masked" << std::endl;
-        //     utils->print2DMatrixLastTwo(hostQKT, batch_size, num_heads, seq_len, "QKT After Mask");
+        //     // std::cout << "QKT unmasked" << std::endl;
+        //     // utils->printFlarArray4D(arr, batch_size, num_heads, seq_len, seq_len);
+
+        //     utils->print2DMatrixLastTwo(arr, batch_size, num_heads, seq_len, "");
         // }
     }
 
     void softmaxActivation()
     {
-
     }
 
     void forward(std::vector<std::vector<int>> input)
@@ -523,18 +525,30 @@ public:
         cudaMemcpy(DeviceKt, s, seq_len * batch_size * num_heads * head_dim * sizeof(float), cudaMemcpyHostToDevice);
         cudaMemcpy(DeviceQ, s, seq_len * batch_size * num_heads * head_dim * sizeof(float), cudaMemcpyHostToDevice);
 
-        QKmatmul(DeviceQ, DeviceKt, DeviceQKT, seq_len, head_dim, batch_size, num_heads);
+        QKmatmul(DeviceQ, DeviceKt, DeviceQKT, seq_len, head_dim, batch_size, num_heads); // S(1, 1, T, T)
 
-        cudaMemcpy(hostQKT, DeviceQKT, seq_len * batch_size * num_heads * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(hostQKT, DeviceQKT, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
 
-        scalerDvisionAcrossMat(hostQKT, d_model);
+        scalerDvisionAcrossMat(hostQKT, d_model); // sqrt(d_model)
+
+        // if (debug == true)
+        // {
+        //     std::cout << "QKT unmasked" << std::endl;
+        //       utils->print2DMatrixLastTwo(hostQKT, batch_size, num_heads, seq_len, "After sqrt(d_model)");
+        // }
 
         // -1e9f
         masking(hostQKT, -1e9f);
 
+        // if (debug == true)
+        // {
+        //     std::cout << "Before softmax " << std::endl;
+        //     utils->print2DMatrixLastTwo(hostQKT, batch_size, num_heads, seq_len, "");
+        // }
+
         // apply softmax part!
         cudaMemcpy(deviceQKTSqrtD, hostQKT, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyHostToDevice);
-        softmax(deviceQKTSqrtD, deviceSoftmaxOut, batch_size * num_heads * seq_len * seq_len);
+        softmax(deviceQKTSqrtD, deviceSoftmaxOut, batch_size * num_heads * seq_len * seq_len, seq_len, num_heads, batch_size);
 
         // copy to host
         cudaMemcpy(hostSoftmaxOut, deviceSoftmaxOut, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
@@ -543,11 +557,9 @@ public:
 
         // if (debug == true)
         // {
-        //     std::cout << "Before softmax " << std::endl;
-        //     utils->printFlarArray4D(hostQKT, batch_size, num_heads, seq_len, seq_len);
 
         //     std::cout << "After softmax " << std::endl;
-        //     utils->printFlarArray4D(hostSoftmaxOut, batch_size, num_heads, seq_len, seq_len);
+        //     utils->print2DMatrixLastTwo(hostSoftmaxOut, batch_size, num_heads, seq_len, "");
         // }
 
         debug = false;
@@ -564,7 +576,7 @@ int main()
     int vocab_size; // that depends upon the data that you are passing.
     int num_heads = 2;
     int batch_size = 4;
-    int seq_len = 2;
+    int seq_len = 4;
     int epoch = 12;
     bool drop_last = false;
 

@@ -357,7 +357,7 @@ public:
                     printf("  [ ");
                     for (int col = 0; col < seq_len; col++)
                     {
-                        int idx = b * (seq_len * n_head * seq_len) + row * (n_head * seq_len) + h * (seq_len) + col;
+                        int idx = b * (n_head * seq_len * seq_len) + h * (seq_len * seq_len) + row * (seq_len) + col;
                         printf("%10.4f  ", arr[idx]);
                     }
                     printf("]\n");
