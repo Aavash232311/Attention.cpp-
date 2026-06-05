@@ -335,8 +335,8 @@ public:
         // Before: Shape(batch_size, seq_len, n_head, d_head)
         // After: Shape(batch_size, n_head, seq_len, d_head)
 
-        std::cout << "Aafter reshape for multi headed attention" << std::endl;
-        utils->print2DMatrixLastTwo(mhead_out_host, batch_size, n_head, seq_len);
+        // std::cout << "Aafter reshape for multi headed attention" << std::endl;
+        // utils->print2DMatrixLastTwo(mhead_out_host, batch_size, n_head, seq_len);
 
         cudaMemcpy(deviceArrInTranspose, mhead_out_host, batch_size * seq_len * n_head * head_dim * sizeof(float), cudaMemcpyHostToDevice);
 
@@ -350,8 +350,8 @@ public:
 
         cudaMemcpy(mhead_out_host, mhead_out_device, seq_len * batch_size * n_head * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
 
-        std::cout << "After swapping T" << std::endl;
-        utils->print2DMatrixLastTwo(mhead_out_host, batch_size, n_head, seq_len);
+        // std::cout << "After swapping T" << std::endl;
+        // utils->print2DMatrixLastTwo(mhead_out_host, batch_size, n_head, seq_len);
 
         // very hard to think if in higher dimension, mathematicans cannot imagine higher dimension
         // Now our final resule shape would be Shape(batch_size, n_head, seq_len, d_head)
@@ -361,7 +361,8 @@ public:
     {
 
         // std::cout << "Before transpose" << std::endl;
-        // utils->printFlarArray4D(mhead_out_host, batch_size, n_head, seq_len, head_dim);
+        // utils->print2DMatrixLastTwo(mhead_out_host, batch_size, n_head, seq_len);
+
         TransposeKey(
             n_head,
             head_dim,
@@ -375,7 +376,8 @@ public:
         cudaMemcpy(mhead_out_host, mhead_out_device, seq_len * batch_size * n_head * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
 
         // std::cout << "After transpose" << std::endl;
-        // utils->printFlarArray4D(mhead_out_host, batch_size, n_head, seq_len, head_dim);
+        // utils->print2DMatrixLastTwo(mhead_out_host, batch_size, n_head, seq_len, "After transpose Key");
+
 
         return mhead_out_host;
     }
@@ -666,44 +668,44 @@ int main()
     const std::vector<int> &encodedData = helper->getEncodedList();
 
     /* For something like attention we need heap allocation. */
-    std::unique_ptr<Attention> attention = std::make_unique<Attention>(
-        d_model,
-        vocab_size,
-        num_heads,
-        seq_len,
-        batch_size); // called once good.
+    // std::unique_ptr<Attention> attention = std::make_unique<Attention>(
+    //     d_model,
+    //     vocab_size,
+    //     num_heads,
+    //     seq_len,
+    //     batch_size); // called once good.
 
     std::unique_ptr<DataLoader> dataLoader = std::make_unique<DataLoader>(batch_size, encodedData, seq_len, drop_last);
 
     std::unique_ptr<std::vector<IO>> dataList = dataLoader->getBatch();
 
-    for (int i = 0; i < epoch; ++i)
-    {
-        for (auto &currentBatch : *dataList)
-        {
-            // so we have the x, and y here
-            // My understanding is batches are SEQUENTIAL
-            // but the procress within the batches are done in parallel.
-            attention->forward(currentBatch.x);
-        }
-    }
+    // for (int i = 0; i < epoch; ++i)
+    // {
+    //     for (auto &currentBatch : *dataList)
+    //     {
+    //         // so we have the x, and y here
+    //         // My understanding is batches are SEQUENTIAL
+    //         // but the procress within the batches are done in parallel.
+    //         attention->forward(currentBatch.x);
+    //     }
+    // }
 
-    // float X[32] = {
-    //     1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f,
-    //     9.0f, 10.0f, 11.0f, 12.0f, 13.0f, 14.0f, 15.0f, 16.0f,
-    //     17.0f, 18.0f, 19.0f, 20.0f, 21.0f, 22.0f, 23.0f, 24.0f,
-    //     25.0f, 26.0f, 27.0f, 28.0f, 29.0f, 30.0f, 31.0f, 32.0f};
-    // auto linear1 = std::make_unique<Linear>(
-    //     8,
-    //     8,
-    //     4,
-    //     1,
-    //     2 // n_heads
-    // );
+    float X[32] = {
+        1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f,
+        9.0f, 10.0f, 11.0f, 12.0f, 13.0f, 14.0f, 15.0f, 16.0f,
+        17.0f, 18.0f, 19.0f, 20.0f, 21.0f, 22.0f, 23.0f, 24.0f,
+        25.0f, 26.0f, 27.0f, 28.0f, 29.0f, 30.0f, 31.0f, 32.0f};
+    auto linear1 = std::make_unique<Linear>(
+        8,
+        8,
+        4,
+        1,
+        2 // n_heads
+    );
 
-    // linear1->forward(X);
-    // linear1->reshapeHead(); // Writes as (B, n_head, T, head_dim) so no tranpose needed
-    // linear1->teansposeKeyForAttnScore();
+    linear1->forward(X);
+    linear1->reshapeHead(); // Writes as (B, n_head, T, head_dim) so no tranpose needed
+    linear1->teansposeKeyForAttnScore();
 
     auto end = std::chrono::high_resolution_clock::now();
     cudaDeviceSynchronize(); // CPU is waiting for the GPU to finish
