@@ -545,17 +545,17 @@ public:
 
         cudaMemcpy(QKVOutHostOut, QKVOutDeviceOut, batch_size * num_heads * seq_len * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
 
-        if (debug)
-        {
-            std::cout << "Before matmul with QKV" << std::endl;
-            utils->print2DMatrixLastTwo(QK, batch_size, num_heads, seq_len, "");
+        // if (debug)
+        // {
+        //     std::cout << "Before matmul with QKV" << std::endl;
+        //     utils->print2DMatrixLastTwo(QK, batch_size, num_heads, seq_len, "");
 
-            std::cout << "After matmul with QKV" << std::endl;
-            utils->print2DMatrixLastTwo(QKVOutHostOut, batch_size, num_heads, seq_len, "");
+        //     std::cout << "After matmul with QKV" << std::endl;
+        //     utils->print2DMatrixLastTwo(QKVOutHostOut, batch_size, num_heads, seq_len, "");
 
-            std::cout << "Value data" << std::endl;
-            utils->printFlarArray4D(V,  batch_size, num_heads, seq_len, head_dim);
-        }
+        //     std::cout << "Value data" << std::endl;
+        //     utils->printFlarArray4D(V,  batch_size, num_heads, seq_len, head_dim);
+        // }
     }
 
     void forward(std::vector<std::vector<int>> input)
