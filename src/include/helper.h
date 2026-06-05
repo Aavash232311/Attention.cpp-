@@ -351,7 +351,7 @@ public:
         {
             for (int h = 0; h < n_head; h++)
             {
-                printf("%s [b=%d][h=%d]\n", label, b, h);
+                printf("%s [%d][%d]\n", label, b, h);
                 for (int row = 0; row < seq_len; row++)
                 {
                     printf("  [ ");
@@ -379,7 +379,7 @@ public:
             for (int s = 0; s < S; s++)
                 for (int h = 0; h < num_heads; h++)
                 {
-                    std::cout << "  [b=" << b << "][s=" << s << "][h=" << h << "] | ";
+                    std::cout << "  [" << b << "][" << s << "][" << h << "] | ";
                     for (int d = 0; d < head_dim; d++)
                     {
                         int idx = (b * S + s) * (num_heads * head_dim) + h * head_dim + d;

@@ -194,17 +194,25 @@ __global__ void multiHeadedAttentionKernel(
     int head_dimension,
     float *ws,
     float *out,
-    int M,
-    int N,
-    int K)
+    int M, // b
+    int N, // t
+    int K) // c
 {
+
     int token_idx = blockIdx.x; // which token (0 to M*N)
     int head_idx = blockIdx.y;  // which head
     int hd_idx = threadIdx.x;   // which elelemnt
 
-    // idx = (rows * width) + cols
-    int idx = token_idx * (num_head * head_dimension) + head_idx * (head_dimension) + hd_idx;
-    out[idx] = ws[idx];
+    int batch_idx = token_idx / N;
+    int seq_idx = token_idx % N;
+
+    int ws_idx = batch_idx * (N * K) // K = d_model
+                 + seq_idx * K + head_idx * head_dimension + hd_idx;
+
+    // (batch, head, seq, head_dim)
+    int out_idx = batch_idx * (num_head * N * head_dimension) + head_idx * (N * head_dimension) + seq_idx * head_dimension + hd_idx;
+
+    out[out_idx] = ws[ws_idx];
 }
 
 /*
@@ -430,8 +438,68 @@ __global__ void softmaxKrenel(
         out[idx] = expf(arr[idx] - max_val) / sum_val;
 }
 
+// sweet and simple here because I am stil learning
+// i want to get to the end result first then benchmark and
+// see if we can use tensor cores here.
+// QK should go through sqrt(d_model) at least here
+
+/*
+    idx = a * (B * C * D)
+    + b * (C * D)
+    + c * (D)
+    + d
+*/
+__global__ void QKVMatmulKernel(
+    float *QK,  // Shape(batch_size, n_head, T, T)
+    float *V,   // Shape(batch_size, n_head, T, d_head)
+    float *out, // (batch_size, n_head, T, d_head)
+    int seq_len,
+    int d_head,
+    int n_head,
+    int batch_size)
+{
+    int batch_idx = blockIdx.z;
+    int nhead_idx = blockIdx.y;
+    int seq_idx = blockIdx.x;
+    int dhead_idx = threadIdx.x;
+
+    // we need to land on T T
+    int QK_base = batch_idx * (n_head * seq_len * seq_len) + nhead_idx * (seq_len * seq_len);
+
+    int v_base = batch_idx * (n_head * seq_len * d_head) + nhead_idx * (seq_len * d_head);
+
+    float sum = 0.0f;
+
+    for (int rowb = 0; rowb < seq_len; ++rowb)
+    {
+        // that QK_base and v_base are just offset so that we skip
+        float valA = QK[QK_base + seq_idx * seq_len + rowb];
+        float valB = V[v_base + rowb * d_head + dhead_idx];
+        sum += valA * valB;
+    }
+
+    int out_idx = batch_idx * (n_head * seq_len * d_head) + nhead_idx * (seq_len * d_head) + seq_idx * d_head + dhead_idx;
+    out[out_idx] = sum;
+}
+
 extern "C"
 {
+    void QKVMatmulFinal(
+        float *QK,
+        float *V,
+        float *out,
+        int seq_len,
+        int d_head,
+        int n_head,
+        int batch_size)
+    {
+        dim3 grid(seq_len, n_head, batch_size); // x=seq_len, y=n_head, z=batch_size
+        dim3 block(d_head);
+        QKVMatmulKernel<<<grid, block>>>(QK, V, out, seq_len, d_head, n_head, batch_size);
+
+        cudaDeviceSynchronize();
+    }
+
     void softmax(float *arr, float *out, int N, int seq_len, int n_head, int batch_size)
     {
 

@@ -29,6 +29,7 @@ extern "C" void QKmatmul(float *Q, float *Kt, float *out, int M, int N, int batc
 extern "C" void ScalerDvisionElem(float *arr, int batch, int n_head, int seq_len, int head_dim);
 extern "C" void UpperTriangularMasking(float *arr, float val, int batch_size, int n_head, int seq_len);
 extern "C" void softmax(float *arr, float *out, int N, int seq_len, int n_head, int batch_size);
+extern "C" void QKVMatmulFinal(float *QK, float *V, float *out, int seq_len, int d_head, int n_head, int batch_size);
 class Embeddings
 {
 
@@ -147,6 +148,8 @@ public:
     }
 };
 
+ bool dLinear = true;
+
 class Linear
 {
     float *ws = nullptr; // weighted sum
@@ -174,6 +177,10 @@ class Linear
     float n_head;
     float head_dim;
 
+    bool debug = true;
+
+    float *deviceArrInTranspose;
+
 public:
     Linear(int feature_in, int feature_out, int seq_len, int batch_size, int n_head)
     {
@@ -199,12 +206,15 @@ public:
         cudaMemcpy(d_w, weight, f_in * f_out * sizeof(float), cudaMemcpyHostToDevice);
         cudaMemcpy(d_b, bias, f_out * sizeof(float), cudaMemcpyHostToDevice);
 
-        /// allocate the memory for multi headed attention Shape(B, T, num_heads, head_dim)
+        /// allocate the memory for multi headed attention Shape(B, T, num_heads, head_dim), JUST BTC when in
         cudaMalloc((void **)&device_hhead_in, seq_len * batch_size * f_out * sizeof(float)); // copy ws here
 
         this->mhead_out_host = (float *)malloc(seq_len * batch_size * n_head * head_dim * sizeof(float));
 
         cudaMalloc((void **)&mhead_out_device, seq_len * batch_size * n_head * head_dim * sizeof(float));
+
+        // In order to transpose that Q,K,V and swap we need to allocate the memory in GDDR VRAM
+        cudaMalloc((void **)&deviceArrInTranspose, batch_size * seq_len * n_head * head_dim * sizeof(float));
     }
 
     ~Linear()
@@ -219,6 +229,8 @@ public:
         cudaFree(d_w);
         cudaFree(d_b);
         cudaFree(d_out);
+
+        cudaFree(deviceArrInTranspose);
 
         cudaFree(mhead_out_device);
     }
@@ -290,19 +302,25 @@ public:
         return x;
     }
 
-    float *reshapeHead()
+    float *reshapeHead() // make it have more dim so that effective computation can happen in parallel.
     {
         // copy that weighted sum into device so we can split it down.
         cudaMemcpy(device_hhead_in, ws, seq_len * batch_size * f_out * sizeof(float), cudaMemcpyHostToDevice);
 
         multiHeadedAttention(n_head, head_dim, device_hhead_in, mhead_out_device, batch_size, f_out, seq_len);
 
-        cudaMemcpy(mhead_out_host, device_hhead_in, seq_len * batch_size * n_head * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(mhead_out_host, mhead_out_device, seq_len * batch_size * n_head * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
 
         // std::cout << "Weighted sum " << std::endl;
         // utils->printFlatArray3D(ws, batch_size, seq_len, f_out);
 
-        // utils->printFlarArray4D(mhead_out_host, batch_size, seq_len, n_head, head_dim);
+        // if (dLinear)
+        // {
+        //     utils->printFlarArray4D(mhead_out_host, batch_size, seq_len, n_head, head_dim);
+        // }
+
+        // dLinear = false;
+
         return mhead_out_host;
     }
 
@@ -315,8 +333,11 @@ public:
         // After: Shape(batch_size, n_head, seq_len, d_head)
         // std::cout << "Before transpose" << std::endl;
         // utils->printFlarArray4D(mhead_out_host, batch_size, seq_len, n_head, head_dim);
+
+        cudaMemcpy(deviceArrInTranspose, mhead_out_host, batch_size * seq_len * n_head * head_dim * sizeof(float), cudaMemcpyHostToDevice);
+
         SwapNS(n_head, head_dim,
-               mhead_out_host,
+               deviceArrInTranspose,
                mhead_out_device,
                batch_size,
                head_dim,
@@ -384,6 +405,11 @@ public:
     float *deviceSoftmaxOut;
     float *hostSoftmaxOut = nullptr;
 
+    // QKV part allocation, Softmax(QK/sqrt(d_model)) V
+    float *QKVOutHostOut = nullptr;
+    float *QKVOutDeviceOut;
+    float *deviceValue;
+
     Attention(int &d_model, int &vocab_size, int &num_heads, int &seq_len, int &batch_size) : d_model(d_model), vocab_size(vocab_size), num_heads(num_heads), seq_len(seq_len), batch_size(batch_size)
     {
         this->embeddings = std::make_unique<Embeddings>(
@@ -421,6 +447,11 @@ public:
         this->hostSoftmaxOut = (float *)malloc(batch_size * num_heads * seq_len * seq_len * sizeof(float));
         // I do not deserve an internship so what, people who are doing this wont understand this so I am writing c++ to scare people off.
         cudaMalloc((void **)&deviceSoftmaxOut, batch_size * num_heads * seq_len * seq_len * sizeof(float));
+
+        this->QKVOutHostOut = (float *)malloc(batch_size * num_heads * seq_len * head_dim * sizeof(float)); // (batch_size, n_head, T, d_head)
+        cudaMalloc((void **)&QKVOutDeviceOut, batch_size * num_heads * seq_len * head_dim * sizeof(float));
+
+        cudaMalloc((void **)&deviceValue, batch_size * num_heads * seq_len * head_dim * sizeof(float));
     };
 
     ~Attention()
@@ -435,7 +466,11 @@ public:
 
         (hostSoftmaxOut != nullptr ? free(hostSoftmaxOut) : void());
 
+        (QKVOutHostOut != nullptr ? free(QKVOutHostOut) : void());
+
         cudaFree(deviceSoftmaxOut);
+        cudaFree(deviceValue);
+        cudaFree(QKVOutDeviceOut); // we could free in the individual method but if we never call them then its never free.
     }
 
 public:
@@ -499,8 +534,28 @@ public:
         // }
     }
 
-    void softmaxActivation()
+    void QKVMatmul(float *QK, float *V)
     {
+        // this is the pattern of learning we could have organized this in the wrapper but its fine here. if we did that then more number of paramaters in the wrapper.
+        // deviceQKTSqrtD this as a BUFFER was well, forgive me I am just learning I will tewak and fix this weird naming.
+        cudaMemcpy(deviceQKTSqrtD, QK, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyHostToDevice); // QK to GDDR RAM
+        cudaMemcpy(deviceValue, V, batch_size * num_heads * seq_len * head_dim * sizeof(float), cudaMemcpyHostToDevice);
+
+        QKVMatmulFinal(deviceQKTSqrtD, deviceValue, QKVOutDeviceOut, seq_len, head_dim, num_heads, batch_size);
+
+        cudaMemcpy(QKVOutHostOut, QKVOutDeviceOut, batch_size * num_heads * seq_len * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
+
+        if (debug)
+        {
+            std::cout << "Before matmul with QKV" << std::endl;
+            utils->print2DMatrixLastTwo(QK, batch_size, num_heads, seq_len, "");
+
+            std::cout << "After matmul with QKV" << std::endl;
+            utils->print2DMatrixLastTwo(QKVOutHostOut, batch_size, num_heads, seq_len, "");
+
+            std::cout << "Value data" << std::endl;
+            utils->printFlarArray4D(V,  batch_size, num_heads, seq_len, head_dim);
+        }
     }
 
     void forward(std::vector<std::vector<int>> input)
@@ -519,7 +574,7 @@ public:
 
         Q = query->reshapeHead(); // Shape(batch_size, seq_len, n_head, head_dim)
         K = key->reshapeHead();
-        V = value->reshapeHead();
+        V = value->reshapeHead(); // after swap  Shape(batch_size, n_head, T, d_head)
 
         float *s = key->teansposeKeyForAttnScore(); // Q K^T matmul
         cudaMemcpy(DeviceKt, s, seq_len * batch_size * num_heads * head_dim * sizeof(float), cudaMemcpyHostToDevice);
@@ -561,6 +616,14 @@ public:
         //     std::cout << "After softmax " << std::endl;
         //     utils->print2DMatrixLastTwo(hostSoftmaxOut, batch_size, num_heads, seq_len, "");
         // }
+
+        // value Shape(batch_size, n_head, seq_len, d_head)
+        // deviceQKTSqrtD Shape(batch_size, n_head, T, T)
+
+        // Q K determines what to attend, and V determines where to attend.
+        // we will write a basic matmul kernel nothing fancy later we can benchmarket and use tensor cores.
+
+        QKVMatmul(hostSoftmaxOut, V);
 
         debug = false;
         free(x);
