@@ -290,14 +290,18 @@ public:
 
         cudaMemcpy(ws, d_out, seq_len * batch_size * f_out * sizeof(float), cudaMemcpyDeviceToHost);
 
-        // std::cout << "Weight" << std::endl;
-        // utils->printFlatArray2D(weight, f_in, f_out);
+        // if (dLinear)
+        // {
+        //     std::cout << "Weight" << std::endl;
+        //     utils->printFlatArray2D(weight, f_in, f_out);
 
-        // std::cout << "Bias" << std::endl;
-        // utils->printFlatArray2D(bias, f_out, 1);
+        //     std::cout << "Bias" << std::endl;
+        //     utils->printFlatArray3D(bias, 1, 1, f_out); 
 
-        // std::cout << "Weighted sum" << std::endl;
-        // utils->printFlatArray3D(ws, seq_len, batch_size, f_out);
+        //     utils->printFlatArray3D(ws, batch_size, seq_len, f_out, true);
+        // }
+
+        dLinear = false;
 
         return x;
     }
@@ -312,17 +316,15 @@ public:
         cudaMemcpy(mhead_out_host, mhead_out_device, seq_len * batch_size * n_head * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
 
         // Weighted sum looks healthy here.
-        // if (dLinear)
-        // {
+        if (dLinear)
+        {
+            // utils->printFlatArray3D(ws, seq_len, batch_size, f_out, true);
+            // utils->printFlatArray3D(ws, batch_size, seq_len, f_out, true);
 
-        //     std::cout << "Weighted sum" << sizeof(device_hhead_in) << sizeof(ws) << std::endl;
-        //     // utils->printFlatArray3D(ws, seq_len, batch_size, f_out, true);
-        //     utils->printFlatArray3D(ws, batch_size, seq_len, f_out, true);
-
-        //     std::cout << "Aafter reshape for multi headed attention" << std::endl;
-        //     utils->print2DMatrixLastTwo(mhead_out_host, batch_size, n_head, seq_len);
-        // }
-        // dLinear = false;
+            // std::cout << "Aafter reshape for multi headed attention" << std::endl;
+            // utils->print2DMatrixLastTwo(mhead_out_host, batch_size, n_head, seq_len);
+        }
+        dLinear = false;
         this->mhead_out_host = mhead_out_host;
         return mhead_out_host;
     }
@@ -377,7 +379,6 @@ public:
 
         // std::cout << "After transpose" << std::endl;
         // utils->print2DMatrixLastTwo(mhead_out_host, batch_size, n_head, seq_len, "After transpose Key");
-
 
         return mhead_out_host;
     }
@@ -558,9 +559,6 @@ public:
 
         //     std::cout << "After matmul with QKV" << std::endl;
         //     utils->print2DMatrixLastTwo(QKVOutHostOut, batch_size, num_heads, seq_len, "");
-
-        //     std::cout << "Value data" << std::endl;
-        //     utils->printFlarArray4D(V,  batch_size, num_heads, seq_len, head_dim);
         // }
     }
 
@@ -589,6 +587,18 @@ public:
         QKmatmul(DeviceQ, DeviceKt, DeviceQKT, seq_len, head_dim, batch_size, num_heads); // S(1, 1, T, T)
 
         cudaMemcpy(hostQKT, DeviceQKT, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
+
+        // if (debug)
+        // {
+        //     std::cout << "Query" << std::endl;
+        //     utils->print2DMatrixLastTwo(Q, batch_size, num_heads, seq_len);
+
+        //     std::cout << "After transpose" << std::endl;
+        //     utils->print2DMatrixLastTwo(s, batch_size, num_heads, seq_len, "");
+
+        //     std::cout << "Matrix multiplication of QK^T" << std::endl;
+        //     utils->print2DMatrixLastTwo(hostQKT, batch_size, num_heads, seq_len, "");
+        // }
 
         scalerDvisionAcrossMat(hostQKT, d_model); // sqrt(d_model)
 
@@ -668,44 +678,44 @@ int main()
     const std::vector<int> &encodedData = helper->getEncodedList();
 
     /* For something like attention we need heap allocation. */
-    // std::unique_ptr<Attention> attention = std::make_unique<Attention>(
-    //     d_model,
-    //     vocab_size,
-    //     num_heads,
-    //     seq_len,
-    //     batch_size); // called once good.
+    std::unique_ptr<Attention> attention = std::make_unique<Attention>(
+        d_model,
+        vocab_size,
+        num_heads,
+        seq_len,
+        batch_size); // called once good.
 
     std::unique_ptr<DataLoader> dataLoader = std::make_unique<DataLoader>(batch_size, encodedData, seq_len, drop_last);
 
     std::unique_ptr<std::vector<IO>> dataList = dataLoader->getBatch();
 
-    // for (int i = 0; i < epoch; ++i)
-    // {
-    //     for (auto &currentBatch : *dataList)
-    //     {
-    //         // so we have the x, and y here
-    //         // My understanding is batches are SEQUENTIAL
-    //         // but the procress within the batches are done in parallel.
-    //         attention->forward(currentBatch.x);
-    //     }
-    // }
+    for (int i = 0; i < epoch; ++i)
+    {
+        for (auto &currentBatch : *dataList)
+        {
+            // so we have the x, and y here
+            // My understanding is batches are SEQUENTIAL
+            // but the procress within the batches are done in parallel.
+            attention->forward(currentBatch.x);
+        }
+    }
 
-    float X[32] = {
-        1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f,
-        9.0f, 10.0f, 11.0f, 12.0f, 13.0f, 14.0f, 15.0f, 16.0f,
-        17.0f, 18.0f, 19.0f, 20.0f, 21.0f, 22.0f, 23.0f, 24.0f,
-        25.0f, 26.0f, 27.0f, 28.0f, 29.0f, 30.0f, 31.0f, 32.0f};
-    auto linear1 = std::make_unique<Linear>(
-        8,
-        8,
-        4,
-        1,
-        2 // n_heads
-    );
+    // float X[32] = {
+    //     1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f,
+    //     9.0f, 10.0f, 11.0f, 12.0f, 13.0f, 14.0f, 15.0f, 16.0f,
+    //     17.0f, 18.0f, 19.0f, 20.0f, 21.0f, 22.0f, 23.0f, 24.0f,
+    //     25.0f, 26.0f, 27.0f, 28.0f, 29.0f, 30.0f, 31.0f, 32.0f};
+    // auto linear1 = std::make_unique<Linear>(
+    //     8,
+    //     8,
+    //     4,
+    //     1,
+    //     2 // n_heads
+    // );
 
-    linear1->forward(X);
-    linear1->reshapeHead(); // Writes as (B, n_head, T, head_dim) so no tranpose needed
-    linear1->teansposeKeyForAttnScore();
+    // linear1->forward(X);
+    // linear1->reshapeHead(); // Writes as (B, n_head, T, head_dim) so no tranpose needed
+    // linear1->teansposeKeyForAttnScore();
 
     auto end = std::chrono::high_resolution_clock::now();
     cudaDeviceSynchronize(); // CPU is waiting for the GPU to finish

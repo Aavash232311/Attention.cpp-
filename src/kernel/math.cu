@@ -156,7 +156,7 @@ __global__ void WeightedSumKernel(
         sum += valA * valB;
     }
 
-    c[(rows * N) + cols] = sum + b[rows];
+    c[(rows * N) + cols] = sum + b[cols];
 }
 
 /*
@@ -624,7 +624,7 @@ extern "C"
     void WeightedSum(
         float *x, // Shape(M, K)
         float *w, // Shape(K, N)
-        float *b, // Shape(M, N)
+        float *b, // Shape(N, )
         float *c, // Shape(M×N)
         int M,
         int K,
