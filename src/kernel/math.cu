@@ -188,31 +188,34 @@ multi_headed = [
 ]
 
 */
-
+// sig: ws, out, batch_size, seq_len, d_model, num_head, d_model
 __global__ void multiHeadedAttentionKernel(
+    float *ws,  // (B, T, C)
+    float *out, //  B, n_head, seq_len, head_dim
+    int batch_size,
+    int seq_len,
+    int d_model,
     int num_head,
-    int head_dimension,
-    float *ws,
-    float *out,
-    int M, // b
-    int N, // t
-    int K) // c
+    int head_dim)
 {
-
     int token_idx = blockIdx.x; // which token (0 to M*N)
     int head_idx = blockIdx.y;  // which head
     int hd_idx = threadIdx.x;   // which elelemnt
 
-    int batch_idx = token_idx / N;
-    int seq_idx = token_idx % N;
+    int batch_idx = token_idx / seq_len;
+    int seq_idx = token_idx % seq_len;
 
-    int ws_idx = batch_idx * (N * K) // K = d_model
-                 + seq_idx * K + head_idx * head_dimension + hd_idx;
+    int idx =  batch_idx*(seq_len*d_model)
+        + seq_idx*(d_model)
+        + head_idx*(head_dim)
+        + hd_idx;
+    // write this out to out, where it would be reshaped into multi headed attention 
+    int outIdx = batch_idx * (num_head * seq_len * head_dim)
+            + head_idx  * (seq_len * head_dim)
+            + seq_idx   * (head_dim)
+            + hd_idx;
 
-    // (batch, head, seq, head_dim)
-    int out_idx = batch_idx * (num_head * N * head_dimension) + head_idx * (N * head_dimension) + seq_idx * head_dimension + hd_idx;
-
-    out[out_idx] = ws[ws_idx];
+    out[outIdx] = ws[idx];
 }
 
 /*
@@ -576,6 +579,13 @@ extern "C"
 
         cudaDeviceSynchronize();
     }
+
+    // What we expect from this method do do is
+    // swap dimension like
+    /*
+      Before:- Shape(batch_size, T, n_head, d_head)
+      After:- Shape(batch_size, n_head, T, d_head)
+    */
     void SwapNS(
         int num_heads,
         int head_dim,
@@ -597,18 +607,20 @@ extern "C"
     void multiHeadedAttention(
         int num_head,
         int head_dimension,
-        float *ws,
-        float *out, //  B, T, C, n_head, head_dim
-        int M,      // batch_size
-        int K,      // d_model
-        int N)      // seq_len, say we have n_head=8, head_dim=64, d_model=512
+        float *ws,      // B, T, C
+        float *out,     //  B, T, n_head, head_dim
+        int batch_size, // batch_size
+        int d_model,    // d_model
+        int seq_len)    // seq_len, say we have n_head=8, head_dim=64, d_model=512
     {
         dim3 block(head_dimension);
-        dim3 grid(M * N, num_head); // MXN will ignore btach_size, seq_len
+        dim3 grid(batch_size * seq_len, num_head); // MXN will ignore btach_size, seq_len
 
-        multiHeadedAttentionKernel<<<grid, block>>>(num_head, head_dimension, ws, out, M, K, N);
+        multiHeadedAttentionKernel<<<grid, block>>>(ws, out, batch_size, seq_len, d_model, num_head, head_dimension);
 
         cudaDeviceSynchronize();
+
+
     }
 
     void WeightedSum(

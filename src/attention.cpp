@@ -22,7 +22,7 @@ extern "C" void lookup(int *x, float *embeddings, float *C, int d_model, int seq
 extern "C" void addEmbeddings(float *lookedUpEmbeddings, float *sinosudialEncoding, float *C, int d_model, int seq_len, int batch_size);
 extern "C" void KaimingInit(float *arr, curandState *state, int x, int y, unsigned long seed);
 extern "C" void WeightedSum(float *x, float *w, float *b, float *c, int M, int K, int N);
-extern "C" void multiHeadedAttention(int num_head, int head_dimension, float *ws, float *out, int M, int N, int K);
+extern "C" void multiHeadedAttention(int num_head, int head_dimension, float *ws, float *out, int batch_size, int d_model, int seq_len);
 extern "C" void SwapNS(int num_head, int head_dimension, float *ws, float *out, int M, int K, int N, bool reverse);
 extern "C" void TransposeKey(int num_heads, int head_dim, float *arr, float *out, int M, int N, int K, bool reverse);
 extern "C" void QKmatmul(float *Q, float *Kt, float *out, int M, int N, int batch_size, int num_heads);
@@ -148,7 +148,7 @@ public:
     }
 };
 
- bool dLinear = true;
+bool dLinear = true;
 
 class Linear
 {
@@ -311,14 +311,17 @@ public:
 
         cudaMemcpy(mhead_out_host, mhead_out_device, seq_len * batch_size * n_head * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
 
-        // std::cout << "Weighted sum " << std::endl;
-        // utils->printFlatArray3D(ws, batch_size, seq_len, f_out);
-
+        // Weighted sum looks healthy here.
         // if (dLinear)
         // {
-        //     utils->printFlarArray4D(mhead_out_host, batch_size, seq_len, n_head, head_dim);
-        // }
 
+        //     std::cout << "Weighted sum" << sizeof(device_hhead_in) << sizeof(ws) << std::endl;
+        //     // utils->printFlatArray3D(ws, seq_len, batch_size, f_out, true);
+        //     utils->printFlatArray3D(ws, batch_size, seq_len, f_out, true);
+
+        //     std::cout << "Aafter reshape for multi headed attention" << std::endl;
+        //     utils->print2DMatrixLastTwo(mhead_out_host, batch_size, n_head, seq_len);
+        // }
         // dLinear = false;
 
         return mhead_out_host;
@@ -327,27 +330,28 @@ public:
     // without tranpose it would attend to seq_len which is just tokenized
     // if we swap it with n_head then it would attend to that which has values
     // inillized from he init that as inside of the embeddings.
-    void swapHead()
+    void swapHead(bool reverse)
     {
         // Before: Shape(batch_size, seq_len, n_head, d_head)
         // After: Shape(batch_size, n_head, seq_len, d_head)
         // std::cout << "Before transpose" << std::endl;
-        // utils->printFlarArray4D(mhead_out_host, batch_size, seq_len, n_head, head_dim);
+        // utils->print2DMatrixLastTwo(mhead_out_host, seq_len, n_head, head_dim);
 
         cudaMemcpy(deviceArrInTranspose, mhead_out_host, batch_size * seq_len * n_head * head_dim * sizeof(float), cudaMemcpyHostToDevice);
 
-        SwapNS(n_head, head_dim,
+        SwapNS(n_head,
+               head_dim,
                deviceArrInTranspose,
                mhead_out_device,
                batch_size,
                head_dim,
                seq_len,
-               false);
+               reverse);
 
         cudaMemcpy(mhead_out_host, mhead_out_device, seq_len * batch_size * n_head * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
 
         // std::cout << "After transpose" << std::endl;
-        // utils->printFlarArray4D(mhead_out_host, batch_size, n_head, seq_len, head_dim);
+        // utils->print2DMatrixLastTwo(mhead_out_host, n_head, seq_len, head_dim);
 
         // very hard to think if in higher dimension, mathematicans cannot imagine higher dimension
         // Now our final resule shape would be Shape(batch_size, n_head, seq_len, d_head)
@@ -572,7 +576,7 @@ public:
         float *K = key->forward(x);
         float *V = value->forward(x);
 
-        Q = query->reshapeHead(); // Shape(batch_size, seq_len, n_head, head_dim)
+        Q = query->reshapeHead(); // Shape(batch_size, T, n_head, head_dim)
         K = key->reshapeHead();
         V = value->reshapeHead(); // after swap  Shape(batch_size, n_head, T, d_head)
 
@@ -623,7 +627,10 @@ public:
         // Q K determines what to attend, and V determines where to attend.
         // we will write a basic matmul kernel nothing fancy later we can benchmarket and use tensor cores.
 
-        QKVMatmul(hostSoftmaxOut, V);
+        QKVMatmul(hostSoftmaxOut, V); //  (batch_size, n_head, T, d_head)
+
+        // Now we would want to bring back the shape to after the attention score.
+        // Shape(batch, T, n_head, d_head) ..so we wap firt and second
 
         debug = false;
         free(x);
@@ -659,45 +666,45 @@ int main()
     const std::vector<int> &encodedData = helper->getEncodedList();
 
     /* For something like attention we need heap allocation. */
-    std::unique_ptr<Attention> attention = std::make_unique<Attention>(
-        d_model,
-        vocab_size,
-        num_heads,
-        seq_len,
-        batch_size); // called once good.
+    // std::unique_ptr<Attention> attention = std::make_unique<Attention>(
+    //     d_model,
+    //     vocab_size,
+    //     num_heads,
+    //     seq_len,
+    //     batch_size); // called once good.
 
     std::unique_ptr<DataLoader> dataLoader = std::make_unique<DataLoader>(batch_size, encodedData, seq_len, drop_last);
 
     std::unique_ptr<std::vector<IO>> dataList = dataLoader->getBatch();
 
-    for (int i = 0; i < epoch; ++i)
-    {
-        for (auto &currentBatch : *dataList)
-        {
-            // so we have the x, and y here
-            // My understanding is batches are SEQUENTIAL
-            // but the procress within the batches are done in parallel.
-            attention->forward(currentBatch.x);
-        }
-    }
+    // for (int i = 0; i < epoch; ++i)
+    // {
+    //     for (auto &currentBatch : *dataList)
+    //     {
+    //         // so we have the x, and y here
+    //         // My understanding is batches are SEQUENTIAL
+    //         // but the procress within the batches are done in parallel.
+    //         attention->forward(currentBatch.x);
+    //     }
+    // }
 
-    // float X[32] = {
-    //     1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f,
-    //     9.0f, 10.0f, 11.0f, 12.0f, 13.0f, 14.0f, 15.0f, 16.0f,
-    //     17.0f, 18.0f, 19.0f, 20.0f, 21.0f, 22.0f, 23.0f, 24.0f,
-    //     25.0f, 26.0f, 27.0f, 28.0f, 29.0f, 30.0f, 31.0f, 32.0f};
-    // auto linear1 = std::make_unique<Linear>(
-    //     8,
-    //     8,
-    //     4,
-    //     1,
-    //     2 // n_heads
-    // );
+    float X[32] = {
+        1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f,
+        9.0f, 10.0f, 11.0f, 12.0f, 13.0f, 14.0f, 15.0f, 16.0f,
+        17.0f, 18.0f, 19.0f, 20.0f, 21.0f, 22.0f, 23.0f, 24.0f,
+        25.0f, 26.0f, 27.0f, 28.0f, 29.0f, 30.0f, 31.0f, 32.0f};
+    auto linear1 = std::make_unique<Linear>(
+        8,
+        8,
+        4,
+        1,
+        2 // n_heads
+    );
 
-    // linear1->forward(X);
-    // linear1->reshapeHead();
-    // linear1->swapHead();
-    // linear1->teansposeKeyForAttnScore();
+    linear1->forward(X);
+    linear1->reshapeHead();
+    linear1->swapHead(false);
+    linear1->teansposeKeyForAttnScore();
 
     auto end = std::chrono::high_resolution_clock::now();
     cudaDeviceSynchronize(); // CPU is waiting for the GPU to finish

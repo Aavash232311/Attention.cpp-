@@ -242,9 +242,9 @@ public:
     }
 
     template <typename T>
-    void printFlatArray3D(const T *arr, int seq_len, int batch_size, int embed_dim)
+    void printFlatArray3D(const T *arr, int seq_len, int batch_size, int embed_dim, bool show_last_dim = false)
     {
-        const int M = 3;
+        const int M = 16;
 
         printf("tensor([\n");
         for (int r = 0; r < seq_len; r++)
@@ -277,8 +277,39 @@ public:
             printf("  ],\n");
         }
         printf("], shape=[%d, %d, %d])\n", seq_len, batch_size, embed_dim);
-    }
 
+        if (show_last_dim)
+        {
+            printf("\nlast_dim (embed_dim=%d):\n", embed_dim);
+            for (int r = 0; r < seq_len; r++)
+            {
+                if (r == M && seq_len > M * 2)
+                {
+                    printf("  ...\n");
+                    r = seq_len - M;
+                }
+                for (int c = 0; c < batch_size; c++)
+                {
+                    if (c == M && batch_size > M * 2)
+                    {
+                        printf("  ...\n");
+                        c = batch_size - M;
+                    }
+                    printf("  [%d][%d] -> [", r, c);
+                    for (int e = 0; e < embed_dim; e++)
+                    {
+                        if (e == M && embed_dim > M * 2)
+                        {
+                            printf("..., ");
+                            e = embed_dim - M;
+                        }
+                        printf("%g%s", (double)arr[r * batch_size * embed_dim + c * embed_dim + e], e < embed_dim - 1 ? ", " : "");
+                    }
+                    printf("]\n");
+                }
+            }
+        }
+    }
     // For now lets make this method convert the flat array which is computed by the GPU to 2D array of vectors
     template <typename T>
     std::vector<std::vector<T>> flatArrToVec(const float *arr, int rows, int cols)
