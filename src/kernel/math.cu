@@ -205,15 +205,9 @@ __global__ void multiHeadedAttentionKernel(
     int batch_idx = token_idx / seq_len;
     int seq_idx = token_idx % seq_len;
 
-    int idx =  batch_idx*(seq_len*d_model)
-        + seq_idx*(d_model)
-        + head_idx*(head_dim)
-        + hd_idx;
-    // write this out to out, where it would be reshaped into multi headed attention 
-    int outIdx = batch_idx * (num_head * seq_len * head_dim)
-            + head_idx  * (seq_len * head_dim)
-            + seq_idx   * (head_dim)
-            + hd_idx;
+    int idx = batch_idx * (seq_len * d_model) + seq_idx * (d_model) + head_idx * (head_dim) + hd_idx;
+    // write this out to out, where it would be reshaped into multi headed attention
+    int outIdx = batch_idx * (num_head * seq_len * head_dim) + head_idx * (seq_len * head_dim) + seq_idx * (head_dim) + hd_idx;
 
     out[outIdx] = ws[idx];
 }
@@ -242,33 +236,40 @@ multi_headed = [
 ]
 */
 // we can say that these kernel function are not flexible because it is hardcoded for each case, I know the fact but our goal is to understand this as much as possible.
+// sig (num_heads, head_dim, arr, out, batch_size, seq_len, reverse);
 __global__ void TransposeKernel(
-    int num_heads,
+    int num_head,
     int head_dim,
-    float *arr, // Shape(batch_size, seq_len, n_head, d_head)
-    float *out, // Shape(batch_size, n_head, seq_len, d_model)
-    int M,      // batch_size
-    int N,      // d_model
-    int K,
-    bool reverse = true) // seq_len
+    float *arr,     // Shape(batch_size, T, n_head, d_head)
+    float *out,     // Shape(batch_size, n_head, T, d_head)
+    int batch_size, // batch_size
+    int seq_len,
+    bool reverse = true)
 {
-    int rows = blockIdx.x; // we are launching in such a way that block(seq_len, n_head)
-    int cols = blockIdx.y;
+    int token_idx = blockIdx.x; // which token (0 to M*N)
+    int head_idx = blockIdx.y;  // which head
+    int hd_idx = threadIdx.x;   // which elelemnt
 
-    int hd_idx = threadIdx.x; // current element idx
+    int batch_idx = token_idx / seq_len;
+    int seq_idx = token_idx % seq_len;
 
-    int batch_idx = rows / K; // K = seq_len
-    int seq_idx = rows % K;   // K = seq_len
-    // and each thread inside of this has d_head shpae for example 64
-    // our grid is (batch_size x seq_len, n_head, head_dim)
-    int idx_curr = rows * (num_heads * head_dim) + cols * head_dim + hd_idx;
+    int idx = batch_idx * (seq_len * num_head * head_dim)
+            + seq_idx   * (num_head * head_dim)
+            + head_idx  * (head_dim)
+            + hd_idx;
 
-    // Shape(batch_size, n_head, seq_len, d_head)
-    int out_idx = batch_idx * (num_heads * K * head_dim) + cols * (K * head_dim) + seq_idx * head_dim + hd_idx;
-    if (reverse)
-        out[idx_curr] = arr[out_idx];
-    else
-        out[out_idx] = arr[idx_curr];
+
+    int outIdx = batch_idx * (num_head * seq_len * head_dim)
+            + head_idx  * (seq_len * head_dim)
+            + seq_idx   * (head_dim)
+            + hd_idx;
+    
+    if (!(reverse))
+    {
+        out[outIdx] = arr[idx];
+    }else{
+        out[idx] = arr[outIdx];
+    }
 }
 
 __global__ void TransposeKeyKernel(
@@ -589,17 +590,16 @@ extern "C"
     void SwapNS(
         int num_heads,
         int head_dim,
-        float *arr, //  Shape(batch_size, seq_len, n_head, d_head)
-        float *out, // Shape(batch_size, n_head, seq_len, d_head)
-        int M,      // batch_size
-        int N,      // d_head
-        int K,      // seq_len
+        float *arr,     //  B, T, n_head, head_dim
+        float *out,     // B, n_head, T, head_dim
+        int batch_size, // batch_size
+        int seq_len,    // seq_len
         bool reverse)
     {
         dim3 block(head_dim);
-        dim3 grid(M * K, num_heads);
+        dim3 grid(batch_size * seq_len, num_heads);
 
-        TransposeKernel<<<grid, block>>>(num_heads, head_dim, arr, out, M, N, K, reverse);
+        TransposeKernel<<<grid, block>>>(num_heads, head_dim, arr, out, batch_size, seq_len, reverse);
 
         cudaDeviceSynchronize();
     }
@@ -619,8 +619,6 @@ extern "C"
         multiHeadedAttentionKernel<<<grid, block>>>(ws, out, batch_size, seq_len, d_model, num_head, head_dimension);
 
         cudaDeviceSynchronize();
-
-
     }
 
     void WeightedSum(
