@@ -296,7 +296,7 @@ public:
         //     utils->printFlatArray2D(weight, f_in, f_out);
 
         //     std::cout << "Bias" << std::endl;
-        //     utils->printFlatArray3D(bias, 1, 1, f_out); 
+        //     utils->printFlatArray3D(bias, 1, 1, f_out);
 
         //     utils->printFlatArray3D(ws, batch_size, seq_len, f_out, true);
         // }
@@ -590,11 +590,11 @@ public:
 
         // if (debug)
         // {
-        //     std::cout << "Query" << std::endl;
-        //     utils->print2DMatrixLastTwo(Q, batch_size, num_heads, seq_len);
+        //     // std::cout << "Query" << std::endl;
+        //     // utils->print2DMatrixLastTwo(Q, batch_size, num_heads, seq_len);
 
-        //     std::cout << "After transpose" << std::endl;
-        //     utils->print2DMatrixLastTwo(s, batch_size, num_heads, seq_len, "");
+        //     // std::cout << "After transpose" << std::endl;
+        //     // utils->print2DMatrixLastTwo(s, batch_size, num_heads, seq_len, "");
 
         //     std::cout << "Matrix multiplication of QK^T" << std::endl;
         //     utils->print2DMatrixLastTwo(hostQKT, batch_size, num_heads, seq_len, "");
@@ -604,8 +604,7 @@ public:
 
         // if (debug == true)
         // {
-        //     std::cout << "QKT unmasked" << std::endl;
-        //       utils->print2DMatrixLastTwo(hostQKT, batch_size, num_heads, seq_len, "After sqrt(d_model)");
+        //     utils->print2DMatrixLastTwo(hostQKT, batch_size, num_heads, seq_len, "After sqrt(d_model)");
         // }
 
         // -1e9f
