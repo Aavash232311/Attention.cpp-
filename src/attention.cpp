@@ -608,7 +608,7 @@ public:
         // }
 
         // -1e9f
-        masking(hostQKT, -1e9f);
+        masking(hostQKT, -INFINITY);
 
         // if (debug == true)
         // {
