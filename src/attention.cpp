@@ -554,11 +554,41 @@ public:
 
         // if (debug)
         // {
-        //     std::cout << "Before matmul with QKV" << std::endl;
-        //     utils->print2DMatrixLastTwo(QK, batch_size, num_heads, seq_len, "");
 
         //     std::cout << "After matmul with QKV" << std::endl;
         //     utils->print2DMatrixLastTwo(QKVOutHostOut, batch_size, num_heads, seq_len, "");
+        // }
+    }
+
+    // This method swaps the first and second dimension
+    // I know hardcoded but fine for now
+    void SwapNT(float *arr)
+    {
+        /*
+            Before: [batch_size, n_head, T, d_head]
+            After: [batch_size, T, n_head, d_head]
+        */
+
+        // if (debug)
+        // {
+
+        //     std::cout << "Before [batch_size, n_head, T, d_head]" << std::endl;
+        //     utils->print2DMatrixLastTwoRect(arr, batch_size, num_heads, seq_len, head_dim, "Before");
+        // }
+
+        // deviceQKTSqrtD is the buffer with the size:- batch_size * num_heads * seq_len * head_dim;
+        // QKVOutDeviceOut will be out with the same shape because we are just swapping the dimension memory allocation is the same.
+        cudaMemcpy(deviceQKTSqrtD, arr, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyHostToDevice);
+
+        SwapNS(num_heads, head_dim, deviceQKTSqrtD, QKVOutDeviceOut, batch_size, seq_len, true); // I dont expect anyone to be seriously looking at this or reading so I really do not care about the comments right now.
+                                                                                                 // And when I get the working result I am stacking this in one file to make it look scary.
+        cudaMemcpy(QKVOutHostOut, QKVOutDeviceOut, batch_size * num_heads * seq_len * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
+
+        // if (debug)
+        // {
+
+        //     std::cout << "After [batch_size, T, n_head, d_head] " << std::endl;
+        //     utils->print2DMatrixLastTwoRect(QKVOutHostOut, batch_size, num_heads, seq_len, head_dim, "After");
         // }
     }
 
@@ -642,6 +672,7 @@ public:
 
         // Now we would want to bring back the shape to after the attention score.
         // Shape(batch, T, n_head, d_head) ..so we wap firt and second
+        SwapNT(hostSoftmaxOut);
 
         debug = false;
         free(x);

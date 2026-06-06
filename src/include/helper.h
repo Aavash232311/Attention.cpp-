@@ -398,6 +398,35 @@ public:
         }
     }
 
+    // This the more flexible. used for checking dimension in tensor that are swapped.
+    void print2DMatrixLastTwoRect(
+        float *arr,
+        int batch_size,
+        int n_head,
+        int seq_len,
+        int head_dim,
+        const char *label = "Matrix")
+    {
+        for (int b = 0; b < batch_size; b++)
+        {
+            for (int h = 0; h < n_head; h++)
+            {
+                printf("%s [%d][%d]\n", label, b, h);
+                for (int row = 0; row < seq_len; row++)
+                {
+                    printf("  [ ");
+                    for (int col = 0; col < head_dim; col++)
+                    {
+                        int idx = b * (n_head * seq_len * head_dim) + h * (seq_len * head_dim) + row * (head_dim) + col;
+                        printf("%10.4f  ", arr[idx]);
+                    }
+                    printf("]\n");
+                }
+                printf("\n");
+            }
+        }
+    }
+
     // this is for debugging multi headed attention
     // errors in the GPU are quiet, like me
     template <typename T>
