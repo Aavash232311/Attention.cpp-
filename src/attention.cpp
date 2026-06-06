@@ -30,6 +30,7 @@ extern "C" void ScalerDvisionElem(float *arr, int batch, int n_head, int seq_len
 extern "C" void UpperTriangularMasking(float *arr, float val, int batch_size, int n_head, int seq_len);
 extern "C" void softmax(float *arr, float *out, int N, int seq_len, int n_head, int batch_size);
 extern "C" void QKVMatmulFinal(float *QK, float *V, float *out, int seq_len, int d_head, int n_head, int batch_size);
+extern "C" void ReformShapeWapper(float *arr, float *out, int batch_size, int seq_len, int d_model, int num_head, int head_dim);
 class Embeddings
 {
 
@@ -417,6 +418,10 @@ public:
     float *QKVOutDeviceOut;
     float *deviceValue;
 
+    // Allocation for re-connecting the heads.
+    float *BTCHost = nullptr;
+    float *BTCdevice;
+
     Attention(int &d_model, int &vocab_size, int &num_heads, int &seq_len, int &batch_size) : d_model(d_model), vocab_size(vocab_size), num_heads(num_heads), seq_len(seq_len), batch_size(batch_size)
     {
         this->embeddings = std::make_unique<Embeddings>(
@@ -459,6 +464,10 @@ public:
         cudaMalloc((void **)&QKVOutDeviceOut, batch_size * num_heads * seq_len * head_dim * sizeof(float));
 
         cudaMalloc((void **)&deviceValue, batch_size * num_heads * seq_len * head_dim * sizeof(float));
+
+        // Here we will start the memory allocation for (B,T,C) since after computation the shapes are brought back
+        this->BTCHost = (float *)malloc(batch_size * seq_len * d_model * sizeof(float)); // we aready have the in buffer allocation so I wont worry about that for right now., this is for output. we bring back the original shape.
+        cudaMalloc((void **)&BTCdevice, batch_size * seq_len * d_model * sizeof(float));
     };
 
     ~Attention()
@@ -475,9 +484,13 @@ public:
 
         (QKVOutHostOut != nullptr ? free(QKVOutHostOut) : void());
 
+        (BTCHost != nullptr ? free(BTCHost) : void());
+
         cudaFree(deviceSoftmaxOut);
         cudaFree(deviceValue);
         cudaFree(QKVOutDeviceOut); // we could free in the individual method but if we never call them then its never free.
+
+        cudaFree(BTCdevice);
     }
 
 public:
@@ -592,6 +605,35 @@ public:
         // }
     }
 
+    void ReformShape(float *arr)
+    {
+        /*
+            Keep in mind keeping the kerenl logic reuseable does not save you round trip in PCIe BUS.
+            Before:- Shape [batch_size, T, n_head, d_head]
+            After:- Shape (B, T, C)
+        */
+        // so basically here we can use the deviceQKTSqrtD buffer because it has the same size.
+        cudaMemcpy(deviceQKTSqrtD, arr, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyHostToDevice);
+
+        ReformShapeWapper(
+            deviceQKTSqrtD,
+            BTCdevice,
+            batch_size,
+            seq_len,
+            d_model,
+            num_heads,
+            head_dim);
+        cudaMemcpy(BTCHost, BTCdevice, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+
+        // if (debug)
+        // {
+        //     std::cout << "Before reform " << std::endl;
+        //     utils->print2DMatrixLastTwoRect(arr, batch_size, num_heads, seq_len, head_dim, "After");
+        //     std::cout << "After reform" << std::endl;
+        //     utils->printFlatArray3D(BTCHost, batch_size, seq_len, d_model, true);
+        // }
+    }
+
     void forward(std::vector<std::vector<int>> input)
     {
 
@@ -670,9 +712,18 @@ public:
 
         QKVMatmul(hostSoftmaxOut, V); //  (batch_size, n_head, T, d_head)
 
+        // if (debug)
+        // {
+
+        //     std::cout << "After matmul with QKV" << std::endl;
+        //     utils->print2DMatrixLastTwo(QKVOutHostOut, batch_size, num_heads, seq_len, "");
+        // }
+
         // Now we would want to bring back the shape to after the attention score.
         // Shape(batch, T, n_head, d_head) ..so we wap firt and second
-        SwapNT(hostSoftmaxOut);
+        SwapNT(QKVOutHostOut);
+
+        ReformShape(QKVOutHostOut);
 
         debug = false;
         free(x);

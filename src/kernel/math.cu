@@ -209,7 +209,32 @@ __global__ void multiHeadedAttentionKernel(
     // write this out to out, where it would be reshaped into multi headed attention
     int outIdx = batch_idx * (num_head * seq_len * head_dim) + head_idx * (seq_len * head_dim) + seq_idx * (head_dim) + hd_idx;
 
-    out[outIdx] = ws[idx];
+    out[outIdx] = ws[idx]; // proceed apporach
+}
+
+__global__ void ReformShapeKernel(
+    float *arr, // [batch_size, T, n_head, d_head]
+    float *out, // (B, T, C)
+    int batch_size,
+    int seq_len,
+    int d_model,
+    int num_head,
+    int head_dim)
+{
+    int batch_idx = blockIdx.z;
+    int seq_idx = blockIdx.y;
+    int head_idx = blockIdx.x;
+    int hd_idx = threadIdx.x;
+
+    int idx = batch_idx * (seq_len * num_head * head_dim) +
+              seq_idx * (num_head * head_dim) + head_idx * (head_dim) + hd_idx;
+
+    // d_model = num_head * head_dim
+    // (B, T, num_head * head_dim)
+
+    int c_idx = head_idx * head_dim + hd_idx;
+    int outIdx = batch_idx * (seq_len * d_model) + seq_idx * (d_model) + c_idx;
+    out[outIdx] = arr[idx];
 }
 
 /*
@@ -253,21 +278,16 @@ __global__ void TransposeKernel(
     int batch_idx = token_idx / seq_len;
     int seq_idx = token_idx % seq_len;
 
-    int idx = batch_idx * (seq_len * num_head * head_dim)
-            + seq_idx   * (num_head * head_dim)
-            + head_idx  * (head_dim)
-            + hd_idx;
+    int idx = batch_idx * (seq_len * num_head * head_dim) + seq_idx * (num_head * head_dim) + head_idx * (head_dim) + hd_idx;
 
+    int outIdx = batch_idx * (num_head * seq_len * head_dim) + head_idx * (seq_len * head_dim) + seq_idx * (head_dim) + hd_idx;
 
-    int outIdx = batch_idx * (num_head * seq_len * head_dim)
-            + head_idx  * (seq_len * head_dim)
-            + seq_idx   * (head_dim)
-            + hd_idx;
-    
     if (!(reverse))
     {
         out[outIdx] = arr[idx];
-    }else{
+    }
+    else
+    {
         out[idx] = arr[outIdx];
     }
 }
@@ -488,6 +508,22 @@ __global__ void QKVMatmulKernel(
 
 extern "C"
 {
+    void ReformShapeWapper(
+        float *arr, // [batch_size, T, n_head, d_head]
+        float *out, // (B, T, C)
+        int batch_size,
+        int seq_len,
+        int d_model,
+        int num_head,
+        int head_dim)
+    {
+        dim3 block(head_dim);             
+        dim3 grid(num_head, seq_len, batch_size); 
+
+        ReformShapeKernel<<<grid, block>>>(arr, out, batch_size, seq_len, d_model, num_head, head_dim);
+
+        cudaDeviceSynchronize();
+    }
     void QKVMatmulFinal(
         float *QK,
         float *V,
