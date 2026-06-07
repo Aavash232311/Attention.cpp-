@@ -216,7 +216,7 @@ public:
     template <typename T>
     void printFlatArray2D(const T *arr, int seq_len, int d_model)
     {
-        const int M = 3;
+        const int M = 16;
 
         printf("tensor([\n");
         for (int r = 0; r < seq_len; r++)
@@ -340,6 +340,8 @@ public:
 
         size_t rows = arr.size();
         size_t cols = arr[0].size();
+
+        // std::cout << "Rows: " << rows << " Cols: " << cols << std::endl;
 
         for (const auto &row : arr)
         {
@@ -571,6 +573,8 @@ private:
 
                 const int cols = decisionHeight - batchPointer.s1;
 
+                // std::cout << " Roes: " << seq_len << " Cols: " << cols << std::endl;
+
                 std::vector<std::vector<int>> vecX(this->seq_len, std::vector<int>(cols)); // I can think the hardway here but I am not sure if that's the right appoprach.
                 std::vector<std::vector<int>> vecY(this->seq_len, std::vector<int>(cols));
                 populateColsInBatch(filePointerX, vecX, vecY);
@@ -583,6 +587,8 @@ private:
                 // if the drop_last is false then we increment the pointer2 by remaining amount
                 pt2Inc = (dataSize % batch_size);
                 const int cols = this->batchPointer.s2 - this->batchPointer.s1;
+
+                // std::cout << " Roes: " << seq_len << " Cols: " << cols << std::endl;
 
                 std::vector<std::vector<int>> vecX(this->seq_len, std::vector<int>(cols)); // this is for the x
                 std::vector<std::vector<int>> vecY(this->seq_len, std::vector<int>(cols)); // same size for the y
@@ -598,6 +604,10 @@ private:
         }
 
         const int cols = this->batchPointer.s2 - this->batchPointer.s1;
+
+        // std::cout << " Roes: " << seq_len << " Cols: " << cols << std::endl;
+
+        // std::cout << " Pointer 1: " << this->batchPointer.s2 << " Pointer 2: " << this->batchPointer.s1 << std::endl;
 
         std::vector<std::vector<int>> vecX(this->seq_len, std::vector<int>(cols));
         std::vector<std::vector<int>> vecY(this->seq_len, std::vector<int>(cols));
@@ -616,7 +626,7 @@ public:
         : batch_size(batch_size), data(data), drop_last(drop_last)
     {
         batchPointer.s1 = 0;
-        batchPointer.s2 += batch_size;
+        batchPointer.s2 = batch_size;
         this->seq_len = seq_len;
     }
 
@@ -627,7 +637,7 @@ public:
     std::unique_ptr<std::vector<IO>> getBatch()
     {
         auto data = std::make_unique<std::vector<IO>>();
-        IO currentBatch;
+        IO currentBatch; // this thing hold a certian buffer for that IO object but we will work on returning a flat memory
 
         while (!(currentBatch = getData()).empty())
         {
@@ -638,6 +648,8 @@ public:
     }
 };
 
+// in the phase of learning I did it myway shouldn't be like this,
+// make it contangeous even though not initllized in the GPU
 class Initializer
 {
 public:

@@ -42,25 +42,26 @@ public:
     int vocab_size;
     int seq_len;
     int batch_size;
-    float *sinosudialEncoding;
+
     std::unique_ptr<Utility> utils = std::make_unique<Utility>();
     std::unique_ptr<Initializer> initilizer = std::make_unique<Initializer>();
     std::vector<std::vector<float>> tokenEmbeddings;
 
     // This is for debudding
-    bool k = true;
+    bool debug = true;
 
     // Initlize memory here, in a method that is frequently called is more costly.
     float *lookedUpEmbeddings = nullptr;
     float *addedEmbeddingsOut = nullptr;
 
+    float *hostEmbeddings;
+
     int *deviceX;
     float *deviceEmbeddings;
     float *deviceFinalEmbeddings;
+    float *lookupDeviceOut;
 
-    float *deviceSinosudialEncoding;
-    float *deviceLookedUpEmbeddings; // Note:- it after we lookup in embddings from x
-    float *deviceAddedEmbeddingsOut;
+    float *devicePositionalEncoding;
 
     Embeddings(int d_model, int vocab_size, int seq_len, int batch_size) // this batch size can very depending upon the use use
     {
@@ -69,99 +70,74 @@ public:
         this->seq_len = seq_len;
         this->batch_size = batch_size;
 
-        // Allocate the memory on the host
-        this->sinosudialEncoding = this->positionalEncoding(); // these are learned emebddings in modern day torch. I cannot handle much pain so I am doing this one.
+        std::cout << "d_model = " << this->d_model << '\n'
+                  << "vocab_size = " << this->vocab_size << '\n'
+                  << "seq_len = " << this->seq_len << '\n'
+                  << "batch_size = " << this->batch_size << '\n';
+
+        cudaMalloc((void **)&devicePositionalEncoding, seq_len * d_model * sizeof(float));
+        positionalEmbeddings(devicePositionalEncoding, seq_len, d_model); // Let positional embedding stay on the global memory
 
         // this gets changed in the backpropagation
-        this->tokenEmbeddings = initilizer->HeInit(this->vocab_size, this->d_model); // token embeddings
-        // initlize fixed memory here so that our program runs faster.
+        this->tokenEmbeddings = initilizer->HeInit(this->vocab_size, this->d_model); // token embeddings, Shape(vocab_size, d_model)
+                                                                                     // initlize fixed memory here so that our program runs faster.
+        hostEmbeddings = utils->TwoDVectorToFlatMem(this->tokenEmbeddings);          // this is from I am learning so I was too scared to touch kernel
+
         int sizeFinalEmbeddings = seq_len * d_model * batch_size * sizeof(float);
-        int sizeInputX = seq_len * batch_size * sizeof(int);
         int sizeTokenEmbeddings = seq_len * batch_size * d_model * sizeof(float);
 
         lookedUpEmbeddings = (float *)malloc(sizeFinalEmbeddings);
-
-        // std::cout << "Batch size: " << batch_size << std::endl;
-
-        cudaMalloc((void **)&deviceX, sizeInputX);
-        cudaMalloc((void **)&deviceEmbeddings, sizeTokenEmbeddings);
-
-        cudaMalloc((void **)&deviceFinalEmbeddings, sizeFinalEmbeddings);
-
         addedEmbeddingsOut = (float *)malloc(sizeFinalEmbeddings); // this is the out.
 
-        cudaMalloc((void **)&deviceSinosudialEncoding, seq_len * d_model * sizeof(float));
-        cudaMalloc((void **)&deviceAddedEmbeddingsOut, sizeFinalEmbeddings);
-        cudaMalloc((void **)&deviceLookedUpEmbeddings, sizeFinalEmbeddings);
+        // copy to GPU memory
+        // copy embeddings to the GPU after making int flat
+        cudaMalloc((void **)&deviceEmbeddings, vocab_size * d_model * sizeof(float));
+        cudaMemcpy(deviceEmbeddings, hostEmbeddings, vocab_size * d_model * sizeof(float), cudaMemcpyHostToDevice);
+
+        // allocare GPU memory for final embeddings
+        cudaMalloc((void **)&deviceFinalEmbeddings, seq_len * d_model * batch_size * sizeof(float));
+        // allocate memory for output after lookup Shape(seq_len, batch_size, d_model)
+        cudaMalloc((void **)&lookupDeviceOut, seq_len * batch_size * d_model * sizeof(float));
+
+        cudaMalloc((void **)&deviceX, seq_len * batch_size * sizeof(int));
     };
 
     ~Embeddings()
     {
         (lookedUpEmbeddings != nullptr ? free(lookedUpEmbeddings) : void());
         (addedEmbeddingsOut != nullptr ? free(addedEmbeddingsOut) : void());
-
-        free(sinosudialEncoding);
+        
+        delete[] hostEmbeddings;
 
         cudaFree(deviceX);
         cudaFree(deviceEmbeddings);
         cudaFree(deviceFinalEmbeddings);
-        cudaFree(deviceSinosudialEncoding);
-        cudaFree(deviceAddedEmbeddingsOut);
-        cudaFree(deviceLookedUpEmbeddings);
-    }
 
-    float *positionalEncoding()
-    {
-        float *positionalEncodingOut = (float *)malloc(seq_len * d_model * sizeof(float)); // host memeory
-
-        float *devicePositionalEncoding;
-        cudaMalloc((void **)&devicePositionalEncoding, seq_len * d_model * sizeof(float)); // GPU memory
-
-        positionalEmbeddings(devicePositionalEncoding, seq_len, d_model); // Kernal launch
-
-        cudaMemcpy(positionalEncodingOut, // copy back
-                   devicePositionalEncoding,
-                   seq_len * d_model * sizeof(float),
-                   cudaMemcpyDeviceToHost);
-
-        cudaFree(devicePositionalEncoding); // free gpu memory
-        return positionalEncodingOut;
+        cudaFree(devicePositionalEncoding);
+        cudaFree(lookupDeviceOut);
     }
 
     float *forward(std::vector<std::vector<int>> x)
     {
+        // THIS SIZE MIGHT CHANGE ACCORDING TO THE DROP LAST PARAMATER AND WE NEED TO KEEP TRACK OF THIS.
+        int actual_batch = x[0].size();
 
-        // std::cout << "Batch size from forward pass: " << batch_size << std::endl;
-        int sizeInputX = seq_len * batch_size * sizeof(int);
 
-        // x(seq_len, batch_size)
-        int sizeFinalEmbeddings = seq_len * d_model * batch_size * sizeof(float);
         int *hostX = utils->TwoDVectorToFlatMem(x);
-        float *hostEmbeddings = utils->TwoDVectorToFlatMem(this->tokenEmbeddings);
+        // copy this to GPU
+        cudaMemcpy(deviceX, hostX, seq_len * actual_batch * sizeof(int), cudaMemcpyHostToDevice);
+        lookup(deviceX, deviceEmbeddings, lookupDeviceOut, d_model, seq_len, actual_batch, vocab_size); // actual batch because the batch size may vary here
+        // Now this result gets added
+        addEmbeddings(lookupDeviceOut, devicePositionalEncoding, deviceFinalEmbeddings, d_model, seq_len, actual_batch);
 
-        int sizeTokenEmbeddings = seq_len * batch_size * d_model * sizeof(float);
+        cudaMemcpy(addedEmbeddingsOut, deviceFinalEmbeddings, actual_batch * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
 
-        cudaMemcpy(deviceX, hostX, sizeInputX, cudaMemcpyHostToDevice);
-        cudaMemcpy(deviceEmbeddings, hostEmbeddings, sizeTokenEmbeddings, cudaMemcpyHostToDevice);
+        if (debug)
+        {
+            this->utils->printFlatArray3D(addedEmbeddingsOut, actual_batch, seq_len, d_model);
+        }
 
-        // kernel launch
-        lookup(deviceX, deviceEmbeddings, deviceFinalEmbeddings, d_model, seq_len, batch_size, vocab_size);
-
-        cudaMemcpy(lookedUpEmbeddings, deviceFinalEmbeddings, sizeFinalEmbeddings, cudaMemcpyDeviceToHost);
-
-        // copy to gpu
-        cudaMemcpy(deviceLookedUpEmbeddings, lookedUpEmbeddings, sizeFinalEmbeddings, cudaMemcpyHostToDevice);
-        cudaMemcpy(deviceSinosudialEncoding, this->sinosudialEncoding, seq_len * d_model * sizeof(float), cudaMemcpyHostToDevice);
-
-        addEmbeddings(deviceLookedUpEmbeddings, this->sinosudialEncoding, deviceAddedEmbeddingsOut, d_model, seq_len, batch_size);
-
-        cudaMemcpy(addedEmbeddingsOut, deviceAddedEmbeddingsOut, sizeFinalEmbeddings, cudaMemcpyDeviceToHost);
-
-        delete[] hostX; // we will assign this or reconvert back to a 2d shape
-        delete[] hostEmbeddings;
-
-        // utils->printFlatArray3D(addedEmbeddingsOut, batch_size, seq_len, d_model);
-
+        delete[] hostX;
         return addedEmbeddingsOut;
     }
 };
@@ -308,7 +284,7 @@ public:
 
         cudaMemcpy(ws, d_out, seq_len * batch_size * f_out * sizeof(float), cudaMemcpyDeviceToHost);
 
-        // if (dLinear)
+        // if (debug)
         // {
         //     std::cout << "Weight" << std::endl;
         //     utils->printFlatArray2D(weight, f_in, f_out);
@@ -468,10 +444,10 @@ public:
         outputProj = std::make_unique<Linear>(d_model, d_model, seq_len, batch_size, num_heads);
 
         // Just to test and keep track of things
-        std::cout << "d_model: " << d_model << std::endl;
-        std::cout << "vocab_size: " << vocab_size << std::endl;
-        std::cout << "seq_len: " << seq_len << std::endl;
-        std::cout << "num_heads: " << num_heads << std::endl;
+        // std::cout << "d_model: " << d_model << std::endl;
+        // std::cout << "vocab_size: " << vocab_size << std::endl;
+        // std::cout << "seq_len: " << seq_len << std::endl;
+        // std::cout << "num_heads: " << num_heads << std::endl;
 
         this->head_dim = d_model / num_heads;
 
@@ -774,7 +750,7 @@ int main()
     int num_heads = 2;
     int batch_size = 4;
     int seq_len = 4;
-    int epoch = 12;
+    int epoch = 1;
     bool drop_last = false;
 
     std::string path = "./src/data/chunk.txt";
@@ -792,7 +768,7 @@ int main()
 
     const std::vector<int> &encodedData = helper->getEncodedList();
 
-    /* For something like attention we need heap allocation. */
+    // /* For something like attention we need heap allocation. */
     std::unique_ptr<Attention> attention = std::make_unique<Attention>(
         d_model,
         vocab_size,
@@ -804,7 +780,7 @@ int main()
 
     std::unique_ptr<std::vector<IO>> dataList = dataLoader->getBatch();
 
-    std::unique_ptr<LayerNorm> layerNorm = std::make_unique<LayerNorm>();
+    // // std::unique_ptr<LayerNorm> layerNorm = std::make_unique<LayerNorm>();
 
     for (int i = 0; i < epoch; ++i)
     {
@@ -813,7 +789,8 @@ int main()
             // so we have the x, and y here
             // My understanding is batches are SEQUENTIAL
             // but the procress within the batches are done in parallel.
-            attention->forward(currentBatch.x);
+            // utils->Print2DVector(currentBatch.x);
+            // attention->forward(currentBatch.x);
         }
     }
 

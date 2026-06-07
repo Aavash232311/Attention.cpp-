@@ -517,8 +517,8 @@ extern "C"
         int num_head,
         int head_dim)
     {
-        dim3 block(head_dim);             
-        dim3 grid(num_head, seq_len, batch_size); 
+        dim3 block(head_dim);
+        dim3 grid(num_head, seq_len, batch_size);
 
         ReformShapeKernel<<<grid, block>>>(arr, out, batch_size, seq_len, d_model, num_head, head_dim);
 
