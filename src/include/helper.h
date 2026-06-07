@@ -6,6 +6,7 @@
 #include <ranges>
 #include <fstream>
 #include <iomanip>
+#include <cstring>
 #include <iostream>
 #include <unordered_map>
 
@@ -501,18 +502,34 @@ struct IO // this x, and y are stored for one batch.
     }
 } io;
 
+struct Batch
+{
+    int *x; // shape (seq_len, batch_size)  pointers into flat memory
+    int *y;
+    int seq_len;
+    int width;
+    bool empty() const { return x == nullptr && y == nullptr; }
+};
+
 // For this transformer our goal is to learn things so we will create a simple data loader, and feed it with toy data.
 // For this particular case lets user silding window to retrive the data in batch.
 // Why not kernel launch for this, if this happens in 1ms then its fine, this happens only once not something that happens all the time.
 class DataLoader
 {
+public:
     int batch_size;
     posDataPtr batchPointer;
+    int *totalDataX = nullptr;
+    int *totalDataY = nullptr;
     int filePointerX;
     bool drop_last;
     const std::vector<int> &data;
     int seq_len;
     std::unique_ptr<Utility> utils = std::make_unique<Utility>();
+    int currentIterator;
+
+    int* xBatch;
+    int* yBatch;
 
 private:
     // I am not sure how I am I going to explain it to you when I am in the state of flow.
@@ -621,6 +638,44 @@ private:
         return io;
     }
 
+    void getBatch()
+    {
+
+        IO currentBatch; // this thing hold a certian buffer for that IO object but we will work on returning a flat memory
+
+        int totalIterations = (data.size() + batch_size - 1) / batch_size;
+
+        int lastBatch = data.size() % batch_size; // this formula even accounts for the drop last.
+        int totalElements = ((totalIterations - 1) * batch_size * seq_len) + lastBatch * seq_len;
+
+        this->totalDataX = (int *)malloc(totalElements * sizeof(int));
+        this->totalDataY = (int *)malloc(totalElements * sizeof(int));
+        // so we have data in batch with each Shape (seq_len, batch_size)
+
+        int offsetX = 0;
+        int offsetY = 0;
+
+        while (!(currentBatch = getData()).empty())
+        {
+            // totalData Shape(seq_len, batch_size)
+
+            // check the shape for each
+
+            for (const auto &row : currentBatch.x)
+            { // its important to make this contiguous
+                std::memcpy(this->totalDataX + offsetX, row.data(), row.size() * sizeof(int));
+                offsetX += row.size();
+            }
+
+            for (const auto &row : currentBatch.y)
+            {
+                //                where to write           src           size
+                std::memcpy(this->totalDataY + offsetY, row.data(), row.size() * sizeof(int));
+                offsetY += row.size(); // this->totalDataY + offsetY write there
+            }
+        }
+    }
+
 public:
     DataLoader(int batch_size, const std::vector<int> &data, int seq_len, bool drop_last = true)
         : batch_size(batch_size), data(data), drop_last(drop_last)
@@ -628,23 +683,78 @@ public:
         batchPointer.s1 = 0;
         batchPointer.s2 = batch_size;
         this->seq_len = seq_len;
+
+        xBatch = new int[seq_len * batch_size];
+        yBatch = new int[seq_len * batch_size];
+        this->getBatch();
+        currentIterator = 0;
+    }
+
+    ~DataLoader()
+    {
+        (totalDataX != nullptr ? free(totalDataX) : void());
+        (totalDataY != nullptr ? free(totalDataY) : void());
     }
 
     // I almost forgot about that siliding window, hang tight
     // previosuly I was doing batch by batch but that is costly
     // espically in parallel that goes through PCIe BUS which is slow.
 
-    std::unique_ptr<std::vector<IO>> getBatch()
+    void printData(std::string input)
     {
-        auto data = std::make_unique<std::vector<IO>>();
-        IO currentBatch; // this thing hold a certian buffer for that IO object but we will work on returning a flat memory
+        int totalIterations = (data.size() + batch_size - 1) / batch_size;
 
-        while (!(currentBatch = getData()).empty())
+        int lastBatch = data.size() % batch_size;
+        int totalElements = ((totalIterations - 1) * batch_size * seq_len) + lastBatch * seq_len;
+        int total_samples = totalElements / seq_len;
+
+        for (int i = 0; i < total_samples; i++)
         {
-            data->push_back(currentBatch);
+            for (int j = 0; j < seq_len; j++)
+            {
+                int token = input == "x" ? totalDataX[i * seq_len + j] : totalDataY[i * seq_len + j];
+                std::cout << token << " ";
+            }
+            std::cout << "\n";
+        }
+    }
+
+    Batch iter()
+    {
+        int totalIterations = (data.size() + batch_size - 1) / batch_size;
+        int fullBatches = totalIterations - 1;
+        int lastBatchCols = data.size() % batch_size;
+
+        // this is the tricky part here
+        // because if drop_last = false then we might have value that does not fit cleanly
+        // infact its bothering me for a while now but the logic is,
+        //  
+
+        
+        int totalElements = (fullBatches * seq_len * batch_size) + (seq_len * lastBatchCols);
+        if (currentIterator >= totalIterations)
+            return {nullptr, nullptr};
+
+        int currentWidth = (currentIterator == totalIterations - 1 && data.size() % batch_size != 0)
+                               ? data.size() % batch_size
+                               : batch_size; // if this is in the last iteration 
+
+        int elementsInThisBatch = seq_len * currentWidth;
+        int offset = currentIterator * seq_len * batch_size; // offset into flat array
+
+        // fill xBatch
+        for (int row = 0; row < seq_len; ++row)
+        {
+            for (int col = 0; col < currentWidth; ++col)
+            {
+                int idx = offset + (row * currentWidth) + col;
+                xBatch[row * batch_size + col] = totalDataX[idx];
+                yBatch[row * batch_size + col] = totalDataY[idx];
+            }
         }
 
-        return data;
+        currentIterator++;
+        return {xBatch, yBatch, seq_len, currentWidth}; // return actual width too
     }
 };
 

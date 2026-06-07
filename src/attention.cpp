@@ -106,7 +106,7 @@ public:
     {
         (lookedUpEmbeddings != nullptr ? free(lookedUpEmbeddings) : void());
         (addedEmbeddingsOut != nullptr ? free(addedEmbeddingsOut) : void());
-        
+
         delete[] hostEmbeddings;
 
         cudaFree(deviceX);
@@ -122,7 +122,6 @@ public:
         // THIS SIZE MIGHT CHANGE ACCORDING TO THE DROP LAST PARAMATER AND WE NEED TO KEEP TRACK OF THIS.
         int actual_batch = x[0].size();
 
-
         int *hostX = utils->TwoDVectorToFlatMem(x);
         // copy this to GPU
         cudaMemcpy(deviceX, hostX, seq_len * actual_batch * sizeof(int), cudaMemcpyHostToDevice);
@@ -134,7 +133,7 @@ public:
 
         if (debug)
         {
-            this->utils->printFlatArray3D(addedEmbeddingsOut, actual_batch, seq_len, d_model);
+            // this->utils->printFlatArray3D(addedEmbeddingsOut, actual_batch, seq_len, d_model);
         }
 
         delete[] hostX;
@@ -750,8 +749,8 @@ int main()
     int num_heads = 2;
     int batch_size = 4;
     int seq_len = 4;
-    int epoch = 1;
-    bool drop_last = false;
+    int epoch = 12;
+    bool drop_last = true;
 
     std::string path = "./src/data/chunk.txt";
 
@@ -778,20 +777,17 @@ int main()
 
     std::unique_ptr<DataLoader> dataLoader = std::make_unique<DataLoader>(batch_size, encodedData, seq_len, drop_last);
 
-    std::unique_ptr<std::vector<IO>> dataList = dataLoader->getBatch();
-
     // // std::unique_ptr<LayerNorm> layerNorm = std::make_unique<LayerNorm>();
 
-    for (int i = 0; i < epoch; ++i)
+    Batch batch;
+
+    while (!(batch = dataLoader->iter()).empty())
     {
-        for (auto &currentBatch : *dataList)
-        {
-            // so we have the x, and y here
-            // My understanding is batches are SEQUENTIAL
-            // but the procress within the batches are done in parallel.
-            // utils->Print2DVector(currentBatch.x);
-            // attention->forward(currentBatch.x);
-        }
+
+        if (batch.width < batch_size)
+            continue;
+        // std::cout << batch.width << std::endl;
+        utils->printFlatArray2D(batch.x, seq_len, batch.width);
     }
 
     // float X[32] = {
