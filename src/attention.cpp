@@ -50,7 +50,19 @@ public:
     // This is for debudding
     bool k = true;
 
-    Embeddings(int d_model, int vocab_size, int seq_len, int batch_size)
+    // Initlize memory here, in a method that is frequently called is more costly.
+    float *lookedUpEmbeddings = nullptr;
+    float *addedEmbeddingsOut = nullptr;
+
+    int *deviceX;
+    float *deviceEmbeddings;
+    float *deviceFinalEmbeddings;
+
+    float *deviceSinosudialEncoding;
+    float *deviceLookedUpEmbeddings; // Note:- it after we lookup in embddings from x
+    float *deviceAddedEmbeddingsOut;
+
+    Embeddings(int d_model, int vocab_size, int seq_len, int batch_size) // this batch size can very depending upon the use use
     {
         this->d_model = d_model;
         this->vocab_size = vocab_size;
@@ -62,11 +74,40 @@ public:
 
         // this gets changed in the backpropagation
         this->tokenEmbeddings = initilizer->HeInit(this->vocab_size, this->d_model); // token embeddings
+        // initlize fixed memory here so that our program runs faster.
+        int sizeFinalEmbeddings = seq_len * d_model * batch_size * sizeof(float);
+        int sizeInputX = seq_len * batch_size * sizeof(int);
+        int sizeTokenEmbeddings = seq_len * batch_size * d_model * sizeof(float);
+
+        lookedUpEmbeddings = (float *)malloc(sizeFinalEmbeddings);
+
+        // std::cout << "Batch size: " << batch_size << std::endl;
+
+        cudaMalloc((void **)&deviceX, sizeInputX);
+        cudaMalloc((void **)&deviceEmbeddings, sizeTokenEmbeddings);
+
+        cudaMalloc((void **)&deviceFinalEmbeddings, sizeFinalEmbeddings);
+
+        addedEmbeddingsOut = (float *)malloc(sizeFinalEmbeddings); // this is the out.
+
+        cudaMalloc((void **)&deviceSinosudialEncoding, seq_len * d_model * sizeof(float));
+        cudaMalloc((void **)&deviceAddedEmbeddingsOut, sizeFinalEmbeddings);
+        cudaMalloc((void **)&deviceLookedUpEmbeddings, sizeFinalEmbeddings);
     };
 
     ~Embeddings()
     {
+        (lookedUpEmbeddings != nullptr ? free(lookedUpEmbeddings) : void());
+        (addedEmbeddingsOut != nullptr ? free(addedEmbeddingsOut) : void());
+
         free(sinosudialEncoding);
+
+        cudaFree(deviceX);
+        cudaFree(deviceEmbeddings);
+        cudaFree(deviceFinalEmbeddings);
+        cudaFree(deviceSinosudialEncoding);
+        cudaFree(deviceAddedEmbeddingsOut);
+        cudaFree(deviceLookedUpEmbeddings);
     }
 
     float *positionalEncoding()
@@ -89,23 +130,16 @@ public:
 
     float *forward(std::vector<std::vector<int>> x)
     {
-        int batch_size = x[0].size(); // this is the batch_size
-        int sizeFinalEmbeddings = seq_len * d_model * batch_size * sizeof(float);
+
+        // std::cout << "Batch size from forward pass: " << batch_size << std::endl;
+        int sizeInputX = seq_len * batch_size * sizeof(int);
+
         // x(seq_len, batch_size)
+        int sizeFinalEmbeddings = seq_len * d_model * batch_size * sizeof(float);
         int *hostX = utils->TwoDVectorToFlatMem(x);
         float *hostEmbeddings = utils->TwoDVectorToFlatMem(this->tokenEmbeddings);
-        float *lookedUpEmbeddings = (float *)malloc(sizeFinalEmbeddings);
 
-        int *deviceX;
-        float *deviceEmbeddings;
-        float *deviceFinalEmbeddings;
-
-        int sizeInputX = seq_len * batch_size * sizeof(int);
         int sizeTokenEmbeddings = seq_len * batch_size * d_model * sizeof(float);
-
-        cudaMalloc((void **)&deviceX, sizeInputX);
-        cudaMalloc((void **)&deviceEmbeddings, sizeTokenEmbeddings);
-        cudaMalloc((void **)&deviceFinalEmbeddings, sizeFinalEmbeddings);
 
         cudaMemcpy(deviceX, hostX, sizeInputX, cudaMemcpyHostToDevice);
         cudaMemcpy(deviceEmbeddings, hostEmbeddings, sizeTokenEmbeddings, cudaMemcpyHostToDevice);
@@ -115,20 +149,6 @@ public:
 
         cudaMemcpy(lookedUpEmbeddings, deviceFinalEmbeddings, sizeFinalEmbeddings, cudaMemcpyDeviceToHost);
 
-        cudaFree(deviceX);
-        cudaFree(deviceEmbeddings);
-        cudaFree(deviceFinalEmbeddings);
-
-        float *addedEmbeddingsOut = (float *)malloc(sizeFinalEmbeddings); // this is the out.
-
-        float *deviceSinosudialEncoding;
-        float *deviceLookedUpEmbeddings; // Note:- it after we lookup in embddings from x
-        float *deviceAddedEmbeddingsOut;
-
-        cudaMalloc((void **)&deviceSinosudialEncoding, seq_len * d_model * sizeof(float));
-        cudaMalloc((void **)&deviceAddedEmbeddingsOut, sizeFinalEmbeddings);
-        cudaMalloc((void **)&deviceLookedUpEmbeddings, sizeFinalEmbeddings);
-
         // copy to gpu
         cudaMemcpy(deviceLookedUpEmbeddings, lookedUpEmbeddings, sizeFinalEmbeddings, cudaMemcpyHostToDevice);
         cudaMemcpy(deviceSinosudialEncoding, this->sinosudialEncoding, seq_len * d_model * sizeof(float), cudaMemcpyHostToDevice);
@@ -137,14 +157,11 @@ public:
 
         cudaMemcpy(addedEmbeddingsOut, deviceAddedEmbeddingsOut, sizeFinalEmbeddings, cudaMemcpyDeviceToHost);
 
-        cudaFree(deviceSinosudialEncoding);
-        cudaFree(deviceAddedEmbeddingsOut);
-        cudaFree(deviceLookedUpEmbeddings);
-
         delete[] hostX; // we will assign this or reconvert back to a 2d shape
         delete[] hostEmbeddings;
 
-        free(lookedUpEmbeddings);
+        // utils->printFlatArray3D(addedEmbeddingsOut, batch_size, seq_len, d_model);
+
         return addedEmbeddingsOut;
     }
 };
@@ -382,6 +399,19 @@ public:
         // utils->print2DMatrixLastTwo(mhead_out_host, batch_size, n_head, seq_len, "After transpose Key");
 
         return mhead_out_host;
+    }
+};
+
+class LayerNorm
+{
+
+public:
+    LayerNorm() // LayerNorm(x) = γ . (x - μ) / √(σ² + ε) + β
+    {
+    }
+
+    void Normalize(float *x)
+    {
     }
 };
 
@@ -634,7 +664,6 @@ public:
         }
     }
 
-
     void forward(std::vector<std::vector<int>> input)
     {
 
@@ -729,11 +758,9 @@ public:
         // Now we need to make this go thtrough a Linear Transformation without it the model will just learn to stack information together
         // without learning to mix information from multiple heads together.
 
-
         outputProj->forward(BTCHost);
 
         debug = false;
-        free(x);
     };
 };
 
@@ -776,6 +803,8 @@ int main()
     std::unique_ptr<DataLoader> dataLoader = std::make_unique<DataLoader>(batch_size, encodedData, seq_len, drop_last);
 
     std::unique_ptr<std::vector<IO>> dataList = dataLoader->getBatch();
+
+    std::unique_ptr<LayerNorm> layerNorm = std::make_unique<LayerNorm>();
 
     for (int i = 0; i < epoch; ++i)
     {
