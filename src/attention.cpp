@@ -625,14 +625,15 @@ public:
             head_dim);
         cudaMemcpy(BTCHost, BTCdevice, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
 
-        // if (debug)
-        // {
-        //     std::cout << "Before reform " << std::endl;
-        //     utils->print2DMatrixLastTwoRect(arr, batch_size, num_heads, seq_len, head_dim, "After");
-        //     std::cout << "After reform" << std::endl;
-        //     utils->printFlatArray3D(BTCHost, batch_size, seq_len, d_model, true);
-        // }
+        if (debug)
+        {
+            // std::cout << "Before reform " << std::endl;
+            // utils->print2DMatrixLastTwoRect(arr, batch_size, num_heads, seq_len, head_dim, "After");
+            // std::cout << "After reform from the method" << std::endl;
+            // utils->printFlatArray3D(BTCHost, batch_size, seq_len, d_model, true);
+        }
     }
+
 
     void forward(std::vector<std::vector<int>> input)
     {
@@ -724,6 +725,12 @@ public:
         SwapNT(QKVOutHostOut);
 
         ReformShape(QKVOutHostOut);
+
+        // Now we need to make this go thtrough a Linear Transformation without it the model will just learn to stack information together
+        // without learning to mix information from multiple heads together.
+
+
+        outputProj->forward(BTCHost);
 
         debug = false;
         free(x);
