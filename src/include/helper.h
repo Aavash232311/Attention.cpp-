@@ -528,8 +528,10 @@ public:
     std::unique_ptr<Utility> utils = std::make_unique<Utility>();
     int currentIterator;
 
-    int* xBatch;
-    int* yBatch;
+    int *xBatch;
+    int *yBatch;
+
+    int totalIterations;
 
 private:
     // I am not sure how I am I going to explain it to you when I am in the state of flow.
@@ -645,8 +647,9 @@ private:
 
         int totalIterations = (data.size() + batch_size - 1) / batch_size;
 
-        int lastBatch = data.size() % batch_size; // this formula even accounts for the drop last.
-        int totalElements = ((totalIterations - 1) * batch_size * seq_len) + lastBatch * seq_len;
+        int lastBatch = data.size() % batch_size;
+        int fullBatches = data.size() / batch_size;
+        int totalElements = (fullBatches * batch_size * seq_len) + (lastBatch * seq_len);
 
         this->totalDataX = (int *)malloc(totalElements * sizeof(int));
         this->totalDataY = (int *)malloc(totalElements * sizeof(int));
@@ -660,7 +663,7 @@ private:
             // totalData Shape(seq_len, batch_size)
 
             // check the shape for each
-
+            // utils->Print2DVector(currentBatch.x);
             for (const auto &row : currentBatch.x)
             { // its important to make this contiguous
                 std::memcpy(this->totalDataX + offsetX, row.data(), row.size() * sizeof(int));
@@ -688,6 +691,8 @@ public:
         yBatch = new int[seq_len * batch_size];
         this->getBatch();
         currentIterator = 0;
+
+        totalIterations = (data.size() + batch_size - 1) / batch_size;
     }
 
     ~DataLoader()
@@ -702,7 +707,6 @@ public:
 
     void printData(std::string input)
     {
-        int totalIterations = (data.size() + batch_size - 1) / batch_size;
 
         int lastBatch = data.size() % batch_size;
         int totalElements = ((totalIterations - 1) * batch_size * seq_len) + lastBatch * seq_len;
@@ -719,28 +723,33 @@ public:
         }
     }
 
+    /* 
+        This looks scary but the logic is pretty straightforward, even I might not get at instantly after few months,
+        but it is what it is because it has 100 reason to screw up.
+    */
+
     Batch iter()
     {
-        int totalIterations = (data.size() + batch_size - 1) / batch_size;
-        int fullBatches = totalIterations - 1;
-        int lastBatchCols = data.size() % batch_size;
-
         // this is the tricky part here
         // because if drop_last = false then we might have value that does not fit cleanly
         // infact its bothering me for a while now but the logic is,
-        //  
 
-        
-        int totalElements = (fullBatches * seq_len * batch_size) + (seq_len * lastBatchCols);
         if (currentIterator >= totalIterations)
             return {nullptr, nullptr};
 
         int currentWidth = (currentIterator == totalIterations - 1 && data.size() % batch_size != 0)
                                ? data.size() % batch_size
-                               : batch_size; // if this is in the last iteration 
+                               : batch_size; // if this is in the last iteration
+        if (drop_last && currentWidth < batch_size)
+        {
+            return {nullptr, nullptr}; // signals done
+        }
 
-        int elementsInThisBatch = seq_len * currentWidth;
-        int offset = currentIterator * seq_len * batch_size; // offset into flat array
+        int fullBatches = data.size() / batch_size;
+
+        int offset = (currentWidth == batch_size)
+                         ? currentIterator * seq_len * batch_size // full batch
+                         : fullBatches * seq_len * batch_size;
 
         // fill xBatch
         for (int row = 0; row < seq_len; ++row)
@@ -748,13 +757,23 @@ public:
             for (int col = 0; col < currentWidth; ++col)
             {
                 int idx = offset + (row * currentWidth) + col;
-                xBatch[row * batch_size + col] = totalDataX[idx];
-                yBatch[row * batch_size + col] = totalDataY[idx];
+
+                xBatch[row * currentWidth + col] = totalDataX[idx];
+                yBatch[row * currentWidth + col] = totalDataY[idx];
             }
         }
 
+        // std::cout << "Iteration count: " << currentIterator
+        // << " batch width: " << currentWidth
+        // << std::endl;
+
         currentIterator++;
         return {xBatch, yBatch, seq_len, currentWidth}; // return actual width too
+    }
+
+    void resetIterator()
+    {
+        this->currentIterator = 0;
     }
 };
 

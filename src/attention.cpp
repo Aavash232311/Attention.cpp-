@@ -117,12 +117,12 @@ public:
         cudaFree(lookupDeviceOut);
     }
 
-    float *forward(std::vector<std::vector<int>> x)
+    float *forward(Batch currentBatch)
     {
         // THIS SIZE MIGHT CHANGE ACCORDING TO THE DROP LAST PARAMATER AND WE NEED TO KEEP TRACK OF THIS.
-        int actual_batch = x[0].size();
-
-        int *hostX = utils->TwoDVectorToFlatMem(x);
+        int actual_batch = currentBatch.width;
+        // that x is deleted when the dataloader is destroyed.
+        int *hostX = currentBatch.x;
         // copy this to GPU
         cudaMemcpy(deviceX, hostX, seq_len * actual_batch * sizeof(int), cudaMemcpyHostToDevice);
         lookup(deviceX, deviceEmbeddings, lookupDeviceOut, d_model, seq_len, actual_batch, vocab_size); // actual batch because the batch size may vary here
@@ -136,7 +136,6 @@ public:
             // this->utils->printFlatArray3D(addedEmbeddingsOut, actual_batch, seq_len, d_model);
         }
 
-        delete[] hostX;
         return addedEmbeddingsOut;
     }
 };
@@ -639,7 +638,7 @@ public:
         }
     }
 
-    void forward(std::vector<std::vector<int>> input)
+    void forward(Batch currentBatch)
     {
 
         if (d_model % num_heads != 0)
@@ -647,7 +646,7 @@ public:
             std::cout << "The number of heads must be perfectly divisible by dimesnion " << std::endl;
             return;
         }
-        float *x = embeddings->forward(input);
+        float *x = embeddings->forward(currentBatch);
 
         float *Q = query->forward(x); // We are doing a linear transformation here when we pass in the forward method.
         float *K = key->forward(x);
@@ -781,15 +780,17 @@ int main()
 
     Batch batch;
 
-    while (!(batch = dataLoader->iter()).empty())
+    for (int i = 0; i < epoch; ++i)
     {
+        while (!(batch = dataLoader->iter()).empty())
+        {
+            // // std::cout << batch.width << std::endl;
+            // utils->printFlatArray2D(batch.x, seq_len, batch.width);
 
-        if (batch.width < batch_size)
-            continue;
-        // std::cout << batch.width << std::endl;
-        utils->printFlatArray2D(batch.x, seq_len, batch.width);
+            attention->forward(batch);
+        }
     }
-
+    dataLoader->resetIterator();
     // float X[32] = {
     //     1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f,
     //     9.0f, 10.0f, 11.0f, 12.0f, 13.0f, 14.0f, 15.0f, 16.0f,
