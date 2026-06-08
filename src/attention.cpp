@@ -629,13 +629,13 @@ public:
             head_dim);
         cudaMemcpy(BTCHost, BTCdevice, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
 
-        if (debug)
-        {
-            // std::cout << "Before reform " << std::endl;
-            // utils->print2DMatrixLastTwoRect(arr, batch_size, num_heads, seq_len, head_dim, "After");
-            // std::cout << "After reform from the method" << std::endl;
-            // utils->printFlatArray3D(BTCHost, batch_size, seq_len, d_model, true);
-        }
+        // if (debug)
+        // {
+        //     std::cout << "Before reform " << std::endl;
+        //     utils->print2DMatrixLastTwoRect(arr, batch_size, num_heads, seq_len, head_dim, "After");
+        //     std::cout << "After reform from the method" << std::endl;
+        //     utils->printFlatArray3D(BTCHost, batch_size, seq_len, d_model, true);
+        // }
     }
 
     void forward(Batch currentBatch)
@@ -646,6 +646,7 @@ public:
             std::cout << "The number of heads must be perfectly divisible by dimesnion " << std::endl;
             return;
         }
+        
         float *x = embeddings->forward(currentBatch);
 
         float *Q = query->forward(x); // We are doing a linear transformation here when we pass in the forward method.
@@ -749,7 +750,7 @@ int main()
     int batch_size = 4;
     int seq_len = 4;
     int epoch = 12;
-    bool drop_last = true;
+    bool drop_last = true; // for training set this to false, if someone is serious about this email me. the cost of implementing this feature will affect everything in depth many tradeoffs
 
     std::string path = "./src/data/chunk.txt";
 
@@ -787,6 +788,7 @@ int main()
             // // std::cout << batch.width << std::endl;
             // utils->printFlatArray2D(batch.x, seq_len, batch.width);
 
+            // we have a variable batch_size and if not fixed now, if the batch_size is smaller then whats passed in the consturctor the kernel will have a bug and we will never ever know, thats the pain.
             attention->forward(batch);
         }
     }
