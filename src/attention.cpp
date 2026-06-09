@@ -32,6 +32,7 @@ extern "C" void softmax(float *arr, float *out, int N, int seq_len, int n_head, 
 extern "C" void QKVMatmulFinal(float *QK, float *V, float *out, int seq_len, int d_head, int n_head, int batch_size);
 extern "C" void ReformShapeWapper(float *arr, float *out, int batch_size, int seq_len, int d_model, int num_head, int head_dim);
 extern "C" void layerNormalization(float *x, float *gamma, float *beta, int batch_size, int seq_len, int d_model);
+extern "C" void vectorKernel(float *A, float *B, float *C, int N);
 class Embeddings
 {
 
@@ -485,6 +486,9 @@ public:
     // Allocation for re-connecting the heads.
     float *BTCHost = nullptr;
     float *BTCdevice;
+    // same buffer for temp
+    float *tempDevice;
+    float *resedualOutDevice;
 
     float *tempX = nullptr;
 
@@ -538,7 +542,10 @@ public:
         cudaMalloc((void **)&BTCdevice, batch_size * seq_len * d_model * sizeof(float));
 
         // allocate for that temporary x
-        tempX  = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
+        tempX  = new float[batch_size * seq_len * d_model * sizeof(float)];
+
+        cudaMalloc((void **)&tempDevice, batch_size * seq_len * d_model * sizeof(float));
+        cudaMalloc((void **)&resedualOutDevice, batch_size * seq_len * d_model * sizeof(float));
     };
 
     ~Attention()
@@ -549,6 +556,8 @@ public:
 
         cudaFree(deviceQKTSqrtD);
 
+        cudaFree(tempDevice);
+
         (hostQKT != nullptr ? free(hostQKT) : void());
 
         (hostSoftmaxOut != nullptr ? free(hostSoftmaxOut) : void());
@@ -557,13 +566,14 @@ public:
 
         (BTCHost != nullptr ? free(BTCHost) : void());
 
-        (tempX != nullptr ? free(tempX) : void());
+        delete[] tempX;
 
         cudaFree(deviceSoftmaxOut);
         cudaFree(deviceValue);
         cudaFree(QKVOutDeviceOut); // we could free in the individual method but if we never call them then its never free.
 
         cudaFree(BTCdevice);
+        cudaFree(resedualOutDevice);
     }
 
 public:
@@ -829,8 +839,42 @@ public:
         //     utils->printFlatArray3D(tempX, batch_size, seq_len, d_model);
         // }
 
+        // if (debug)
+        // {
+        //     std::cout << " Before adding resedual " << std::endl;
+        //     this->utils->printFlatArray3D(BTCHost, batch_size, seq_len, d_model);
+        // }
+        
+        addResidual(BTCHost, tempX);
+
+        // if (debug)
+        // {
+        //     std::cout << " Resedual that got added " << std::endl;
+        //     this->utils->printFlatArray3D(tempX, batch_size, seq_len, d_model);
+
+        //     std::cout << " After adding the resedual " << std::endl;
+        //     this->utils->printFlatArray3D(BTCHost, batch_size, seq_len, d_model);
+        // }
+
         debug = false;
     };
+
+    void addResidual(float *input, float *temp)
+    {
+        // lets rewrite this BTCHost
+
+        // BTCdevice is the buffer for I wished I had followed proper naming convenstion here, not my fault because you woudln't know the nature of abstraction here.
+        // tempDevice is buffer for temp
+
+        // copy both into the buffer.
+        cudaMemcpy(BTCdevice, input, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyHostToDevice);
+        cudaMemcpy(tempDevice, temp, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyHostToDevice);
+
+        vectorKernel(BTCdevice, tempDevice, resedualOutDevice, batch_size * seq_len * d_model);
+
+        // copy this to pointer input, and that same x will be modified
+        cudaMemcpy(input, resedualOutDevice, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+    }
 };
 
 int main()

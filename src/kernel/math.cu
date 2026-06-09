@@ -493,7 +493,7 @@ __global__ void softmaxKrenel(
 
 */
 __global__ void layerNormKernel(
-    float *x,       // (batch_size, seq_len, d_model)
+    float *x, // (batch_size, seq_len, d_model)
     float *gamma,
     float *beta,
     int batch_size,
@@ -505,7 +505,6 @@ __global__ void layerNormKernel(
     int e = threadIdx.x;        // which embed dimension, dmodel
 
     int idx = (seq_idx * batch_size + batch_idx) * d_model + e;
-
 
     float val = x[idx];
 
@@ -525,18 +524,27 @@ __global__ void layerNormKernel(
 
     float difference = val - mean; // (x - u)
 
-    float variance = difference * difference; 
+    float variance = difference * difference;
 
     for (int offset = 16; offset > 0; offset /= 2)
     {
         variance += __shfl_down_sync(0xffffffff, variance, offset);
     }
-    variance = __shfl_sync(0xffffffff, variance, 0) / d_model; 
+    variance = __shfl_sync(0xffffffff, variance, 0) / d_model;
 
     // normalize, that small constant Eo is used to added to prevent division from zero
     // like in the Columb's law.
     float std = sqrtf(variance + 1e-8f);
     x[idx] = gamma[e] * ((val - mean) / std) + beta[e]; // fingers crossed no race condition.
+}
+
+__global__ void vectorAddKernel(const float *B, const float *C, float *A, int N)
+{
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < N)
+    {
+        A[i] = B[i] + C[i];
+    }
 }
 
 // sweet and simple here because I am stil learning
@@ -585,14 +593,27 @@ __global__ void QKVMatmulKernel(
 
 extern "C"
 {
+    void vectorKernel(
+        float *A,
+        float *B,
+        float *C,
+        int N
+    )
+    {
+        int blockSize = 256;
+        int numBlocks = (N + blockSize - 1) / blockSize;
+
+        vectorAddKernel<<<numBlocks, blockSize>>>(A, B, C, N);
+        // this might look confusing but C is the output.
+        cudaDeviceSynchronize();
+    }
     void layerNormalization(
         float *x,
         float *gamma,
         float *beta,
         int batch_size,
         int seq_len,
-        int d_model
-    )
+        int d_model)
     {
         dim3 grid(seq_len, batch_size);
         dim3 block(d_model);
