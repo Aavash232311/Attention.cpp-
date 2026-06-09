@@ -282,20 +282,20 @@ public:
 
         cudaMemcpy(ws, d_out, seq_len * batch_size * f_out * sizeof(float), cudaMemcpyDeviceToHost);
 
-        // if (debug)
-        // {
-        //     std::cout << "Weight" << std::endl;
-        //     utils->printFlatArray2D(weight, f_in, f_out);
+        if (debug)
+        {
+            // std::cout << "Weight" << std::endl;
+            // utils->printFlatArray2D(weight, f_in, f_out);
 
-        //     std::cout << "Bias" << std::endl;
-        //     utils->printFlatArray3D(bias, 1, 1, f_out);
+            // std::cout << "Bias" << std::endl;
+            // utils->printFlatArray3D(bias, 1, 1, f_out);
 
-        //     utils->printFlatArray3D(ws, batch_size, seq_len, f_out, true);
-        // }
+            // utils->printFlatArray3D(ws, batch_size, seq_len, f_out, true);
+        }
 
         dLinear = false;
 
-        return x;
+        return ws;
     }
 
     float *reshapeHead() // make it have more dim so that effective computation can happen in parallel.
@@ -493,7 +493,7 @@ public:
         int vocab_size,
         int num_heads,
         int seq_len,
-        int batch_size) 
+        int batch_size)
     {
 
         this->d_model = d_model;
@@ -725,13 +725,12 @@ public:
         // }
     }
 
-    void forward(Batch currentBatch)
+    float *forward(Batch currentBatch)
     {
 
         if (d_model % num_heads != 0)
         {
-            std::cout << "The number of heads must be perfectly divisible by dimesnion d_model: " << d_model << " Num head: " << num_heads << std::endl;
-            return;
+            throw std::runtime_error("The number of heads must be perfectly divisible by dimesnion");
         }
 
         float *x = embeddings->forward(currentBatch); // this brings us with the (B, T, C) batch because we added encoding and embeddings, encoding for our case fixed
@@ -854,16 +853,18 @@ public:
 
         addResidual(BTCHost, tempX);
 
-        // if (debug)
-        // {
-        //     std::cout << " Resedual that got added " << std::endl;
-        //     this->utils->printFlatArray3D(tempX, batch_size, seq_len, d_model);
+        if (debug)
+        {
+            // std::cout << " Resedual that got added " << std::endl;
+            // this->utils->printFlatArray3D(tempX, batch_size, seq_len, d_model);
 
-        //     std::cout << " After adding the resedual " << std::endl;
-        //     this->utils->printFlatArray3D(BTCHost, batch_size, seq_len, d_model);
-        // }
+            // std::cout << " After adding the resedual " << std::endl;
+            // this->utils->printFlatArray3D(BTCHost, batch_size, seq_len, d_model);
+        }
 
         debug = false;
+
+        return this->BTCHost;
     };
 
     void addResidual(float *input, float *temp)
@@ -897,23 +898,30 @@ class AttentionInterface
     const std::vector<int> &data;
     std::unique_ptr<Attention> attention;
     std::unique_ptr<DataLoader> dataLoader;
+    std::unique_ptr<Utility> utils;
+
+    // turn those result into proballity score
+    std::unique_ptr<Linear> lm_head;
+
+    bool debug = true;
 
 public:
     AttentionInterface(
         int d_model,
         int num_heads,
-        int vocab_size,
         int batch_size,
         int seq_len,
         bool drop_last,
         const std::vector<int> &data) : data(data)
     {
         this->d_model = d_model;
-        this->vocab_size = vocab_size;
+        this->vocab_size = data.size();
         this->batch_size = batch_size;
         this->seq_len = seq_len;
         this->drop_last = drop_last;
         this->num_heads = num_heads;
+
+        utils = std::make_unique<Utility>();
 
         attention = std::make_unique<Attention>(
             d_model,
@@ -923,6 +931,8 @@ public:
             batch_size);
 
         dataLoader = std::make_unique<DataLoader>(batch_size, data, seq_len, drop_last);
+
+        lm_head = std::make_unique<Linear>(d_model, vocab_size, seq_len, batch_size, num_heads);
     }
 
     void train(int epoch)
@@ -937,7 +947,12 @@ public:
                 // utils->printFlatArray2D(batch.x, seq_len, batch.width);
 
                 // we have a variable batch_size and if not fixed now, if the batch_size is smaller then whats passed in the consturctor the kernel will have a bug and we will never ever know, thats the pain.
-                attention->forward(batch);
+                float *x = attention->forward(batch);
+
+                float *prob = lm_head->forward(x);
+
+
+                debug = false;
             }
         }
         dataLoader->resetIterator(); // just the weird logic that I wrote.
@@ -977,7 +992,6 @@ int main()
     std::unique_ptr<AttentionInterface> model = std::make_unique<AttentionInterface>(
         d_model,
         num_heads,
-        vocab_size,
         batch_size,
         seq_len,
         drop_last,
