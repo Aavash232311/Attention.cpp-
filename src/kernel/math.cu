@@ -461,6 +461,83 @@ __global__ void softmaxKrenel(
     if (idx < N)
         out[idx] = expf(arr[idx] - max_val) / sum_val;
 }
+/*
+    Lets trace the parallel reduction here.
+
+    we have a warp of 6 threads from 0 to 15 index.
+    Basically yhis wrap talks with the thread registers the fastest possible memory in the GPU.
+
+    Lets consider this thread
+    Lane:   0  1  2  3  4  5  6  7
+    Value:  1  2  3  4  5  6  7  8
+
+
+    at level 1, we have offset = 4
+    Lane 0: 1 + 5 =  6
+    Lane 1: 2 + 6 = 8
+    Lane 2: 3 + 7 = 10
+    Lane 3: 4 + 8 = 12
+
+    Result = [6, 8, 10, 12, 5, 6, 7, 8]
+
+    level 2 offset = 2
+
+    Level 0: = 6 + 10 = 16
+    Level 1: = 8 + 12 = 20
+
+    Result = [16, 20, 10, 12, 5, 6, 7, 8]
+
+    Level 0 : 16 + 20 = 36
+
+    [36, 20, 10, 12, 5, 6, 7, 8]
+
+*/
+__global__ void layerNormKernel(
+    float *x,       // (batch_size, seq_len, d_model)
+    float *gamma,
+    float *beta,
+    int batch_size,
+    int seq_len,
+    int d_model)
+{
+    int seq_idx = blockIdx.x;   // which sequence position
+    int batch_idx = blockIdx.y; // which batch item
+    int e = threadIdx.x;        // which embed dimension, dmodel
+
+    int idx = (seq_idx * batch_size + batch_idx) * d_model + e;
+
+
+    float val = x[idx];
+
+    float sum = val;
+
+    // the memory can be shared across 32 thread called warp
+    for (int offset = 16; offset > 0; offset /= 2)
+    {
+        // current idx value is incrementing from values from 4 lanes away
+        sum += __shfl_down_sync(0xffffffff, sum, offset);
+    }
+
+    // lets calculate the mean, if something is not okay here transformer will never work
+    // and I will get lost in thoushands of lines of code so each module/cuda kernel should be checked very precisly.
+
+    float mean = __shfl_sync(0xffffffff, sum, 0) / d_model; // basically after the parallel reduction the values are shifed along
+
+    float difference = val - mean; // (x - u)
+
+    float variance = difference * difference; 
+
+    for (int offset = 16; offset > 0; offset /= 2)
+    {
+        variance += __shfl_down_sync(0xffffffff, variance, offset);
+    }
+    variance = __shfl_sync(0xffffffff, variance, 0) / d_model; 
+
+    // normalize, that small constant Eo is used to added to prevent division from zero
+    // like in the Columb's law.
+    float std = sqrtf(variance + 1e-8f);
+    x[idx] = gamma[e] * ((val - mean) / std) + beta[e]; // fingers crossed no race condition.
+}
 
 // sweet and simple here because I am stil learning
 // i want to get to the end result first then benchmark and
@@ -508,6 +585,23 @@ __global__ void QKVMatmulKernel(
 
 extern "C"
 {
+    void layerNormalization(
+        float *x,
+        float *gamma,
+        float *beta,
+        int batch_size,
+        int seq_len,
+        int d_model
+    )
+    {
+        dim3 grid(seq_len, batch_size);
+        dim3 block(d_model);
+
+        layerNormKernel<<<grid, block>>>(x, gamma, beta, batch_size, seq_len, d_model);
+
+        cudaDeviceSynchronize();
+    }
+
     void ReformShapeWapper(
         float *arr, // [batch_size, T, n_head, d_head]
         float *out, // (B, T, C)
