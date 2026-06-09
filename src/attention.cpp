@@ -72,11 +72,6 @@ public:
         this->seq_len = seq_len;
         this->batch_size = batch_size;
 
-        std::cout << "d_model = " << this->d_model << '\n'
-                  << "vocab_size = " << this->vocab_size << '\n'
-                  << "seq_len = " << this->seq_len << '\n'
-                  << "batch_size = " << this->batch_size << '\n';
-
         cudaMalloc((void **)&devicePositionalEncoding, seq_len * d_model * sizeof(float));
         positionalEmbeddings(devicePositionalEncoding, seq_len, d_model); // Let positional embedding stay on the global memory
 
@@ -452,12 +447,13 @@ public:
 class Attention
 {
 public:
-    int &d_model;
-    int &vocab_size;
-    int &num_heads;
-    int &seq_len;
-    int &batch_size;
+    int d_model;
+    int vocab_size;
+    int num_heads;
+    int seq_len;
+    int batch_size;
     int head_dim;
+
     std::unique_ptr<Utility> utils = std::make_unique<Utility>();
     std::unique_ptr<Embeddings> embeddings; // called in the constructor good.
     std::unique_ptr<Linear> key;
@@ -492,8 +488,20 @@ public:
 
     float *tempX = nullptr;
 
-    Attention(int &d_model, int &vocab_size, int &num_heads, int &seq_len, int &batch_size) : d_model(d_model), vocab_size(vocab_size), num_heads(num_heads), seq_len(seq_len), batch_size(batch_size)
+    Attention(
+        int d_model,
+        int vocab_size,
+        int num_heads,
+        int seq_len,
+        int batch_size) 
     {
+
+        this->d_model = d_model;
+        this->vocab_size = vocab_size;
+        this->num_heads = num_heads;
+        this->seq_len = seq_len;
+        this->batch_size = batch_size;
+
         this->embeddings = std::make_unique<Embeddings>(
             this->d_model,
             this->vocab_size,
@@ -510,10 +518,10 @@ public:
         layerNorm = std::make_unique<LayerNorm>(batch_size, seq_len, d_model);
 
         // Just to test and keep track of things
-        // std::cout << "d_model: " << d_model << std::endl;
-        // std::cout << "vocab_size: " << vocab_size << std::endl;
-        // std::cout << "seq_len: " << seq_len << std::endl;
-        // std::cout << "num_heads: " << num_heads << std::endl;
+        std::cout << "d_model: " << d_model << std::endl;
+        std::cout << "vocab_size: " << vocab_size << std::endl;
+        std::cout << "seq_len: " << seq_len << std::endl;
+        std::cout << "num_heads: " << num_heads << std::endl;
 
         this->head_dim = d_model / num_heads;
 
@@ -542,7 +550,7 @@ public:
         cudaMalloc((void **)&BTCdevice, batch_size * seq_len * d_model * sizeof(float));
 
         // allocate for that temporary x
-        tempX  = new float[batch_size * seq_len * d_model * sizeof(float)];
+        tempX = new float[batch_size * seq_len * d_model * sizeof(float)];
 
         cudaMalloc((void **)&tempDevice, batch_size * seq_len * d_model * sizeof(float));
         cudaMalloc((void **)&resedualOutDevice, batch_size * seq_len * d_model * sizeof(float));
@@ -722,7 +730,7 @@ public:
 
         if (d_model % num_heads != 0)
         {
-            std::cout << "The number of heads must be perfectly divisible by dimesnion " << std::endl;
+            std::cout << "The number of heads must be perfectly divisible by dimesnion d_model: " << d_model << " Num head: " << num_heads << std::endl;
             return;
         }
 
@@ -738,7 +746,6 @@ public:
 
         // we need to store something here in order to add the resudal, a temporary variable
         std::copy(x, x + batch_size * seq_len * d_model * sizeof(float), tempX);
-
 
         // if (debug)
         // {
@@ -833,7 +840,7 @@ public:
         outputProj->forward(BTCHost);
 
         // I will add the resudual here to give it a context on what's it is attending to
-        // if (debug) 
+        // if (debug)
         // {
         //     std::cout << "Temp X" << std::endl;
         //     utils->printFlatArray3D(tempX, batch_size, seq_len, d_model);
@@ -844,7 +851,7 @@ public:
         //     std::cout << " Before adding resedual " << std::endl;
         //     this->utils->printFlatArray3D(BTCHost, batch_size, seq_len, d_model);
         // }
-        
+
         addResidual(BTCHost, tempX);
 
         // if (debug)
@@ -877,6 +884,66 @@ public:
     }
 };
 
+class AttentionInterface
+{
+
+    int d_model;
+    int num_heads;
+    int vocab_size;
+    int batch_size;
+    int seq_len;
+    bool drop_last = true;
+
+    const std::vector<int> &data;
+    std::unique_ptr<Attention> attention;
+    std::unique_ptr<DataLoader> dataLoader;
+
+public:
+    AttentionInterface(
+        int d_model,
+        int num_heads,
+        int vocab_size,
+        int batch_size,
+        int seq_len,
+        bool drop_last,
+        const std::vector<int> &data) : data(data)
+    {
+        this->d_model = d_model;
+        this->vocab_size = vocab_size;
+        this->batch_size = batch_size;
+        this->seq_len = seq_len;
+        this->drop_last = drop_last;
+        this->num_heads = num_heads;
+
+        attention = std::make_unique<Attention>(
+            d_model,
+            vocab_size,
+            num_heads,
+            seq_len,
+            batch_size);
+
+        dataLoader = std::make_unique<DataLoader>(batch_size, data, seq_len, drop_last);
+    }
+
+    void train(int epoch)
+    {
+        Batch batch;
+
+        for (int i = 0; i < epoch; ++i)
+        {
+            while (!(batch = dataLoader->iter()).empty())
+            {
+                // // std::cout << batch.width << std::endl;
+                // utils->printFlatArray2D(batch.x, seq_len, batch.width);
+
+                // we have a variable batch_size and if not fixed now, if the batch_size is smaller then whats passed in the consturctor the kernel will have a bug and we will never ever know, thats the pain.
+                attention->forward(batch);
+            }
+        }
+        dataLoader->resetIterator(); // just the weird logic that I wrote.
+    }
+};
+
 int main()
 {
     cudaDeviceSynchronize();
@@ -906,29 +973,18 @@ int main()
     const std::vector<int> &encodedData = helper->getEncodedList();
 
     // /* For something like attention we need heap allocation. */
-    std::unique_ptr<Attention> attention = std::make_unique<Attention>(
+
+    std::unique_ptr<AttentionInterface> model = std::make_unique<AttentionInterface>(
         d_model,
-        vocab_size,
         num_heads,
+        vocab_size,
+        batch_size,
         seq_len,
-        batch_size); // called once good.
+        drop_last,
+        encodedData);
 
-    std::unique_ptr<DataLoader> dataLoader = std::make_unique<DataLoader>(batch_size, encodedData, seq_len, drop_last);
+    model->train(epoch);
 
-    Batch batch;
-
-    for (int i = 0; i < epoch; ++i)
-    {
-        while (!(batch = dataLoader->iter()).empty())
-        {
-            // // std::cout << batch.width << std::endl;
-            // utils->printFlatArray2D(batch.x, seq_len, batch.width);
-
-            // we have a variable batch_size and if not fixed now, if the batch_size is smaller then whats passed in the consturctor the kernel will have a bug and we will never ever know, thats the pain.
-            attention->forward(batch);
-        }
-    }
-    dataLoader->resetIterator();
     // float X[32] = {
     //     1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f,
     //     9.0f, 10.0f, 11.0f, 12.0f, 13.0f, 14.0f, 15.0f, 16.0f,
