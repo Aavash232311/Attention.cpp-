@@ -468,7 +468,7 @@ public:
     float *DeviceKt;
     float *DeviceQ;
     float *DeviceQKT;
-    float *hostQKT = nullptr;
+    float *hostQKT = nullptr; // most of this null pointer is uncessary but ok does not hurt.
 
     bool debug = true;
 
@@ -485,6 +485,8 @@ public:
     // Allocation for re-connecting the heads.
     float *BTCHost = nullptr;
     float *BTCdevice;
+
+    float *tempX = nullptr;
 
     Attention(int &d_model, int &vocab_size, int &num_heads, int &seq_len, int &batch_size) : d_model(d_model), vocab_size(vocab_size), num_heads(num_heads), seq_len(seq_len), batch_size(batch_size)
     {
@@ -534,6 +536,9 @@ public:
         // Here we will start the memory allocation for (B,T,C) since after computation the shapes are brought back
         this->BTCHost = (float *)malloc(batch_size * seq_len * d_model * sizeof(float)); // we aready have the in buffer allocation so I wont worry about that for right now., this is for output. we bring back the original shape.
         cudaMalloc((void **)&BTCdevice, batch_size * seq_len * d_model * sizeof(float));
+
+        // allocate for that temporary x
+        tempX  = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
     };
 
     ~Attention()
@@ -551,6 +556,8 @@ public:
         (QKVOutHostOut != nullptr ? free(QKVOutHostOut) : void());
 
         (BTCHost != nullptr ? free(BTCHost) : void());
+
+        (tempX != nullptr ? free(tempX) : void());
 
         cudaFree(deviceSoftmaxOut);
         cudaFree(deviceValue);
@@ -715,6 +722,16 @@ public:
 
         // if (debug)
         // {
+        //     std::cout << "Orginal x" << std::endl;
+        //     this->utils->printFlatArray3D(x, batch_size, seq_len, d_model);
+        // }
+
+        // we need to store something here in order to add the resudal, a temporary variable
+        std::copy(x, x + batch_size * seq_len * d_model * sizeof(float), tempX);
+
+
+        // if (debug)
+        // {
         //     std::cout << "Aftter Norm" << std::endl;
         //     utils->printFlatArray3D(x, batch_size, seq_len, d_model);
         // }
@@ -804,6 +821,13 @@ public:
         // without learning to mix information from multiple heads together.
 
         outputProj->forward(BTCHost);
+
+        // I will add the resudual here to give it a context on what's it is attending to
+        // if (debug) 
+        // {
+        //     std::cout << "Temp X" << std::endl;
+        //     utils->printFlatArray3D(tempX, batch_size, seq_len, d_model);
+        // }
 
         debug = false;
     };
