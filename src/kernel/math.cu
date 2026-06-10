@@ -428,13 +428,138 @@ softmax(x3) = e^0/e^2 + e^1 + e^0
 
 */
 
-__global__ void softmaxKrenel(
+// This default accounts for vocab_size > 32 which is likely the case in almost everytime.
+
+/*
+    First of all in our simple kernel we could talk between the warps.
+    Now for something like vocab_size the problem is likely to be larger than 32.
+
+    So each warp solves their own little problem. Like for example 0-31 handles something
+    and we allocate shared memory
+
+    s[1] = max from warp 1 for example... and so on
+    s[2] = max of warp 2
+    s[3] = max of warp 3
+    s[4] = max of warp 4
+
+
+*/
+
+__global__ void SoftmaxKernel2D(
+    float *arr,
+    float *out,
+    int N,
+    int seq_len,
+    int vocab_size)
+{
+    // int batch_idx = blockIdx.y;
+    // int row_idx = blockIdx.x;
+    // int col_idx = threadIdx.x;
+
+    // int idx = batch_idx * (seq_len * vocab_size) + row_idx * vocab_size + col_idx;
+    // int num_warps = (blockDim.x + 31) / 32;
+
+    // extern __shared__ float sharedMem[];
+    // float *shared_max = sharedMem;
+    // float *shared_sum = sharedMem + num_warps;
+
+    // int tid = threadIdx.x;
+
+    __syncthreads();
+
+}
+
+// our model automatically uses this when seq_len > 32 which is slower than the bottom one because
+// this uses shared memory and all those bells and whistles for the bottlencks.
+// Just get the idea right meaning the concept of the hardware level and we can reporduce the syntax.
+__global__ void softmaxKernel4DShared(
+    float *arr, // Shape(B, n_head, T, T)
+    float *out,
+    int N,
+    int seq_len,
+    int n_head)
+{
+    int batch_idx = blockIdx.z;
+    int nhead_idx = blockIdx.y;
+    int seq_len_idx1 = blockIdx.x;  // row
+    int seq_len_idx2 = threadIdx.x; // cols 0-31 thread in a wrap
+
+    int idx = batch_idx * (n_head * seq_len * seq_len) + nhead_idx * (seq_len * seq_len) + seq_len_idx1 * seq_len + seq_len_idx2;
+
+    float val = (seq_len_idx2 < seq_len && idx < N) ? arr[idx] : -FLT_MAX;
+
+    extern __shared__ float sharedMem[]; // allocated per kernel when launched the block
+
+    float *shared_max = sharedMem;
+    float *shared_sum = shared_max + blockDim.x;
+
+    for (int offset = 16; offset > 0; offset /= 2)
+        val = max(val, __shfl_down_sync(0xffffffff, val, offset));
+
+    if (threadIdx.x % 32 == 0)
+    {
+        shared_max[threadIdx.x / 32] = val; // assign that to shared memory
+    }
+
+    __syncthreads();
+
+    // rediude from that shared memory
+    int num_warps = (blockDim.x + 31) / 32;
+
+    if (threadIdx.x < num_warps)
+    {
+        val = shared_max[threadIdx.x];
+        for (int offset = 16; offset > 0; offset /= 2)
+        {
+            val = max(val, __shfl_down_sync(0xffffffff, val, offset));
+        }
+        if (threadIdx.x == 0)
+        {
+            shared_max[0] = val;
+        }
+    }
+
+    __syncthreads();
+    float max_val = shared_max[0]; // all threads read the global max
+
+    float exp_val = (idx < N) ? expf(arr[idx] - max_val) : 0.0f;
+
+    // ----------- Sum reduction ---------------
+    float sum = exp_val;
+
+    for (int offset = 16; offset > 0; offset /= 2)
+        sum += __shfl_down_sync(0xffffffff, sum, offset);
+
+    if (threadIdx.x % 32 == 0)
+        shared_sum[threadIdx.x / 32] = sum;
+
+    __syncthreads();
+
+    if (threadIdx.x < num_warps)
+    {
+        sum = shared_sum[threadIdx.x];
+        for (int offset = 16; offset > 0; offset /= 2)
+            sum += __shfl_down_sync(0xffffffff, sum, offset);
+        if (threadIdx.x == 0)
+            shared_sum[0] = sum;
+    }
+
+    __syncthreads();
+    float sum_val = shared_sum[0];
+
+    if (idx < N)
+        out[idx] = exp_val / sum_val;
+}
+
+// works fine for seq_len < 32
+__global__ void softmaxKrenel4D(
     float *arr, // (batch, n_head, seq_len, seq_len)
     float *out,
     int N,
     int seq_len,
     int n_head)
 {
+
     int batch_idx = blockIdx.z;
     int nhead_idx = blockIdx.y;
     int seq_len_idx1 = blockIdx.x;  // row
@@ -492,6 +617,8 @@ __global__ void softmaxKrenel(
     [36, 20, 10, 12, 5, 6, 7, 8]
 
 */
+
+// ------------ We forgoet to account for d_model > 32 ------------- we need to do it all the time whenever using memory from the register.
 __global__ void layerNormKernel(
     float *x, // (batch_size, seq_len, d_model)
     float *gamma,
@@ -597,8 +724,7 @@ extern "C"
         float *A,
         float *B,
         float *C,
-        int N
-    )
+        int N)
     {
         int blockSize = 256;
         int numBlocks = (N + blockSize - 1) / blockSize;
@@ -655,11 +781,45 @@ extern "C"
         cudaDeviceSynchronize();
     }
 
-    void softmax(float *arr, float *out, int N, int seq_len, int n_head, int batch_size)
+    void softmax2D(
+        float *arr,
+        float *out,
+        int batch_size,
+        int seq_len,
+        int vocab_size)
+    {
+        int block_size = ((vocab_size + 31) / 32) * 32; // round up to multiple of 32
+        dim3 block(block_size);
+        dim3 grid(seq_len, batch_size);
+
+        int num_warps = block_size / 32;
+        int smem_size = 2 * num_warps * sizeof(float);
+
+        int N = batch_size * seq_len * vocab_size;
+
+        SoftmaxKernel2D<<<grid, block, smem_size>>>(arr, out, N, seq_len, vocab_size);
+
+        cudaError_t err = cudaGetLastError();
+        if (err != cudaSuccess)
+        {
+            printf("Kernel launch error: %s\n", cudaGetErrorString(err));
+            return;
+        }
+
+        cudaDeviceSynchronize();
+    }
+
+    void softmax(
+        float *arr,
+        float *out,
+        int N,
+        int seq_len,
+        int n_head,
+        int batch_size)
     {
 
         int num_rows = batch_size * n_head * seq_len;
-        softmaxKrenel<<<num_rows, seq_len>>>(arr, out, N, seq_len, n_head);
+        softmaxKrenel4D<<<num_rows, seq_len>>>(arr, out, N, seq_len, n_head);
 
         // wait for GPU to finish so the print statements display
         cudaDeviceSynchronize();

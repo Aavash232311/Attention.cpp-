@@ -451,6 +451,23 @@ public:
                     std::cout << "\n";
                 }
     }
+
+    template <typename T>
+    void printLastOneOf3D(const T *arr, int D0, int D1, int D2)
+    {
+        int i = D0 - 1; // last batch
+        int j = D1 - 1; // last row
+
+        std::cout << "[";
+        for (int k = 0; k < D2; ++k)
+        {
+            size_t idx = i * D1 * D2 + j * D2 + k;
+            std::cout << arr[idx];
+            if (k + 1 < D2)
+                std::cout << ", ";
+        }
+        std::cout << "]\n";
+    }
 };
 
 class EncoderText
@@ -723,7 +740,7 @@ public:
         }
     }
 
-    /* 
+    /*
         This looks scary but the logic is pretty straightforward, even I might not get at instantly after few months,
         but it is what it is because it has 100 reason to screw up.
     */

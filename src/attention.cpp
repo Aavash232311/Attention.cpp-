@@ -33,6 +33,7 @@ extern "C" void QKVMatmulFinal(float *QK, float *V, float *out, int seq_len, int
 extern "C" void ReformShapeWapper(float *arr, float *out, int batch_size, int seq_len, int d_model, int num_head, int head_dim);
 extern "C" void layerNormalization(float *x, float *gamma, float *beta, int batch_size, int seq_len, int d_model);
 extern "C" void vectorKernel(float *A, float *B, float *C, int N);
+extern "C" void softmax2D(float *arr, float *out, int batch_size, int seq_len, int vocab_size);
 class Embeddings
 {
 
@@ -905,6 +906,11 @@ class AttentionInterface
 
     bool debug = true;
 
+    // DEVICE SFOTMAX BEFORE CROSS ENTROPY LOSS IN
+    float *DeviceSoftmaxBLin;
+    // DEVICE SOFTMAX BEFORE CORSS ENTROPY LOSS OUT
+    float *DeviceSoftmaxBLout;
+
 public:
     AttentionInterface(
         int d_model,
@@ -933,6 +939,30 @@ public:
         dataLoader = std::make_unique<DataLoader>(batch_size, data, seq_len, drop_last);
 
         lm_head = std::make_unique<Linear>(d_model, vocab_size, seq_len, batch_size, num_heads);
+
+        cudaMalloc((void **)&DeviceSoftmaxBLin, batch_size * seq_len * vocab_size * sizeof(float));
+        cudaMalloc((void **)&DeviceSoftmaxBLout, batch_size * seq_len * vocab_size * sizeof(float));
+    }
+
+    ~AttentionInterface()
+    {
+        cudaFree(DeviceSoftmaxBLin);
+        cudaFree(DeviceSoftmaxBLout);
+    }
+
+    void softmaxAcrossProballity(float *probality)
+    {
+        cudaMemcpy(DeviceSoftmaxBLin, probality, batch_size * seq_len * vocab_size * sizeof(float), cudaMemcpyHostToDevice);
+
+        // this accounts for whatever we are doing softmax on being greater than 32 i.e warp size.
+        softmax2D(
+            DeviceSoftmaxBLin,
+            DeviceSoftmaxBLout,
+            batch_size,
+            seq_len,
+            vocab_size);
+
+        cudaMemcpy(probality, DeviceSoftmaxBLout, batch_size * seq_len * vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
     }
 
     void train(int epoch)
@@ -949,8 +979,26 @@ public:
                 // we have a variable batch_size and if not fixed now, if the batch_size is smaller then whats passed in the consturctor the kernel will have a bug and we will never ever know, thats the pain.
                 float *x = attention->forward(batch);
 
-                float *prob = lm_head->forward(x);
+                if (debug)
+                {
+                    // std::cout << " Before LM head " << std::endl;
+                    // this->utils->printFlatArray3D(x, batch_size, seq_len, d_model);
+                }
 
+                float *prob = lm_head->forward(x); // Shape (B, T, vocab_size)
+
+                if (debug)
+                {
+                    // std::cout << " After LM head " << std::endl;
+                    // this->utils->printFlatArray3D(prob, batch_size, seq_len, vocab_size);
+                }
+                // softmaxAcrossProballity(prob);
+
+                // if (debug)
+                // {
+                //     std::cout << " After sfotmax last two dimension " << std::endl;
+                //     this->utils->printLastOneOf3D(prob, batch_size, seq_len, vocab_size);
+                // }
 
                 debug = false;
             }
