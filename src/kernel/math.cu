@@ -434,39 +434,103 @@ softmax(x3) = e^0/e^2 + e^1 + e^0
     First of all in our simple kernel we could talk between the warps.
     Now for something like vocab_size the problem is likely to be larger than 32.
 
-    So each warp solves their own little problem. Like for example 0-31 handles something
-    and we allocate shared memory
+    Let us take an example of maxed out kernel.
 
-    s[1] = max from warp 1 for example... and so on
-    s[2] = max of warp 2
-    s[3] = max of warp 3
-    s[4] = max of warp 4
-
-
+    Each block will have 1024 thread that is the hardware limit.
 */
 
+// warp level reduction for the sum
+
+__device__ __forceinline__ void warpReducer(
+    float &m,
+    float &d)
+{
+    for (int offset = 16; offset > 0; ++offset)
+    {
+        float next_m = __shfl_down_sync(0xffffffff, m, offset);
+        float next_d = __shfl_down_sync(0xffffffff, d, offset);
+
+        float m_new = fmaxf(m, next_m);
+        d = d * __expf(m - m_new) + next_d * __expf(next_m - m_new);
+        m = m_new;
+    }
+}
+
+__device__ __forceinline__ void warpReducer(float &m, float &d)
+{
+    for (int offset = 16; offset > 0; offset >>= 1)
+    {
+        float other_m = __shfl_down_sync(0xffffffff, m, offset);
+        float other_d = __shfl_down_sync(0xffffffff, d, offset);
+
+        float m_new = fmaxf(m, other_m);
+        d = d * __expf(m - m_new) + other_d * __expf(other_m - m_new);
+        m = m_new;
+    }
+}
+
 __global__ void SoftmaxKernel2D(
-    float *arr,
+    float *arr, // (B, T, vocab_size)
     float *out,
     int N,
     int seq_len,
     int vocab_size)
 {
-    // int batch_idx = blockIdx.y;
-    // int row_idx = blockIdx.x;
-    // int col_idx = threadIdx.x;
+    int batch_idx = blockIdx.y;
+    int row_idx = blockIdx.x;
 
-    // int idx = batch_idx * (seq_len * vocab_size) + row_idx * vocab_size + col_idx;
-    // int num_warps = (blockDim.x + 31) / 32;
+    const float *row = arr + batch_idx * (seq_len * vocab_size) + row_idx * vocab_size;
+    float *out_row = out + batch_idx * (seq_len * vocab_size) + row_idx * vocab_size;
 
-    // extern __shared__ float sharedMem[];
-    // float *shared_max = sharedMem;
-    // float *shared_sum = sharedMem + num_warps;
+    int lane = threadIdx.x % 32;
+    int warp_id = threadIdx.x / 32;
+    int num_warps = blockDim.x / 32;
 
-    // int tid = threadIdx.x;
+    __shared__ float smem_m[32];
+    __shared__ float smem_d[32];
 
+    float local_m = -FLT_MAX;
+    float local_d = 0.0f;
+
+    for (int i = threadIdx.x; i < vocab_size; i += blockDim.x) // jump to number of thread in a block.
+    {
+        float val = row[i];
+        float m_new = fmaxf(local_m, val);
+        local_d = local_d * __expf(local_m - m_new) + __expf(val - m_new);
+        local_m = m_new; 
+    }
+
+    warpReducer(local_m, local_d);
+
+    if (lane == 0)
+    {
+        smem_m[warp_id] = local_m;
+        smem_d[warp_id] = local_d;
+    }
     __syncthreads();
 
+    if (warp_id == 0)
+    {
+        local_m = (lane < num_warps) ? smem_m[lane] : -FLT_MAX;
+        local_d = (lane < num_warps) ? smem_d[lane] : 0.0f;
+
+        warpReducer(local_m, local_d);
+
+        if (lane == 0)
+        {
+            smem_m[0] = local_m;
+            smem_d[0] = local_d;
+        }
+    }
+    __syncthreads();
+
+    float global_m = smem_m[0];
+    float global_d = smem_d[0];
+
+    for (int i = threadIdx.x; i < vocab_size; i += blockDim.x)
+    {
+        out_row[i] = __expf(row[i] - global_m) / global_d;
+    }
 }
 
 // our model automatically uses this when seq_len > 32 which is slower than the bottom one because

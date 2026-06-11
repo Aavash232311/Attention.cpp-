@@ -5,6 +5,7 @@ bin
 data
 pg
 
+
 # Ignore Visual Studio / VS Code settings
 .vs/
 .vscode/
