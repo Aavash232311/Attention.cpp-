@@ -791,11 +791,11 @@ public:
         // -1e9f
         masking(hostQKT, -INFINITY);
 
-        // if (debug == true)
-        // {
-        //     std::cout << "Before softmax " << std::endl;
-        //     utils->print2DMatrixLastTwo(hostQKT, batch_size, num_heads, seq_len, "");
-        // }
+        if (debug == true)
+        {
+            // std::cout << "Before softmax " << std::endl;
+            // utils->print2DMatrixLastTwo(hostQKT, batch_size, num_heads, seq_len, "");
+        }
 
         // apply softmax part!
         cudaMemcpy(deviceQKTSqrtD, hostQKT, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyHostToDevice);
@@ -806,12 +806,12 @@ public:
 
         // deviceQKTSqrtD Shape(batch_size, n_head, T, T)
 
-        // if (debug == true)
-        // {
+        if (debug == true)
+        {
 
-        //     std::cout << "After softmax " << std::endl;
-        //     utils->print2DMatrixLastTwo(hostSoftmaxOut, batch_size, num_heads, seq_len, "");
-        // }
+            // std::cout << "After softmax " << std::endl;
+            // utils->print2DMatrixLastTwo(hostSoftmaxOut, batch_size, num_heads, seq_len, "");
+        }
 
         // value Shape(batch_size, n_head, seq_len, d_head)
         // deviceQKTSqrtD Shape(batch_size, n_head, T, T)
@@ -987,18 +987,18 @@ public:
 
                 float *prob = lm_head->forward(x); // Shape (B, T, vocab_size)
 
-                if (debug)
-                {
-                    // std::cout << " After LM head " << std::endl;
-                    // this->utils->printFlatArray3D(prob, batch_size, seq_len, vocab_size);
-                }
+                // if (debug)
+                // {
+                //     std::cout << " After LM head " << std::endl;
+                //     this->utils->printFlatArray3D(prob, batch_size, seq_len, vocab_size);
+                // }
                 softmaxAcrossProballity(prob);
 
-                if (debug)
-                {
-                    // std::cout << " After sfotmax last two dimension " << std::endl;
-                    // this->utils->printLastOneOf3D(prob, batch_size, seq_len, vocab_size);
-                }
+                // if (debug)
+                // {
+                //     std::cout << " After sfotmax last two dimension " << std::endl;
+                //     this->utils->printLastOneOf3D(prob, batch_size, seq_len, vocab_size);
+                // }
 
                 debug = false;
             }

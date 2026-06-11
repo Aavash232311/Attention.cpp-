@@ -844,29 +844,41 @@ extern "C"
 
         SoftmaxKernel2D<<<grid, block>>>(arr, out, batch_size, seq_len, vocab_size);
 
+        cudaDeviceSynchronize();
+
         cudaError_t err = cudaGetLastError();
         if (err != cudaSuccess)
         {
-            printf("Kernel launch error: %s\n", cudaGetErrorString(err));
+            printf("Kernel launch error softmax 2D: %s\n", cudaGetErrorString(err));
             return;
         }
-
-        cudaDeviceSynchronize();
     }
 
     void softmax(
-        float *arr,
+        float *arr, //  Shape(batch_size, n_head, T, T)
         float *out,
         int N,
         int seq_len,
         int n_head,
         int batch_size)
     {
+        // Here if the T dimension is less than 32 then we can talk with the
+        // internel registers in our thread and softmaxKernel4D will be enough.
+        // else we will need to use other kernel
 
-        int num_rows = batch_size * n_head * seq_len;
-        softmaxKrenel4D<<<num_rows, seq_len>>>(arr, out, N, seq_len, n_head);
+        if (seq_len > 32)
+        {
+            int rows = batch_size * n_head * seq_len; // each row gets softmaxed, and this 2D works for 2D
+            dim3 grid(rows, 1);
+            dim3 block(min(((seq_len + 31) / 32) * 32, 1024));
 
-        // wait for GPU to finish so the print statements display
+            SoftmaxKernel2D<<<grid, block>>>(arr, out, batch_size, rows, seq_len);
+        }
+        else
+        {
+            int num_rows = batch_size * n_head * seq_len;
+            softmaxKrenel4D<<<num_rows, seq_len>>>(arr, out, N, seq_len, n_head);
+        }
         cudaDeviceSynchronize();
     }
     void UpperTriangularMasking(
