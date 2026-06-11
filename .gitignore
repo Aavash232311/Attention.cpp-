@@ -5,6 +5,8 @@ bin
 data
 pg
 
+venv
+
 
 # Ignore Visual Studio / VS Code settings
 .vs/

@@ -441,22 +441,7 @@ softmax(x3) = e^0/e^2 + e^1 + e^0
 
 // warp level reduction for the sum
 
-__device__ __forceinline__ void warpReducer(
-    float &m,
-    float &d)
-{
-    for (int offset = 16; offset > 0; ++offset)
-    {
-        float next_m = __shfl_down_sync(0xffffffff, m, offset);
-        float next_d = __shfl_down_sync(0xffffffff, d, offset);
-
-        float m_new = fmaxf(m, next_m);
-        d = d * __expf(m - m_new) + next_d * __expf(next_m - m_new);
-        m = m_new;
-    }
-}
-
-__device__ __forceinline__ void warpReducer(float &m, float &d)
+__device__ __forceinline__ void warpReducerHelper(float &m, float &d)
 {
     for (int offset = 16; offset > 0; offset >>= 1)
     {
@@ -482,9 +467,9 @@ __global__ void SoftmaxKernel2D(
     const float *row = arr + batch_idx * (seq_len * vocab_size) + row_idx * vocab_size;
     float *out_row = out + batch_idx * (seq_len * vocab_size) + row_idx * vocab_size;
 
-    int lane = threadIdx.x % 32;
-    int warp_id = threadIdx.x / 32;
-    int num_warps = blockDim.x / 32;
+    int lane = threadIdx.x % 32;     // position within warp
+    int warp_id = threadIdx.x / 32;  // position within block
+    int num_warps = blockDim.x / 32; // total warps avalible
 
     __shared__ float smem_m[32];
     __shared__ float smem_d[32];
@@ -497,10 +482,10 @@ __global__ void SoftmaxKernel2D(
         float val = row[i];
         float m_new = fmaxf(local_m, val);
         local_d = local_d * __expf(local_m - m_new) + __expf(val - m_new);
-        local_m = m_new; 
+        local_m = m_new;
     }
 
-    warpReducer(local_m, local_d);
+    warpReducerHelper(local_m, local_d);
 
     if (lane == 0)
     {
@@ -514,7 +499,7 @@ __global__ void SoftmaxKernel2D(
         local_m = (lane < num_warps) ? smem_m[lane] : -FLT_MAX;
         local_d = (lane < num_warps) ? smem_d[lane] : 0.0f;
 
-        warpReducer(local_m, local_d);
+        warpReducerHelper(local_m, local_d);
 
         if (lane == 0)
         {
@@ -852,16 +837,12 @@ extern "C"
         int seq_len,
         int vocab_size)
     {
-        int block_size = ((vocab_size + 31) / 32) * 32; // round up to multiple of 32
+        int block_size = min(((vocab_size + 31) / 32) * 32, 1024);
+
         dim3 block(block_size);
         dim3 grid(seq_len, batch_size);
 
-        int num_warps = block_size / 32;
-        int smem_size = 2 * num_warps * sizeof(float);
-
-        int N = batch_size * seq_len * vocab_size;
-
-        SoftmaxKernel2D<<<grid, block, smem_size>>>(arr, out, N, seq_len, vocab_size);
+        SoftmaxKernel2D<<<grid, block>>>(arr, out, batch_size, seq_len, vocab_size);
 
         cudaError_t err = cudaGetLastError();
         if (err != cudaSuccess)

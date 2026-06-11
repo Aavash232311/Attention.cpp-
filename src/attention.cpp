@@ -992,13 +992,13 @@ public:
                     // std::cout << " After LM head " << std::endl;
                     // this->utils->printFlatArray3D(prob, batch_size, seq_len, vocab_size);
                 }
-                // softmaxAcrossProballity(prob);
+                softmaxAcrossProballity(prob);
 
-                // if (debug)
-                // {
-                //     std::cout << " After sfotmax last two dimension " << std::endl;
-                //     this->utils->printLastOneOf3D(prob, batch_size, seq_len, vocab_size);
-                // }
+                if (debug)
+                {
+                    // std::cout << " After sfotmax last two dimension " << std::endl;
+                    // this->utils->printLastOneOf3D(prob, batch_size, seq_len, vocab_size);
+                }
 
                 debug = false;
             }
