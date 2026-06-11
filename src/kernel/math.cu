@@ -112,6 +112,7 @@ __global__ void SetUpRnd(curandState *state, unsigned long seed, int max_threads
 
 __global__ void KaimingInitKernel(float *arr, curandState *state, int x, int y)
 {
+
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx >= x * y)
         return;
@@ -518,88 +519,6 @@ __global__ void SoftmaxKernel2D(
     }
 }
 
-// our model automatically uses this when seq_len > 32 which is slower than the bottom one because
-// this uses shared memory and all those bells and whistles for the bottlencks.
-// Just get the idea right meaning the concept of the hardware level and we can reporduce the syntax.
-__global__ void softmaxKernel4DShared(
-    float *arr, // Shape(B, n_head, T, T)
-    float *out,
-    int N,
-    int seq_len,
-    int n_head)
-{
-    int batch_idx = blockIdx.z;
-    int nhead_idx = blockIdx.y;
-    int seq_len_idx1 = blockIdx.x;  // row
-    int seq_len_idx2 = threadIdx.x; // cols 0-31 thread in a wrap
-
-    int idx = batch_idx * (n_head * seq_len * seq_len) + nhead_idx * (seq_len * seq_len) + seq_len_idx1 * seq_len + seq_len_idx2;
-
-    float val = (seq_len_idx2 < seq_len && idx < N) ? arr[idx] : -FLT_MAX;
-
-    extern __shared__ float sharedMem[]; // allocated per kernel when launched the block
-
-    float *shared_max = sharedMem;
-    float *shared_sum = shared_max + blockDim.x;
-
-    for (int offset = 16; offset > 0; offset /= 2)
-        val = max(val, __shfl_down_sync(0xffffffff, val, offset));
-
-    if (threadIdx.x % 32 == 0)
-    {
-        shared_max[threadIdx.x / 32] = val; // assign that to shared memory
-    }
-
-    __syncthreads();
-
-    // rediude from that shared memory
-    int num_warps = (blockDim.x + 31) / 32;
-
-    if (threadIdx.x < num_warps)
-    {
-        val = shared_max[threadIdx.x];
-        for (int offset = 16; offset > 0; offset /= 2)
-        {
-            val = max(val, __shfl_down_sync(0xffffffff, val, offset));
-        }
-        if (threadIdx.x == 0)
-        {
-            shared_max[0] = val;
-        }
-    }
-
-    __syncthreads();
-    float max_val = shared_max[0]; // all threads read the global max
-
-    float exp_val = (idx < N) ? expf(arr[idx] - max_val) : 0.0f;
-
-    // ----------- Sum reduction ---------------
-    float sum = exp_val;
-
-    for (int offset = 16; offset > 0; offset /= 2)
-        sum += __shfl_down_sync(0xffffffff, sum, offset);
-
-    if (threadIdx.x % 32 == 0)
-        shared_sum[threadIdx.x / 32] = sum;
-
-    __syncthreads();
-
-    if (threadIdx.x < num_warps)
-    {
-        sum = shared_sum[threadIdx.x];
-        for (int offset = 16; offset > 0; offset /= 2)
-            sum += __shfl_down_sync(0xffffffff, sum, offset);
-        if (threadIdx.x == 0)
-            shared_sum[0] = sum;
-    }
-
-    __syncthreads();
-    float sum_val = shared_sum[0];
-
-    if (idx < N)
-        out[idx] = exp_val / sum_val;
-}
-
 // works fine for seq_len < 32
 __global__ void softmaxKrenel4D(
     float *arr, // (batch, n_head, seq_len, seq_len)
@@ -666,6 +585,115 @@ __global__ void softmaxKrenel4D(
     [36, 20, 10, 12, 5, 6, 7, 8]
 
 */
+
+__device__ __forceinline__ void ParallelReducer(float &localSum)
+{
+    for (int offset = 16; offset > 0; offset /= 2)
+        localSum = max(localSum, __shfl_down_sync(0xffffffff, localSum, offset));
+    localSum = __shfl_sync(0xffffffff, localSum, 0);
+}
+
+// We need to optimize this tomorrow it wont work if the d_model > 32
+// True level of optimization without very much to loose takes more time probally thousnads of line and insanely complicated code.
+__global__ void layerNormKernelSlow( // not "slow" but slower than which utilizes registers
+    float *x,                        // (B, T, C)
+    float *gamma,
+    float *beta,
+    int batch_size,
+    int seq_len,
+    int d_model)
+{
+    int batch_idx = blockIdx.y;
+    int row_idx = blockIdx.x;
+
+    const float *row = x + batch_idx * (seq_len * d_model) + row_idx * d_model;
+    // out_row == row, x is overwritten
+    float *out_row = x + batch_idx * (seq_len * d_model) + row_idx * d_model;
+
+    int lane = threadIdx.x % 32;     // position within warp
+    int warp_id = threadIdx.x / 32;  // position within block
+    int num_warps = blockDim.x / 32; // total warps avalible
+
+    __shared__ float shared_sum[32];
+
+    float sum = 0.0f;
+
+    for (int i = threadIdx.x; i < d_model; i += blockDim.x)
+    {
+        sum += row[i]; // so sum of elements that it tocuehd.
+    }
+
+    // till here the sum is a partial sum from each of the threads
+    ParallelReducer(sum); // we have finint amount of warp at max size of 32, and you need to maybe add that to warp and then reduce the warp as well
+
+    if (lane == 0)
+    {
+        shared_sum[warp_id] = sum; // you have that in warp level
+    }
+
+    __syncthreads();
+
+    if (warp_id == 0)
+    {
+        sum = (lane < num_warps) ? shared_sum[lane] : 0.0f;
+
+        ParallelReducer(sum); // for the sum in thread
+
+        if (lane == 0)
+        {
+            shared_sum[0] = sum;
+        }
+    }
+
+    __syncthreads();
+    // shared_sum[0] = full sum here
+    float mean = shared_sum[0] / d_model;
+
+    // we need to pass again for the variance dont know if this is the correct way but should work
+
+    float var_sum = 0.0f;
+
+    for (int i = threadIdx.x; i < d_model; i += blockDim.x)
+    {
+        float diff = row[i] - mean;
+        var_sum += diff * diff;
+    } // this I like to call reduction in surface
+
+    ParallelReducer(var_sum);
+
+    if (lane == 0)
+    {
+        shared_sum[warp_id] = var_sum;
+    }
+
+    __syncthreads();
+
+    if (warp_id == 0)
+    {
+        var_sum = (lane < num_warps) ? shared_sum[lane] : 0.0f;
+        // we have written in the warp for that variance
+        // becuase the literal formula is current - mean
+
+        ParallelReducer(var_sum); // recude from the shared memory
+
+        if (lane == 0)
+        {
+            shared_sum[0] = var_sum;
+        }
+    }
+
+    __syncthreads();
+
+    // At this point our reduction for sum works
+
+    float variance = shared_sum[0] / d_model; // mean of that var * var
+    float std = sqrtf(variance + 1e-8f);
+
+    for (int i = threadIdx.x; i < d_model; i += blockDim.x)
+    {
+        out_row[i] = gamma[i] * ((row[i] - mean) / std) + beta[i];
+    }
+}
 
 // ------------ We forgoet to account for d_model > 32 ------------- we need to do it all the time whenever using memory from the register.
 __global__ void layerNormKernel(
@@ -783,17 +811,29 @@ extern "C"
         cudaDeviceSynchronize();
     }
     void layerNormalization(
-        float *x,
+        float *x, // (batch_size, seq_len, d_model)
         float *gamma,
         float *beta,
         int batch_size,
         int seq_len,
         int d_model)
     {
-        dim3 grid(seq_len, batch_size);
-        dim3 block(d_model);
 
-        layerNormKernel<<<grid, block>>>(x, gamma, beta, batch_size, seq_len, d_model);
+        if (d_model > 32)
+        {
+            // (batch_size, seq_len, d_model)
+            dim3 grid(seq_len, batch_size);
+            dim3 block(min(1024, d_model));
+
+            layerNormKernelSlow<<<grid, block>>>(x, gamma, beta, batch_size, seq_len, d_model);
+        }
+        else
+        {
+            dim3 grid(seq_len, batch_size);
+            dim3 block(d_model);
+
+            layerNormKernel<<<grid, block>>>(x, gamma, beta, batch_size, seq_len, d_model);
+        }
 
         cudaDeviceSynchronize();
     }
