@@ -34,6 +34,8 @@ extern "C" void ReformShapeWapper(float *arr, float *out, int batch_size, int se
 extern "C" void layerNormalization(float *x, float *gamma, float *beta, int batch_size, int seq_len, int d_model);
 extern "C" void vectorKernel(float *A, float *B, float *C, int N);
 extern "C" void softmax2D(float *arr, float *out, int batch_size, int seq_len, int vocab_size);
+extern "C" void CrossEntropy(float *x, int *y, int *oneHotOut, float *lossOut, int batch_size, int seq_len, int vocab_size);
+
 class Embeddings
 {
 
@@ -911,8 +913,16 @@ class AttentionInterface
     // DEVICE SOFTMAX BEFORE CORSS ENTROPY LOSS OUT
     float *DeviceSoftmaxBLout;
 
-    // ALLOCATE MEMORY FOR Y 
-    int *yHotEncodeDevice;
+    // ALLOCATE MEMORY FOR Y
+    int *yHotEncodeDeviceOut;
+    float *outCrossEntropyDevice;
+
+    float *outCrossEntropyHost;
+
+    int *deviceY;
+
+    // ------ For testing one hot encode kernel --------- //
+    int *outHotEncodeOut = nullptr;
 
 public:
     AttentionInterface(
@@ -943,10 +953,21 @@ public:
 
         lm_head = std::make_unique<Linear>(d_model, vocab_size, seq_len, batch_size, num_heads);
 
-        cudaMalloc((void **)&DeviceSoftmaxBLin, batch_size * seq_len * vocab_size * sizeof(float));
+        cudaMalloc((void **)&DeviceSoftmaxBLin, batch_size * seq_len * vocab_size * sizeof(float)); // wont something like this reserve GDDR RAM for too long till the liftspan of the object? Yes. -Avash
         cudaMalloc((void **)&DeviceSoftmaxBLout, batch_size * seq_len * vocab_size * sizeof(float));
 
-        cudaMalloc((void **)&yHotEncodeDevice, vocab_size * seq_len * sizeof(float));
+        cudaMalloc((void **)&outCrossEntropyDevice, batch_size * seq_len * sizeof(float)); // (N) across all of the BT we will have the loss.
+
+        // memory for device for y
+        cudaMalloc((void **)&deviceY, batch_size * seq_len * sizeof(int));
+
+        // YOU DO NEED THIS PART BECAUSE ANOTHER KERNEL FOR THE CORSS ENTROPY LOSS WILL BE USING THIS.
+        cudaMalloc((void **)&yHotEncodeDeviceOut, vocab_size * seq_len * batch_size * sizeof(int)); // (B, T)
+
+        outCrossEntropyHost = (float *)malloc(batch_size * seq_len * vocab_size * sizeof(float));
+
+        // -- For testing if the kernel launch for one hot works, we have wrapped two kernels for the cross entropy loss REMOVE FOR PERFORMACE
+        outHotEncodeOut = (int *)malloc(batch_size * seq_len * vocab_size * sizeof(int));
     }
 
     ~AttentionInterface()
@@ -954,12 +975,24 @@ public:
         cudaFree(DeviceSoftmaxBLin);
         cudaFree(DeviceSoftmaxBLout);
 
-        cudaFree(yHotEncodeDevice);
+        cudaFree(yHotEncodeDeviceOut);
+        cudaFree(outCrossEntropyDevice);
+
+        cudaFree(deviceY);
+
+        free(outCrossEntropyHost);
+
+        (outHotEncodeOut != nullptr ? free(outHotEncodeOut) : void());
     }
+
+    // Burned out, isolated, lonely, homesick, sleepy, confused, scared, uncertian, multiple rejection, whats drving me
+    // to write and debug this raw thousands and thousands of lines of C++ code
+    // the answer is little escape from the reality and thats the beauty -Avash Lamichhane
 
     void softmaxAcrossProballityCrossEntropyLoss(float *probality, int *y)
     {
         cudaMemcpy(DeviceSoftmaxBLin, probality, batch_size * seq_len * vocab_size * sizeof(float), cudaMemcpyHostToDevice);
+        cudaMemcpy(deviceY, y, batch_size * seq_len * sizeof(int), cudaMemcpyHostToDevice);
 
         // this accounts for whatever we are doing softmax on being greater than 32 i.e warp size.
         softmax2D(
@@ -969,15 +1002,47 @@ public:
             seq_len,
             vocab_size);
 
-        
-        
+        // TO DEBUG THE SOFTMAX ACTIVATION ACROSS THE KERNELS HERE
+        cudaMemcpy(probality, DeviceSoftmaxBLout, batch_size * seq_len * vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
+
+        CrossEntropy(
+            DeviceSoftmaxBLout, // out from softmaxed
+            deviceY,
+            yHotEncodeDeviceOut,
+            outCrossEntropyDevice,
+            batch_size,
+            seq_len,
+            vocab_size);
+
+        cudaMemcpy(outCrossEntropyHost, yHotEncodeDeviceOut, batch_size * seq_len * vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
+
+        // -- For testing if the kernel launch for one hot works, we have wrapped two kernels for the cross entropy loss REMOVE FOR PERFORMACE
+
+        cudaMemcpy(outHotEncodeOut, yHotEncodeDeviceOut, batch_size * vocab_size * seq_len * sizeof(int), cudaMemcpyDeviceToHost);
+
+        if (debug)
+        {
+            //  Here basically every element of the y must have its position encoded based on all of the vocab_size
+            std::cout << "Vocab size of all BT" << std::endl;
+            utils->printAllOneHot3D(probality, batch_size, seq_len, vocab_size);
+
+            std::cout << "Before one hot encode" << std::endl;
+            utils->printFlatArray2D(y, batch_size, seq_len);
+
+            // Shape
+            std::cout << " After one hot encode " << std::endl;
+            utils->printAllOneHot3D(outHotEncodeOut, batch_size, seq_len, vocab_size);
+
+            std::cout << " After sfotmax last two dimension " << std::endl;
+            this->utils->printAllOneHot3D(probality, batch_size, seq_len, vocab_size);
+
+            // std::cout << "Apply the cross entropy loss" << std::endl;
+            // utils->printLastOneOf3D(outCrossEntropyHost, seq_len, batch_size, vocab_size);
+        }
 
         // After sfotmax do the cross entropy loss here
         // Fuse everything like one hot encode and everything here.
-        cudaMemcpy(probality, DeviceSoftmaxBLout, batch_size * seq_len * vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
     }
-
-
 
     void train(int epoch)
     {

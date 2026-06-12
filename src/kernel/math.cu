@@ -798,8 +798,8 @@ __global__ void QKVMatmulKernel(
 // Cross entropy tank
 // we will fuse everything here.
 __global__ void oneHotKernel(
-    float *y, // (B, T )
-    float *out,
+    int *y, // (B, T )
+    int *out, // (B*T, vocab_size)
     int N, // number of elements in y as if it was flat which it is.
     int width)
 {
@@ -808,7 +808,7 @@ __global__ void oneHotKernel(
     if (idx < N)
     {
         // because you will be opreating under element of y
-        int label = y[idx];
+        int label = y[idx]; // this is the "position" that we want to be on
         out[idx * width + label] = 1.0f;
     }
 }
@@ -820,7 +820,7 @@ __global__ void oneHotKernel(
 // SO: for our each B,T we will have a unique vocab as proballity.
 __global__ void crossEntropyLoss(
     float *x, // (B, T, vocab_size)
-    float *y, // (B, T)
+    int *y, // (B, T)
     float *out, // N loss across all B,T basically.
     int seq_len,
     int vocab_size,
@@ -832,9 +832,9 @@ __global__ void crossEntropyLoss(
 
     if (idx < N)
     {
-        int label = (int)(y[idx] + 0.5f); // rounding up
-        float p = x[idx * vocab_size + label]; // read from this x
-        out[idx] = -logf(p);
+        int label = y[idx];
+        float p = x[idx * vocab_size + label]; // read from this x that vocab_size dimension 
+        out[idx] = -logf(fmaxf(p, 1e-12f));
     }
 }
 
@@ -843,8 +843,8 @@ extern "C"
 
     void CrossEntropy(
         float *x,
-        float *y,
-        float *oneHotOut,
+        int *y,
+        int *oneHotOut,
         float *lossOut,
         int batch_size,
         int seq_len,
@@ -860,7 +860,7 @@ extern "C"
         // um thats your step 1
         oneHotKernel<<<grid, block>>>(y, oneHotOut, N, vocab_size);
 
-        crossEntropyLoss<<<grid, block>>>(x, y, lossOut, seq_len, vocab_size, N);
+        crossEntropyLoss<<<grid, block>>>(x, oneHotOut, lossOut, seq_len, vocab_size, N);
 
         cudaDeviceSynchronize();
     }

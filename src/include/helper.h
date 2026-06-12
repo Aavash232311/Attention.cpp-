@@ -468,6 +468,50 @@ public:
         }
         std::cout << "]\n";
     }
+
+    // THIS IS FOR PRINTHING ALL THE ROWS OF ONE HOT ENCODED ARRAY
+
+    template <typename T>
+    void printAllOneHot3D(const T *arr, int D0, int D1, int D2)
+    {
+        for (int i = 0; i < D0; ++i)
+        {
+            for (int j = 0; j < D1; ++j)
+            {
+                std::cout << "[" << i << "," << j << "]: [";
+                for (int k = 0; k < D2; ++k)
+                {
+                    size_t idx = i * D1 * D2 + j * D2 + k;
+                    std::cout << arr[idx];
+                    if (k + 1 < D2)
+                        std::cout << ", ";
+                }
+                std::cout << "]\n";
+            }
+        }
+    }
+
+    // THIS IS FOR PRINTING FLAT ARRAY OUTPUT
+
+    template <typename T>
+    void printFlatArray1D(const T *arr, int N)
+    {
+        int max_print = N;
+        std::cout << "tensor([";
+        for (int i = 0; i < N; ++i)
+        {
+            if (N > max_print && i == max_print / 2)
+            {
+                std::cout << "..., ";
+                i = N - max_print / 2 - 1; // skip to near end
+                continue;
+            }
+            std::cout << std::fixed << std::setprecision(5) << arr[i];
+            if (i + 1 < N)
+                std::cout << ", ";
+        }
+        std::cout << "], shape=[" << N << "])\n";
+    }
 };
 
 class EncoderText
