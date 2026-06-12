@@ -798,24 +798,73 @@ __global__ void QKVMatmulKernel(
 // Cross entropy tank
 // we will fuse everything here.
 __global__ void oneHotKernel(
-    float *x, // (BT, vocab_size)
-    float *y, // (BT, )
+    float *y, // (B, T )
     float *out,
-    int N,
-    int width
-)
+    int N, // number of elements in y as if it was flat which it is.
+    int width)
 {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
     if (idx < N)
     {
+        // because you will be opreating under element of y
         int label = y[idx];
-        out[idx * width  + label] = 1.0f;
+        out[idx * width + label] = 1.0f;
+    }
+}
+// this y is typically (B, T)
+
+// NOTE:- (B, T, vocab_size)
+// they way I image this part is B, and T as a 2D matrix
+// and then vocab size as a cell or like place holder inside of it
+// SO: for our each B,T we will have a unique vocab as proballity.
+__global__ void crossEntropyLoss(
+    float *x, // (B, T, vocab_size)
+    float *y, // (B, T)
+    float *out, // N loss across all B,T basically.
+    int seq_len,
+    int vocab_size,
+    int N)
+{
+    // H(p) = -p log(y)
+    // The way we define the perfectness is 1 here.
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (idx < N)
+    {
+        int label = (int)(y[idx] + 0.5f); // rounding up
+        float p = x[idx * vocab_size + label]; // read from this x
+        out[idx] = -logf(p);
     }
 }
 
 extern "C"
 {
+
+    void CrossEntropy(
+        float *x,
+        float *y,
+        float *oneHotOut,
+        float *lossOut,
+        int batch_size,
+        int seq_len,
+        int vocab_size)
+    {
+        int N = batch_size * seq_len;
+        int threadsPerBlock = 256;
+        int blocksPerGrid = (N + threadsPerBlock - 1) / threadsPerBlock;
+
+        dim3 grid(blocksPerGrid);
+        dim3 block(threadsPerBlock);
+
+        // um thats your step 1
+        oneHotKernel<<<grid, block>>>(y, oneHotOut, N, vocab_size);
+
+        crossEntropyLoss<<<grid, block>>>(x, y, lossOut, seq_len, vocab_size, N);
+
+        cudaDeviceSynchronize();
+    }
+
     void vectorKernel(
         float *A,
         float *B,

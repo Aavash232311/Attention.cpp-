@@ -912,7 +912,7 @@ class AttentionInterface
     float *DeviceSoftmaxBLout;
 
     // ALLOCATE MEMORY FOR Y 
-    int *y_hot_encode;
+    int *yHotEncodeDevice;
 
 public:
     AttentionInterface(
@@ -946,7 +946,7 @@ public:
         cudaMalloc((void **)&DeviceSoftmaxBLin, batch_size * seq_len * vocab_size * sizeof(float));
         cudaMalloc((void **)&DeviceSoftmaxBLout, batch_size * seq_len * vocab_size * sizeof(float));
 
-        y_hot_encode = (int *)malloc(vocab_size * sizeof(float));
+        cudaMalloc((void **)&yHotEncodeDevice, vocab_size * seq_len * sizeof(float));
     }
 
     ~AttentionInterface()
@@ -954,7 +954,7 @@ public:
         cudaFree(DeviceSoftmaxBLin);
         cudaFree(DeviceSoftmaxBLout);
 
-        free(y_hot_encode);
+        cudaFree(yHotEncodeDevice);
     }
 
     void softmaxAcrossProballityCrossEntropyLoss(float *probality, int *y)
@@ -969,11 +969,11 @@ public:
             seq_len,
             vocab_size);
 
+        
+        
+
         // After sfotmax do the cross entropy loss here
         // Fuse everything like one hot encode and everything here.
-
-
-
         cudaMemcpy(probality, DeviceSoftmaxBLout, batch_size * seq_len * vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
     }
 
