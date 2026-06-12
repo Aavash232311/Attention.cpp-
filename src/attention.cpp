@@ -911,6 +911,9 @@ class AttentionInterface
     // DEVICE SOFTMAX BEFORE CORSS ENTROPY LOSS OUT
     float *DeviceSoftmaxBLout;
 
+    // ALLOCATE MEMORY FOR Y 
+    int *y_hot_encode;
+
 public:
     AttentionInterface(
         int d_model,
@@ -942,15 +945,19 @@ public:
 
         cudaMalloc((void **)&DeviceSoftmaxBLin, batch_size * seq_len * vocab_size * sizeof(float));
         cudaMalloc((void **)&DeviceSoftmaxBLout, batch_size * seq_len * vocab_size * sizeof(float));
+
+        y_hot_encode = (int *)malloc(vocab_size * sizeof(float));
     }
 
     ~AttentionInterface()
     {
         cudaFree(DeviceSoftmaxBLin);
         cudaFree(DeviceSoftmaxBLout);
+
+        free(y_hot_encode);
     }
 
-    void softmaxAcrossProballity(float *probality)
+    void softmaxAcrossProballityCrossEntropyLoss(float *probality, int *y)
     {
         cudaMemcpy(DeviceSoftmaxBLin, probality, batch_size * seq_len * vocab_size * sizeof(float), cudaMemcpyHostToDevice);
 
@@ -962,8 +969,15 @@ public:
             seq_len,
             vocab_size);
 
+        // After sfotmax do the cross entropy loss here
+        // Fuse everything like one hot encode and everything here.
+
+
+
         cudaMemcpy(probality, DeviceSoftmaxBLout, batch_size * seq_len * vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
     }
+
+
 
     void train(int epoch)
     {
@@ -992,7 +1006,7 @@ public:
                 //     std::cout << " After LM head " << std::endl;
                 //     this->utils->printFlatArray3D(prob, batch_size, seq_len, vocab_size);
                 // }
-                softmaxAcrossProballity(prob);
+                softmaxAcrossProballityCrossEntropyLoss(prob, batch.y);
 
                 // if (debug)
                 // {
@@ -1012,7 +1026,7 @@ int main()
     cudaDeviceSynchronize();
     auto start = std::chrono::high_resolution_clock::now();
 
-    int d_model = 8;
+    int d_model = 64;
     int vocab_size; // that depends upon the data that you are passing.
     int num_heads = 2;
     int batch_size = 4;

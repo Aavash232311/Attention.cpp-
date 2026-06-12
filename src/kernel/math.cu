@@ -795,6 +795,25 @@ __global__ void QKVMatmulKernel(
     out[out_idx] = sum;
 }
 
+// Cross entropy tank
+// we will fuse everything here.
+__global__ void oneHotKernel(
+    float *x, // (BT, vocab_size)
+    float *y, // (BT, )
+    float *out,
+    int N,
+    int width
+)
+{
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (idx < N)
+    {
+        int label = y[idx];
+        out[idx * width  + label] = 1.0f;
+    }
+}
+
 extern "C"
 {
     void vectorKernel(
