@@ -36,6 +36,32 @@ extern "C" void vectorKernel(float *A, float *B, float *C, int N);
 extern "C" void softmax2D(float *arr, float *out, int batch_size, int seq_len, int vocab_size);
 extern "C" void CrossEntropy(float *x, int *y, float *oneHotOut, float *lossOut, int batch_size, int seq_len, int vocab_size);
 
+// ---- Paramaters for our custom backgrad engine -----
+
+struct LinearParams // just binary pointer can be used for layer norm or anything that contains two paramater pairs
+{
+    float *Weight;
+    float *Bias;
+};
+
+struct SingleEmbeddings
+{
+    float *emebddings;
+};
+
+struct AttentionParamaters
+{
+    LinearParams Q;
+    LinearParams K;
+    LinearParams V;
+
+    LinearParams Projection;
+
+    LinearParams LayerNorm;
+
+    SingleEmbeddings Embeddings;
+};
+
 class Embeddings
 {
 
@@ -140,6 +166,11 @@ public:
         debug = false;
 
         return addedEmbeddingsOut;
+    }
+
+    float *getEmbeddingsParamaters()
+    {
+        return this->hostEmbeddings;
     }
 };
 
@@ -444,6 +475,16 @@ public:
         cudaMemcpy(d_x, x, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyHostToDevice);
         layerNormalization(d_x, d_gamma, d_beta, batch_size, seq_len, d_model);
         cudaMemcpy(x, d_x, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+    }
+
+    float *getGamma()
+    {
+        return this->h_gamma; // of course these are tuneable.
+    }
+
+    float *getBetta()
+    {
+        return this->h_beta;
     }
 };
 
@@ -886,7 +927,53 @@ public:
         // copy this to pointer input, and that same x will be modified
         cudaMemcpy(input, resedualOutDevice, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
     }
+
+    AttentionParamaters attentionParamaters; // just the reference so stack allocation is fine
+
+    AttentionParamaters getParamaters()
+    {
+        LinearParams Q_p{query->getWeight(), query->getBias()};
+        LinearParams K_p{query->getWeight(), query->getBias()};
+        LinearParams V_p{query->getWeight(), query->getBias()};
+
+        LinearParams OutputProject_p{outputProj->getWeight(), outputProj->getWeight()};
+
+        LinearParams LayerNorm_p{layerNorm->getGamma(), layerNorm->getBetta()};
+
+        SingleEmbeddings emebdding_p{embeddings->getEmbeddingsParamaters()};
+
+        return {
+            Q_p,
+            K_p,
+            V_p,
+
+            OutputProject_p,
+            LayerNorm_p,
+            emebdding_p};
+    }
 };
+
+struct NetAttentionParamaters
+{
+    AttentionParamaters attention_head;
+    LinearParams lm_head;
+};
+
+
+// The chain rule
+class AutoGradEngine
+{
+    // welcome to my calculas class
+
+    NetAttentionParamaters model_paramaters;
+
+public:
+    AutoGradEngine(NetAttentionParamaters paramaters)
+    {
+        this->model_paramaters = paramaters;
+    }
+};
+
 
 class AttentionInterface
 {
@@ -923,6 +1010,8 @@ class AttentionInterface
 
     // ------ For testing one hot encode kernel --------- //
     float *outHotEncodeOut = nullptr;
+
+    NetAttentionParamaters modelParamaters;
 
 public:
     AttentionInterface(
@@ -984,6 +1073,11 @@ public:
         free(outCrossEntropyHost);
 
         (outHotEncodeOut != nullptr ? free(outHotEncodeOut) : void());
+    }
+
+    LinearParams getLmHeadParams()
+    {
+        return LinearParams{lm_head->getWeight(), lm_head->getBias()};
     }
 
     // Burned out, isolated, lonely, homesick, sleepy, confused, scared, uncertian, multiple rejection, whats drving me
@@ -1102,12 +1196,26 @@ public:
                 //     this->utils->printLastOneOf3D(prob, batch_size, seq_len, vocab_size);
                 // }
 
+                // ----------- Lets gather overall paramaters here ---------- //
+
+                modelParamaters = NetAttentionParamaters{
+                    attention->getParamaters(),                              // all the paramaters from the attention head
+                    LinearParams{lm_head->getWeight(), lm_head->getBias()}}; // this is sort of interface paramaters for lm_head
+
+                // because the backprops needs to be done for each epoch.
+                // we need to keep in mind that the things hurting performace like cuda malloc and everything declared
+                // inside of the constructor of autograd engine is costly.
+                // there is tradeoff between making things modular and fusing everything together.
+                // Lets create a buffer for CPU/GPU memory in this class so that we dont overload the system and free it when the object is destroyed.
+                std::unique_ptr<AutoGradEngine> autograd = std::make_unique<AutoGradEngine>(modelParamaters);
+
                 debug = false;
             }
         }
         dataLoader->resetIterator(); // just the weird logic that I wrote.
     }
 };
+
 
 int main()
 {
