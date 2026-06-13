@@ -34,7 +34,7 @@ extern "C" void ReformShapeWapper(float *arr, float *out, int batch_size, int se
 extern "C" void layerNormalization(float *x, float *gamma, float *beta, int batch_size, int seq_len, int d_model);
 extern "C" void vectorKernel(float *A, float *B, float *C, int N);
 extern "C" void softmax2D(float *arr, float *out, int batch_size, int seq_len, int vocab_size);
-extern "C" void CrossEntropy(float *x, int *y, int *oneHotOut, float *lossOut, int batch_size, int seq_len, int vocab_size);
+extern "C" void CrossEntropy(float *x, int *y, float *oneHotOut, float *lossOut, int batch_size, int seq_len, int vocab_size);
 
 class Embeddings
 {
@@ -914,7 +914,7 @@ class AttentionInterface
     float *DeviceSoftmaxBLout;
 
     // ALLOCATE MEMORY FOR Y
-    int *yHotEncodeDeviceOut;
+    float *yHotEncodeDeviceOut;
     float *outCrossEntropyDevice;
 
     float *outCrossEntropyHost;
@@ -922,7 +922,7 @@ class AttentionInterface
     int *deviceY;
 
     // ------ For testing one hot encode kernel --------- //
-    int *outHotEncodeOut = nullptr;
+    float *outHotEncodeOut = nullptr;
 
 public:
     AttentionInterface(
@@ -957,17 +957,18 @@ public:
         cudaMalloc((void **)&DeviceSoftmaxBLout, batch_size * seq_len * vocab_size * sizeof(float));
 
         cudaMalloc((void **)&outCrossEntropyDevice, batch_size * seq_len * sizeof(float)); // (N) across all of the BT we will have the loss.
+        cudaMemset(outCrossEntropyDevice, 0, batch_size * seq_len * sizeof(float));        // make it zero for the things that we are not touching.
 
         // memory for device for y
         cudaMalloc((void **)&deviceY, batch_size * seq_len * sizeof(int));
 
         // YOU DO NEED THIS PART BECAUSE ANOTHER KERNEL FOR THE CORSS ENTROPY LOSS WILL BE USING THIS.
-        cudaMalloc((void **)&yHotEncodeDeviceOut, vocab_size * seq_len * batch_size * sizeof(int)); // (B, T)
+        cudaMalloc((void **)&yHotEncodeDeviceOut, vocab_size * seq_len * batch_size * sizeof(float)); // (B, T)
 
         outCrossEntropyHost = (float *)malloc(batch_size * seq_len * vocab_size * sizeof(float));
 
         // -- For testing if the kernel launch for one hot works, we have wrapped two kernels for the cross entropy loss REMOVE FOR PERFORMACE
-        outHotEncodeOut = (int *)malloc(batch_size * seq_len * vocab_size * sizeof(int));
+        outHotEncodeOut = (float *)malloc(batch_size * seq_len * vocab_size * sizeof(float));
     }
 
     ~AttentionInterface()
@@ -986,7 +987,7 @@ public:
     }
 
     // Burned out, isolated, lonely, homesick, sleepy, confused, scared, uncertian, multiple rejection, whats drving me
-    // to write and debug this raw thousands and thousands of lines of C++ code
+    // to write and debug this raw thousands and thousands of lines of raw C++ code
     // the answer is little escape from the reality and thats the beauty -Avash Lamichhane
 
     void softmaxAcrossProballityCrossEntropyLoss(float *probality, int *y)
@@ -1003,7 +1004,7 @@ public:
             vocab_size);
 
         // TO DEBUG THE SOFTMAX ACTIVATION ACROSS THE KERNELS HERE
-        cudaMemcpy(probality, DeviceSoftmaxBLout, batch_size * seq_len * vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
+        // cudaMemcpy(probality, DeviceSoftmaxBLout, batch_size * seq_len * vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
 
         CrossEntropy(
             DeviceSoftmaxBLout, // out from softmaxed
@@ -1014,35 +1015,57 @@ public:
             seq_len,
             vocab_size);
 
-        cudaMemcpy(outCrossEntropyHost, yHotEncodeDeviceOut, batch_size * seq_len * vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(outCrossEntropyHost, outCrossEntropyDevice, batch_size * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
 
         // -- For testing if the kernel launch for one hot works, we have wrapped two kernels for the cross entropy loss REMOVE FOR PERFORMACE
 
-        cudaMemcpy(outHotEncodeOut, yHotEncodeDeviceOut, batch_size * vocab_size * seq_len * sizeof(int), cudaMemcpyDeviceToHost);
+        cudaMemcpy(outHotEncodeOut, yHotEncodeDeviceOut, batch_size * vocab_size * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
 
         if (debug)
         {
             //  Here basically every element of the y must have its position encoded based on all of the vocab_size
-            std::cout << "Vocab size of all BT" << std::endl;
-            utils->printAllOneHot3D(probality, batch_size, seq_len, vocab_size);
+            // std::cout << "Vocab size of all BT" << std::endl;
+            // utils->printFlatArray3D(probality, batch_size, seq_len, vocab_size);
 
-            std::cout << "Before one hot encode" << std::endl;
-            utils->printFlatArray2D(y, batch_size, seq_len);
+            // std::cout << "Before one hot encode" << std::endl;
+            // utils->printFlatArray2D(y, batch_size, seq_len);
 
-            // Shape
-            std::cout << " After one hot encode " << std::endl;
-            utils->printAllOneHot3D(outHotEncodeOut, batch_size, seq_len, vocab_size);
-
-            std::cout << " After sfotmax last two dimension " << std::endl;
-            this->utils->printAllOneHot3D(probality, batch_size, seq_len, vocab_size);
+            // // Shape
+            // std::cout << " After one hot encode " << std::endl;
+            // utils->printFlatArray3D(outHotEncodeOut, batch_size, seq_len, vocab_size);
 
             // std::cout << "Apply the cross entropy loss" << std::endl;
-            // utils->printLastOneOf3D(outCrossEntropyHost, seq_len, batch_size, vocab_size);
+            // utils->printFlatArray1D(outCrossEntropyHost, seq_len * batch_size);
         }
 
         // After sfotmax do the cross entropy loss here
         // Fuse everything like one hot encode and everything here.
+        // THE SECOND LAW OF THERMODYNAMICS
+        // DelS universe = Del S system + Del surroundings >= 0
+        // and this equation beautifully brings mathematics to life in modern AI
     }
+
+    /*
+
+        I came across a very interesting conversation one day.
+        How important is the skill of sounding confident and hireable even when you lack certain technical skills?
+        I'm talking about the kind of people who always look fresh, wear a constant smile, do very little actual work,
+        and appear impressive on the surface.
+
+        My feeling is that this skill is important in certain industries such as hospitality, marketing,
+        reception, or help-desk roles. However, for deeply technical work that creates real impact,
+        it should not be the most important factor. While having such skills
+        is certainly a plus, they are not a substitute for technical competence.
+
+        If an employer rejects you solely because you do not have that polished,
+        outward-facing personality, then they may not be the kind of employer from whom you will learn the most.
+        That might be acceptable if your goal is a small software engineering job at a company,
+        but if your goal is to move forward, build meaningful things, and make a real impact,
+        then my answer would be no.
+
+        The most impactful people I know were mostly introverted and some even difficult to work with.
+
+    */
 
     void train(int epoch)
     {
