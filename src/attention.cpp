@@ -540,7 +540,9 @@ public:
 
     float *BATCH_NEAD_TIME_HEADDIM_DEVICE;
 
-    float *S;
+    float *S = nullptr;
+    float *P = nullptr;
+    float *O = nullptr;
 
     Attention(
         int d_model,
@@ -555,6 +557,9 @@ public:
         this->num_heads = num_heads;
         this->seq_len = seq_len;
         this->batch_size = batch_size;
+
+        // Its okay to free this in destructor because we are using this buffer throught the duration of
+        // this object or iteration anyway.
 
         this->embeddings = std::make_unique<Embeddings>(
             this->d_model,
@@ -611,6 +616,12 @@ public:
 
         cudaMalloc((void **)&tempDevice, batch_size * seq_len * d_model * sizeof(float));
         cudaMalloc((void **)&resedualOutDevice, batch_size * seq_len * d_model * sizeof(float));
+
+
+        // ---- S, P, O ---- are required for backpropagation allocate here according to reqired size.
+        S = (float *)malloc(seq_len * batch_size * num_heads * head_dim * sizeof(float));
+        P = (float *)malloc(batch_size * num_heads * seq_len * seq_len * sizeof(float));
+        O = (float *)malloc(batch_size * num_heads * seq_len * head_dim * sizeof(float));
     };
 
     ~Attention()
@@ -642,6 +653,11 @@ public:
 
         cudaFree(BTCdevice);
         cudaFree(resedualOutDevice);
+
+
+        free(S);
+        free(P);
+        free(O);
     }
 
 public:
@@ -810,7 +826,7 @@ public:
         // }
 
         // we need to store something here in order to add the resudal, a temporary variable
-        std::copy(x, x + batch_size * seq_len * d_model, tempX);
+        std::memcpy(tempX, x, batch_size * seq_len * d_model * sizeof(float));
 
         // if (debug)
         // {
@@ -848,6 +864,9 @@ public:
         QKmatmul(DeviceQ, DeviceKt, DeviceQKT, seq_len, head_dim, batch_size, num_heads); // S(1, 1, T, T)
 
         cudaMemcpy(BTC_MULTI_HEAD_BUFFER_HOST, DeviceQKT, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
+
+        // -------- Stage QK^T ----------------
+        std::memcpy(S, BTC_MULTI_HEAD_BUFFER_HOST, seq_len * batch_size * num_heads * head_dim * sizeof(float));
 
         // BTC_MULTI_HEAD_BUFFER_HOST AFTER QKT (B, H, T, T)
 
@@ -897,6 +916,10 @@ public:
         // copy to host
         cudaMemcpy(BTC_MULTI_HEAD_BUFFER_HOST, deviceSoftmaxOut, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
 
+        // ------------ Stage Softmax(P) ----------------
+        std::memcpy(P, BTC_MULTI_HEAD_BUFFER_HOST, batch_size * num_heads * seq_len * seq_len * sizeof(float));
+
+
         // deviceQKTSqrtD Shape(batch_size, n_head, T, T)
 
         // if (debug == true)
@@ -913,6 +936,10 @@ public:
         // we will write a basic matmul kernel nothing fancy later we can benchmarket and use tensor cores.
 
         QKVMatmul(BTC_MULTI_HEAD_BUFFER_HOST, V); //  (batch_size, n_head, T, d_head)
+
+        // ------------------ Stage PV ------------------------
+        std::memcpy(O, BTC_MULTI_HEAD_BUFFER_HOST, batch_size * num_heads * seq_len * head_dim * sizeof(float));
+
 
         // if (debug)
         // {
