@@ -161,7 +161,7 @@ public:
 
         // if (debug)
         // {
-        //     std::cout << " Added embeddings " << std::endl;
+        //     std::cout << " Added embeddings from embedding method " << std::endl;
         //     this->utils->printFlatArray3D(addedEmbeddingsOut, actual_batch, seq_len, d_model);
         // }
 
@@ -800,14 +800,17 @@ public:
 
         layerNorm->forward(x); // pass by ref so should modify it
 
+        // -------- There is this number  8 what appeans after layer norm -----
+        // ofcourse the layer norm is not learned yet.
+
         // if (debug)
         // {
-        //     std::cout << "Orginal x" << std::endl;
+        //     std::cout << "Original x" << std::endl;
         //     this->utils->printFlatArray3D(x, batch_size, seq_len, d_model);
         // }
 
         // we need to store something here in order to add the resudal, a temporary variable
-        std::copy(x, x + batch_size * seq_len * d_model * sizeof(float), tempX);
+        std::copy(x, x + batch_size * seq_len * d_model, tempX);
 
         // if (debug)
         // {
@@ -934,26 +937,20 @@ public:
         // I will add the resudual here to give it a context on what's it is attending to
         // if (debug)
         // {
-        //     std::cout << "Temp X" << std::endl;
-        //     utils->printFlatArray3D(tempX, batch_size, seq_len, d_model);
-        // }
-
-        // if (debug)
-        // {
         //     std::cout << " Before adding resedual " << std::endl;
         //     this->utils->printFlatArray3D(BTCHost, batch_size, seq_len, d_model);
         // }
 
         addResidual(BTCHost, tempX);
 
-        if (debug)
-        {
-            // std::cout << " Resedual that got added " << std::endl;
-            // this->utils->printFlatArray3D(tempX, batch_size, seq_len, d_model);
+        // if (debug)
+        // {
+        //     std::cout << " Resedual that got added " << std::endl;
+        //     this->utils->printFlatArray3D(tempX, batch_size, seq_len, d_model);
 
-            // std::cout << " After adding the resedual " << std::endl;
-            // this->utils->printFlatArray3D(BTCHost, batch_size, seq_len, d_model);
-        }
+        //     std::cout << " After adding the resedual " << std::endl;
+        //     this->utils->printFlatArray3D(BTCHost, batch_size, seq_len, d_model);
+        // }
 
         debug = false;
 

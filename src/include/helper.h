@@ -245,7 +245,7 @@ public:
     template <typename T>
     void printFlatArray3D(const T *arr, int seq_len, int batch_size, int embed_dim, bool show_last_dim = false)
     {
-        const int M = 16;
+        const int M = 24;
 
         printf("tensor([\n");
         for (int r = 0; r < seq_len; r++)
