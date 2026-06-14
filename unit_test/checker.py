@@ -11,6 +11,6 @@ data = [2.59783e-05, 0.000249215, 1.44653e-05, 3.6025e-06, 9.41889e-08, 4.98296e
     TO DEBUG C++ GARBAGE DATA FOR SOFTMAX KERNELS.
     IT IS VERY HARD FOR MY EYES TO CHECK IF THE DATA IS GARBAGE OR SOFTMAX OUTPUT
 '''
-print(np.min(data) >= 0)   # should be >= 0
-print(np.max(data) <= 1)   # should be <= 1
-print(sum(data))
+# print(np.min(data) >= 0)   # should be >= 0
+# print(np.max(data) <= 1)   # should be <= 1
+# print(sum(data))

@@ -329,7 +329,7 @@ __global__ void QKmatmulKernel(
     int rows = blockIdx.y * blockDim.y + threadIdx.y;
     int cols = blockIdx.x * blockDim.x + threadIdx.x;
 
-    if (rows >= M || cols >= N)
+    if (rows >= M || cols >= M)
         return;
 
     int b = blockIdx.z / n_head;
@@ -798,9 +798,9 @@ __global__ void QKVMatmulKernel(
 // Cross entropy tank
 // we will fuse everything here.
 __global__ void oneHotKernel(
-    int *y, // (B, T )
+    int *y,     // (B, T )
     float *out, // (B*T, vocab_size)
-    int N, // number of elements in y as if it was flat which it is.
+    int N,      // number of elements in y as if it was flat which it is.
     int width)
 {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -819,8 +819,8 @@ __global__ void oneHotKernel(
 // and then vocab size as a cell or like place holder inside of it
 // SO: for our each B,T we will have a unique vocab as proballity.
 __global__ void crossEntropyLoss(
-    float *x, // (B, T, vocab_size)
-    float *y, // (vocab_size)
+    float *x,   // (B, T, vocab_size)
+    float *y,   // (vocab_size)
     float *out, // N loss across all B,T basically.
     int seq_len,
     int vocab_size,
@@ -831,12 +831,12 @@ __global__ void crossEntropyLoss(
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
     // so here we basically want to read from the index of x to y and compute
-    // the proballty 
+    // the proballty
 
     if (idx < N)
     {
-        int label = y[idx]; // lookup psoition for x
-        float p = x[idx * vocab_size + label]; // read from this x that vocab_size dimension 
+        int label = y[idx];                    // lookup psoition for x
+        float p = x[idx * vocab_size + label]; // read from this x that vocab_size dimension
         out[idx] = -logf(fmaxf(p, 1e-12f));
     }
 
@@ -844,8 +844,6 @@ __global__ void crossEntropyLoss(
     // meaning we will have [0,0,0,...1,0,0] somewhere
     // for each B,T shape you have 1 thats B,T
 }
-
-
 
 extern "C"
 {

@@ -812,28 +812,28 @@ public:
         float *K = key->forward(x);
         float *V = value->forward(x);
 
-        Q = query->reshapeHead(); 
+        Q = query->reshapeHead();
         K = key->reshapeHead();
         V = value->reshapeHead(); // (B, n_head, T, head_dim) so no tranpose needed or adjustment needed
 
         // for a valid matrix mul (..., T, head_dim) @ (..., head_dim, T) = (..., T, T) so we need to swap the last two dims
 
-        if (debug)
-        {
-            std::cout << " Key matrix before transpose" << std::endl;
-            utils->print2DMatrixLastTwo(Q, batch_size, num_heads, seq_len, head_dim);
-        }
+        // if (debug)
+        // {
+        //     std::cout << " Key matrix before transpose" << std::endl;
+        //     utils->print2DMatrixLastTwo(Q, batch_size, num_heads, seq_len, head_dim);
+        // }
 
         float *s = key->teansposeKeyForAttnScore(); // Shape (batch_size, n_head, head_dim, seq_len)
 
-        if (debug)
-        {
-            std::cout << "After transpose" << std::endl;
-            utils->print2DMatrixLastTwo(s, batch_size, num_heads, head_dim, seq_len);
-        }
+        // if (debug)
+        // {
+        //     std::cout << "After transpose" << std::endl;
+        //     utils->print2DMatrixLastTwo(s, batch_size, num_heads, head_dim, seq_len);
+        // }
 
         cudaMemcpy(DeviceKt, s, seq_len * batch_size * num_heads * head_dim * sizeof(float), cudaMemcpyHostToDevice);
-        cudaMemcpy(DeviceQ, s, seq_len * batch_size * num_heads * head_dim * sizeof(float), cudaMemcpyHostToDevice);
+        cudaMemcpy(DeviceQ, Q, seq_len * batch_size * num_heads * head_dim * sizeof(float), cudaMemcpyHostToDevice);
 
         QKmatmul(DeviceQ, DeviceKt, DeviceQKT, seq_len, head_dim, batch_size, num_heads); // S(1, 1, T, T)
 
@@ -841,17 +841,32 @@ public:
 
         // BTC_MULTI_HEAD_BUFFER_DEVICE AFTER QKT (B, H, T, T)
 
+        // DEBUGGER FOR QK^T
         // if (debug)
         // {
+        //     std::cout << "After transpose" << std::endl;
+        //     utils->print2DMatrixLastTwo(s, batch_size, num_heads, head_dim, seq_len);
+
+        //     std::cout << " Query " << std::endl;
+        //     utils->print2DMatrixLastTwo(Q, batch_size, num_heads, seq_len, head_dim);
+
         //     std::cout << "Matrix multiplication of QK^T" << std::endl;
-        //     utils->print2DMatrixLastTwo(BTC_MULTI_HEAD_BUFFER_DEVICE, batch_size, num_heads, seq_len, "");
+        //     utils->print2DMatrixLastTwo(BTC_MULTI_HEAD_BUFFER_DEVICE, batch_size, num_heads, seq_len, seq_len);
+        // }
+
+        // if (debug)
+        // {
+        //     std::cout << "Before scaling " << std::endl;
+        //     utils->print2DMatrixLastTwo(BTC_MULTI_HEAD_BUFFER_DEVICE, batch_size, num_heads, seq_len, seq_len);
         // }
 
         scalerDvisionAcrossMat(BTC_MULTI_HEAD_BUFFER_DEVICE, head_dim); // sqrt(head_dim)
 
-        // if (debug == true)
+        // if (debug)
         // {
-        //     utils->print2DMatrixLastTwo(hostQKT, batch_size, num_heads, seq_len, "After sqrt(d_model)");
+
+        //     std::cout << "After scalled by sqrt(head_dim) " << sqrtf(head_dim) << std::endl;
+        //     utils->print2DMatrixLastTwo(BTC_MULTI_HEAD_BUFFER_DEVICE, batch_size, num_heads, seq_len, seq_len);
         // }
 
         // -1e9f
