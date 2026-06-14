@@ -585,7 +585,7 @@ __global__ void softmaxKrenel4D(
 __device__ __forceinline__ void ParallelReducer(float &localSum)
 {
     for (int offset = 16; offset > 0; offset /= 2)
-        localSum = max(localSum, __shfl_down_sync(0xffffffff, localSum, offset));
+        localSum += __shfl_down_sync(0xffffffff, localSum, offset); // ← use +=
     localSum = __shfl_sync(0xffffffff, localSum, 0);
 }
 
@@ -684,6 +684,8 @@ __global__ void layerNormKernelSlow( // not "slow" but slower than which utilize
 
     float variance = shared_sum[0] / d_model; // mean of that var * var
     float std = sqrtf(variance + 1e-8f);
+
+    // y = gamma * (x - mean) / sqrt(variance + epsilon) + beta
 
     for (int i = threadIdx.x; i < d_model; i += blockDim.x)
     {

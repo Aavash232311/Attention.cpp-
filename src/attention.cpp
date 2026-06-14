@@ -791,10 +791,10 @@ public:
     float *forward(Batch currentBatch)
     {
 
-        if (d_model % num_heads != 0)
-        {
-            throw std::runtime_error("The number of heads must be perfectly divisible by dimesnion");
-        }
+        // if (d_model % num_heads != 0)
+        // {
+        //     throw std::runtime_error("The number of heads must be perfectly divisible by dimesnion");
+        // }
 
         float *x = embeddings->forward(currentBatch); // this brings us with the (B, T, C) batch because we added encoding and embeddings, encoding for our case fixed
 
@@ -1225,11 +1225,11 @@ public:
                 // we have a variable batch_size and if not fixed now, if the batch_size is smaller then whats passed in the consturctor the kernel will have a bug and we will never ever know, thats the pain.
                 float *x = attention->forward(batch);
 
-                if (debug)
-                {
-                    // std::cout << " Before LM head " << std::endl;
-                    // this->utils->printFlatArray3D(x, batch_size, seq_len, d_model);
-                }
+                // if (debug)
+                // {
+                //     std::cout << " Before LM head " << std::endl;
+                //     this->utils->printFlatArray3D(x, batch_size, seq_len, d_model);
+                // }
 
                 float *prob = lm_head->forward(x); // Shape (B, T, vocab_size)
 
