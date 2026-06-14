@@ -767,11 +767,12 @@ public:
             Before:- Shape [batch_size, T, n_head, d_head]
             After:- Shape (B, T, C)
         */
+
         // so basically here we can use the deviceQKTSqrtD buffer because it has the same size.
-        cudaMemcpy(deviceQKTSqrtD, arr, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyHostToDevice);
+        cudaMemcpy(BATCH_NEAD_TIME_HEADDIM_DEVICE, arr, batch_size * seq_len * num_heads * head_dim * sizeof(float), cudaMemcpyHostToDevice);
 
         ReformShapeWapper(
-            deviceQKTSqrtD,
+            BATCH_NEAD_TIME_HEADDIM_DEVICE,
             BTCdevice,
             batch_size,
             seq_len,
@@ -782,8 +783,6 @@ public:
 
         // if (debug)
         // {
-        //     std::cout << "Before reform " << std::endl;
-        //     utils->print2DMatrixLastTwoRect(arr, batch_size, num_heads, seq_len, head_dim, "After");
         //     std::cout << "After reform from the method" << std::endl;
         //     utils->printFlatArray3D(BTCHost, batch_size, seq_len, d_model, true);
         // }
