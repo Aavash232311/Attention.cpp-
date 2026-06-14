@@ -296,12 +296,12 @@ __global__ void TransposeKernel(
 __global__ void TransposeKeyKernel(
     int num_heads,
     int head_dim,
-    float *arr, // Shape (batch_size, n_head, seq_len, head_dim)
-    float *out, // Shape (batch_size, n_head, head_dim, seq_len)
+    float *arr, // Shape (B, H, T, head_dim)
+    float *out, // Shape (B, H, head_dim, T)
     int M,      // batch_size,
     int N,      // d_head
     int K,      // seq_len
-    bool reverse = true)
+    bool reverse = false)
 {
     int b = blockIdx.z;
     int h = blockIdx.y;
@@ -845,6 +845,8 @@ __global__ void crossEntropyLoss(
     // for each B,T shape you have 1 thats B,T
 }
 
+
+
 extern "C"
 {
 
@@ -1073,8 +1075,8 @@ extern "C"
     void SwapNS(
         int num_heads,
         int head_dim,
-        float *arr,     //  B, T, n_head, head_dim
-        float *out,     // B, n_head, T, head_dim
+        float *arr,     // [batch_size, n_head, T, T]
+        float *out,     // B, T, N, T
         int batch_size, // batch_size
         int seq_len,    // seq_len
         bool reverse)

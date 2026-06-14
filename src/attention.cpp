@@ -17,6 +17,8 @@
 // flat memory are efficient but the project for a beginner is so complicated that it will be fine just to get the model running.
 // NVIDA cuda core kernel functions
 // again optimising this might be even more difficult anyway lets just make it work.
+
+// backprop https://arxiv.org/pdf/2307.08691
 extern "C" void positionalEmbeddings(float *out, int seq_len, int d_model);
 extern "C" void lookup(int *x, float *embeddings, float *C, int d_model, int seq_len, int batch_size, int vocab_size);
 extern "C" void addEmbeddings(float *lookedUpEmbeddings, float *sinosudialEncoding, float *C, int d_model, int seq_len, int batch_size);
@@ -388,13 +390,12 @@ public:
     float *teansposeKeyForAttnScore()
     {
 
-        // std::cout << "Before transpose" << std::endl;
-        // utils->print2DMatrixLastTwo(mhead_out_host, batch_size, n_head, seq_len);
+        cudaMemcpy(deviceArrInTranspose, mhead_out_host, batch_size * seq_len * n_head * head_dim * sizeof(float), cudaMemcpyHostToDevice);
 
         TransposeKey(
             n_head,
             head_dim,
-            mhead_out_host, // it will replace that same variable variable
+            deviceArrInTranspose, // it will replace that same variable variable
             mhead_out_device,
             batch_size,
             head_dim,
@@ -402,9 +403,6 @@ public:
             false);
 
         cudaMemcpy(mhead_out_host, mhead_out_device, seq_len * batch_size * n_head * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
-
-        // std::cout << "After transpose" << std::endl;
-        // utils->print2DMatrixLastTwo(mhead_out_host, batch_size, n_head, seq_len, "After transpose Key");
 
         return mhead_out_host;
     }
@@ -509,7 +507,7 @@ public:
     float *DeviceKt;
     float *DeviceQ;
     float *DeviceQKT;
-    float *hostQKT = nullptr; // most of this null pointer is uncessary but ok does not hurt.
+    float *BTC_MULTI_HEAD_BUFFER_DEVICE = nullptr; // most of this null pointer is uncessary but ok does not hurt.
 
     bool debug = true;
 
@@ -531,6 +529,16 @@ public:
     float *resedualOutDevice;
 
     float *tempX = nullptr;
+
+    // ----- Paramater required for standard attention backpropagation not the flash ------
+    // at the learning stage of mine this is fine as well
+
+    // UNTIL AND UNLESS YOU REALLY KNOW WHAT YOU ARE DOING
+    // YOU WONT EVER KNOW WHAT WENT WRONG
+    // BUGS IN KERNEL ARE THAT QUIET ON TOP OF THIS INSANE
+    // MATHAMATICS
+
+    float *S;
 
     Attention(
         int d_model,
@@ -569,13 +577,15 @@ public:
 
         this->head_dim = d_model / num_heads;
 
+        // --------- Buffer shape allocations -------------
+
         // Q K^t matmul device and host allocation
         cudaMalloc((void **)&DeviceKt, batch_size * num_heads * head_dim * seq_len * sizeof(float));
         cudaMalloc((void **)&DeviceQ, batch_size * num_heads * head_dim * seq_len * sizeof(float));
         cudaMalloc((void **)&DeviceQKT, batch_size * num_heads * head_dim * seq_len * sizeof(float));
 
         // Q K^T Host
-        hostQKT = (float *)malloc(batch_size * num_heads * head_dim * seq_len * sizeof(float));
+        BTC_MULTI_HEAD_BUFFER_DEVICE = (float *)malloc(batch_size * num_heads * head_dim * seq_len * sizeof(float));
 
         cudaMalloc((void **)&deviceQKTSqrtD, batch_size * num_heads * seq_len * seq_len * sizeof(float));
 
@@ -602,6 +612,7 @@ public:
 
     ~Attention()
     {
+
         cudaFree(DeviceKt);
         cudaFree(DeviceQ);
         cudaFree(DeviceQKT);
@@ -610,7 +621,7 @@ public:
 
         cudaFree(tempDevice);
 
-        (hostQKT != nullptr ? free(hostQKT) : void());
+        (BTC_MULTI_HEAD_BUFFER_DEVICE != nullptr ? free(BTC_MULTI_HEAD_BUFFER_DEVICE) : void());
 
         (hostSoftmaxOut != nullptr ? free(hostSoftmaxOut) : void());
 
@@ -698,7 +709,7 @@ public:
 
         QKVMatmulFinal(deviceQKTSqrtD, deviceValue, QKVOutDeviceOut, seq_len, head_dim, num_heads, batch_size);
 
-        cudaMemcpy(QKVOutHostOut, QKVOutDeviceOut, batch_size * num_heads * seq_len * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(QK, QKVOutDeviceOut, batch_size * num_heads * seq_len * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
 
         // if (debug)
         // {
@@ -713,14 +724,14 @@ public:
     void SwapNT(float *arr)
     {
         /*
-            Before: [batch_size, n_head, T, d_head]
+            Before: [batch_size, n_head, T, T]
             After: [batch_size, T, n_head, d_head]
         */
 
         // if (debug)
         // {
 
-        //     std::cout << "Before [batch_size, n_head, T, d_head]" << std::endl;
+        //     std::cout << "Before [batch_size, n_head, T, T]" << std::endl;
         //     utils->print2DMatrixLastTwoRect(arr, batch_size, num_heads, seq_len, head_dim, "Before");
         // }
 
@@ -730,16 +741,17 @@ public:
 
         SwapNS(num_heads, head_dim, deviceQKTSqrtD, QKVOutDeviceOut, batch_size, seq_len, true); // I dont expect anyone to be seriously looking at this or reading so I really do not care about the comments right now.
                                                                                                  // And when I get the working result I am stacking this in one file to make it look scary.
-        cudaMemcpy(QKVOutHostOut, QKVOutDeviceOut, batch_size * num_heads * seq_len * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(arr, QKVOutDeviceOut, batch_size * num_heads * seq_len * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
 
         // if (debug)
         // {
 
-        //     std::cout << "After [batch_size, T, n_head, d_head] " << std::endl;
-        //     utils->print2DMatrixLastTwoRect(QKVOutHostOut, batch_size, num_heads, seq_len, head_dim, "After");
+        //     std::cout << "After [batch_size, T, n_head, T] " << std::endl;
+        //     utils->print2DMatrixLastTwoRect(arr, batch_size, seq_len, head_dim, seq_len, "After");
         // }
     }
 
+    // BEFORE (B, T, N_HEAD, D_EAD) AFTER: (B, T, C)
     void ReformShape(float *arr)
     {
         /*
@@ -800,31 +812,42 @@ public:
         float *K = key->forward(x);
         float *V = value->forward(x);
 
-        Q = query->reshapeHead(); // Shape(batch_size, T, n_head, head_dim)
+        Q = query->reshapeHead(); 
         K = key->reshapeHead();
-        V = value->reshapeHead(); // After this re-shape the KERNEL WRITES IT AS  (B, n_head, T, head_dim) so no tranpose needed or adjustment needed
+        V = value->reshapeHead(); // (B, n_head, T, head_dim) so no tranpose needed or adjustment needed
 
-        float *s = key->teansposeKeyForAttnScore(); // Q K^T matmul
+        // for a valid matrix mul (..., T, head_dim) @ (..., head_dim, T) = (..., T, T) so we need to swap the last two dims
+
+        if (debug)
+        {
+            std::cout << " Key matrix before transpose" << std::endl;
+            utils->print2DMatrixLastTwo(Q, batch_size, num_heads, seq_len, head_dim);
+        }
+
+        float *s = key->teansposeKeyForAttnScore(); // Shape (batch_size, n_head, head_dim, seq_len)
+
+        if (debug)
+        {
+            std::cout << "After transpose" << std::endl;
+            utils->print2DMatrixLastTwo(s, batch_size, num_heads, head_dim, seq_len);
+        }
+
         cudaMemcpy(DeviceKt, s, seq_len * batch_size * num_heads * head_dim * sizeof(float), cudaMemcpyHostToDevice);
         cudaMemcpy(DeviceQ, s, seq_len * batch_size * num_heads * head_dim * sizeof(float), cudaMemcpyHostToDevice);
 
         QKmatmul(DeviceQ, DeviceKt, DeviceQKT, seq_len, head_dim, batch_size, num_heads); // S(1, 1, T, T)
 
-        cudaMemcpy(hostQKT, DeviceQKT, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(BTC_MULTI_HEAD_BUFFER_DEVICE, DeviceQKT, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
+
+        // BTC_MULTI_HEAD_BUFFER_DEVICE AFTER QKT (B, H, T, T)
 
         // if (debug)
         // {
-        //     // std::cout << "Query" << std::endl;
-        //     // utils->print2DMatrixLastTwo(Q, batch_size, num_heads, seq_len);
-
-        //     // std::cout << "After transpose" << std::endl;
-        //     // utils->print2DMatrixLastTwo(s, batch_size, num_heads, seq_len, "");
-
         //     std::cout << "Matrix multiplication of QK^T" << std::endl;
-        //     utils->print2DMatrixLastTwo(hostQKT, batch_size, num_heads, seq_len, "");
+        //     utils->print2DMatrixLastTwo(BTC_MULTI_HEAD_BUFFER_DEVICE, batch_size, num_heads, seq_len, "");
         // }
 
-        scalerDvisionAcrossMat(hostQKT, d_model); // sqrt(d_model)
+        scalerDvisionAcrossMat(BTC_MULTI_HEAD_BUFFER_DEVICE, head_dim); // sqrt(head_dim)
 
         // if (debug == true)
         // {
@@ -832,29 +855,31 @@ public:
         // }
 
         // -1e9f
-        masking(hostQKT, -INFINITY);
+        masking(BTC_MULTI_HEAD_BUFFER_DEVICE, -INFINITY);
 
-        if (debug == true)
-        {
-            // std::cout << "Before softmax " << std::endl;
-            // utils->print2DMatrixLastTwo(hostQKT, batch_size, num_heads, seq_len, "");
-        }
+        // if (debug == true)
+        // {
+        //     std::cout << "Before softmax " << std::endl;
+        //     utils->print2DMatrixLastTwo(BTC_MULTI_HEAD_BUFFER_DEVICE, batch_size, num_heads, seq_len, "");
+        // }
 
+        // --- Important Note ------
+        // see here
         // apply softmax part!
-        cudaMemcpy(deviceQKTSqrtD, hostQKT, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyHostToDevice);
+        cudaMemcpy(deviceQKTSqrtD, BTC_MULTI_HEAD_BUFFER_DEVICE, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyHostToDevice);
         softmax(deviceQKTSqrtD, deviceSoftmaxOut, batch_size * num_heads * seq_len * seq_len, seq_len, num_heads, batch_size);
 
         // copy to host
-        cudaMemcpy(hostSoftmaxOut, deviceSoftmaxOut, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(BTC_MULTI_HEAD_BUFFER_DEVICE, deviceSoftmaxOut, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
 
         // deviceQKTSqrtD Shape(batch_size, n_head, T, T)
 
-        if (debug == true)
-        {
+        // if (debug == true)
+        // {
 
-            // std::cout << "After softmax " << std::endl;
-            // utils->print2DMatrixLastTwo(hostSoftmaxOut, batch_size, num_heads, seq_len, "");
-        }
+        //     std::cout << "After softmax " << std::endl;
+        //     utils->print2DMatrixLastTwo(BTC_MULTI_HEAD_BUFFER_DEVICE, batch_size, num_heads, seq_len, "");
+        // }
 
         // value Shape(batch_size, n_head, seq_len, d_head)
         // deviceQKTSqrtD Shape(batch_size, n_head, T, T)
@@ -862,20 +887,21 @@ public:
         // Q K determines what to attend, and V determines where to attend.
         // we will write a basic matmul kernel nothing fancy later we can benchmarket and use tensor cores.
 
-        QKVMatmul(hostSoftmaxOut, V); //  (batch_size, n_head, T, d_head)
+        QKVMatmul(BTC_MULTI_HEAD_BUFFER_DEVICE, V); //  (batch_size, n_head, T, d_head)
+        // after the last shape will be (, T, T)
 
         // if (debug)
         // {
 
         //     std::cout << "After matmul with QKV" << std::endl;
-        //     utils->print2DMatrixLastTwo(QKVOutHostOut, batch_size, num_heads, seq_len, "");
+        //     utils->print2DMatrixLastTwo(BTC_MULTI_HEAD_BUFFER_DEVICE, batch_size, num_heads, seq_len, "");
         // }
 
         // Now we would want to bring back the shape to after the attention score.
         // Shape(batch, T, n_head, d_head) ..so we wap firt and second
-        SwapNT(QKVOutHostOut);
+        SwapNT(BTC_MULTI_HEAD_BUFFER_DEVICE);
 
-        ReformShape(QKVOutHostOut);
+        ReformShape(BTC_MULTI_HEAD_BUFFER_DEVICE);
 
         // Now we need to make this go thtrough a Linear Transformation without it the model will just learn to stack information together
         // without learning to mix information from multiple heads together.
@@ -959,12 +985,11 @@ struct NetAttentionParamaters
     LinearParams lm_head;
 };
 
-
 // The chain rule
 class AutoGradEngine
 {
     // welcome to my calculas class
-
+    // The way I have studies hard science in the past is by deriving.
     NetAttentionParamaters model_paramaters;
 
 public:
@@ -972,8 +997,13 @@ public:
     {
         this->model_paramaters = paramaters;
     }
-};
 
+    // Wo is the output projectsion like in the paper.
+
+    void theChainRule()
+    {
+    }
+};
 
 class AttentionInterface
 {
@@ -1215,7 +1245,6 @@ public:
         dataLoader->resetIterator(); // just the weird logic that I wrote.
     }
 };
-
 
 int main()
 {

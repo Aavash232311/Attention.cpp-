@@ -374,24 +374,51 @@ public:
     }
 
     // This is to debug the last mtrices which are multiplied or masked, since its very hard to make a judgement on a 4D tensor.
+    // void print2DMatrixLastTwo(
+    //     float *arr,
+    //     int batch_size,
+    //     int n_head,
+    //     int seq_len,
+    //     const char *label = "Matrix")
+    // {
+    //     for (int b = 0; b < batch_size; b++)
+    //     {
+    //         for (int h = 0; h < n_head; h++)
+    //         {
+    //             printf("%s [%d][%d]\n", label, b, h);
+    //             for (int row = 0; row < seq_len; row++)
+    //             {
+    //                 printf("  [ ");
+    //                 for (int col = 0; col < seq_len; col++)
+    //                 {
+    //                     int idx = b * (n_head * seq_len * seq_len) + h * (seq_len * seq_len) + row * (seq_len) + col;
+    //                     printf("%10.4f  ", arr[idx]);
+    //                 }
+    //                 printf("]\n");
+    //             }
+    //             printf("\n");
+    //         }
+    //     }
+    // }
+
     void print2DMatrixLastTwo(
         float *arr,
         int batch_size,
         int n_head,
-        int seq_len,
-        const char *label = "Matrix")
+        int dim_row, 
+        int dim_col)
     {
         for (int b = 0; b < batch_size; b++)
         {
             for (int h = 0; h < n_head; h++)
             {
-                printf("%s [%d][%d]\n", label, b, h);
-                for (int row = 0; row < seq_len; row++)
+                printf("%s [%d][%d]\n", "Matrix", b, h);
+                for (int row = 0; row < dim_row; row++)
                 {
                     printf("  [ ");
-                    for (int col = 0; col < seq_len; col++)
+                    for (int col = 0; col < dim_col; col++)
                     {
-                        int idx = b * (n_head * seq_len * seq_len) + h * (seq_len * seq_len) + row * (seq_len) + col;
+                        int idx = b * (n_head * dim_row * dim_col) + h * (dim_row * dim_col) + row * dim_col + col;
                         printf("%10.4f  ", arr[idx]);
                     }
                     printf("]\n");
