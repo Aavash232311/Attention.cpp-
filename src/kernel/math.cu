@@ -266,8 +266,8 @@ multi_headed = [
 __global__ void TransposeKernel(
     int num_head,
     int head_dim,
-    float *arr,     // Shape(batch_size, T, n_head, d_head)
-    float *out,     // Shape(batch_size, n_head, T, d_head)
+    float *arr,     // Shape(batch_size, num_heads, seq_len, head_dim)
+    float *out,     // Shape(batch_size, seq_len, num_head, head_dim)
     int batch_size, // batch_size
     int seq_len,
     bool reverse = true)
@@ -283,14 +283,10 @@ __global__ void TransposeKernel(
 
     int outIdx = batch_idx * (num_head * seq_len * head_dim) + head_idx * (seq_len * head_dim) + seq_idx * (head_dim) + hd_idx;
 
-    if (!(reverse))
-    {
-        out[outIdx] = arr[idx];
-    }
-    else
-    {
+    if (reverse)
         out[idx] = arr[outIdx];
-    }
+    else
+        out[outIdx] = arr[idx];
 }
 
 __global__ void TransposeKeyKernel(
@@ -1073,8 +1069,8 @@ extern "C"
     void SwapNS(
         int num_heads,
         int head_dim,
-        float *arr,     // [batch_size, n_head, T, T]
-        float *out,     // B, T, N, T
+        float *arr,     // Shape(batch_size, num_heads, seq_len, head_dim)
+        float *out,     // Shape(batch_size,seq_len, num_head, head_dim)
         int batch_size, // batch_size
         int seq_len,    // seq_len
         bool reverse)

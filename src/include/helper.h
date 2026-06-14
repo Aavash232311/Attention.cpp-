@@ -405,7 +405,7 @@ public:
         float *arr,
         int batch_size,
         int n_head,
-        int dim_row, 
+        int dim_row,
         int dim_col)
     {
         for (int b = 0; b < batch_size; b++)
@@ -477,6 +477,24 @@ public:
                     }
                     std::cout << "\n";
                 }
+    }
+
+    /*
+        So I cannot make judgement in 4D tensor which is printed as flat.
+        Espically for swapNT I want to verify that claim using this method
+    */
+
+    void print2DTensorOnDemmand(float *data, int dim0, int dim1, int dim2, int dim3,
+                                int fix0, int fix1)
+    {
+        int base = fix0 * (dim1 * dim2 * dim3) + fix1 * (dim2 * dim3);
+        printf("\n[%d][%d][*][*] (%d x %d):\n", fix0, fix1, dim2, dim3);
+        for (int i = 0; i < dim2; i++)
+        {
+            for (int j = 0; j < dim3; j++)
+                printf("%8.3f ", data[base + i * dim3 + j]);
+            printf("\n");
+        }
     }
 
     template <typename T>

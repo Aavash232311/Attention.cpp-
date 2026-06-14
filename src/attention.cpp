@@ -507,7 +507,7 @@ public:
     float *DeviceKt;
     float *DeviceQ;
     float *DeviceQKT;
-    float *BTC_MULTI_HEAD_BUFFER_DEVICE = nullptr; // most of this null pointer is uncessary but ok does not hurt.
+    float *BTC_MULTI_HEAD_BUFFER_HOST = nullptr; // most of this null pointer is uncessary but ok does not hurt.
 
     bool debug = true;
 
@@ -537,6 +537,8 @@ public:
     // YOU WONT EVER KNOW WHAT WENT WRONG
     // BUGS IN KERNEL ARE THAT QUIET ON TOP OF THIS INSANE
     // MATHAMATICS
+
+    float *BATCH_NEAD_TIME_HEADDIM_DEVICE;
 
     float *S;
 
@@ -585,9 +587,10 @@ public:
         cudaMalloc((void **)&DeviceQKT, batch_size * num_heads * head_dim * seq_len * sizeof(float));
 
         // Q K^T Host
-        BTC_MULTI_HEAD_BUFFER_DEVICE = (float *)malloc(batch_size * num_heads * head_dim * seq_len * sizeof(float));
+        BTC_MULTI_HEAD_BUFFER_HOST = (float *)malloc(batch_size * num_heads * head_dim * seq_len * sizeof(float));
 
         cudaMalloc((void **)&deviceQKTSqrtD, batch_size * num_heads * seq_len * seq_len * sizeof(float));
+        cudaMalloc((void **)&BATCH_NEAD_TIME_HEADDIM_DEVICE, batch_size * num_heads * seq_len * head_dim * sizeof(float));
 
         // for softmax's
         this->hostSoftmaxOut = (float *)malloc(batch_size * num_heads * seq_len * seq_len * sizeof(float));
@@ -617,11 +620,13 @@ public:
         cudaFree(DeviceQ);
         cudaFree(DeviceQKT);
 
+        cudaFree(BATCH_NEAD_TIME_HEADDIM_DEVICE);
+
         cudaFree(deviceQKTSqrtD);
 
         cudaFree(tempDevice);
 
-        (BTC_MULTI_HEAD_BUFFER_DEVICE != nullptr ? free(BTC_MULTI_HEAD_BUFFER_DEVICE) : void());
+        (BTC_MULTI_HEAD_BUFFER_HOST != nullptr ? free(BTC_MULTI_HEAD_BUFFER_HOST) : void());
 
         (hostSoftmaxOut != nullptr ? free(hostSoftmaxOut) : void());
 
@@ -707,16 +712,9 @@ public:
         cudaMemcpy(deviceQKTSqrtD, QK, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyHostToDevice); // QK to GDDR RAM
         cudaMemcpy(deviceValue, V, batch_size * num_heads * seq_len * head_dim * sizeof(float), cudaMemcpyHostToDevice);
 
-        QKVMatmulFinal(deviceQKTSqrtD, deviceValue, QKVOutDeviceOut, seq_len, head_dim, num_heads, batch_size);
+        QKVMatmulFinal(deviceQKTSqrtD, deviceValue, BATCH_NEAD_TIME_HEADDIM_DEVICE, seq_len, head_dim, num_heads, batch_size);
 
-        cudaMemcpy(QK, QKVOutDeviceOut, batch_size * num_heads * seq_len * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
-
-        // if (debug)
-        // {
-
-        //     std::cout << "After matmul with QKV" << std::endl;
-        //     utils->print2DMatrixLastTwo(QKVOutHostOut, batch_size, num_heads, seq_len, "");
-        // }
+        cudaMemcpy(QK, BATCH_NEAD_TIME_HEADDIM_DEVICE, batch_size * num_heads * seq_len * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
     }
 
     // This method swaps the first and second dimension
@@ -724,30 +722,40 @@ public:
     void SwapNT(float *arr)
     {
         /*
-            Before: [batch_size, n_head, T, T]
+            Before: [batch_size, n_head, T, d_head]
             After: [batch_size, T, n_head, d_head]
         */
+        // if (debug)
+        // {
+        //     this->utils->print2DTensorOnDemmand(arr, batch_size, num_heads, seq_len, head_dim, 1, 0);
+        // }
 
         // if (debug)
         // {
 
-        //     std::cout << "Before [batch_size, n_head, T, T]" << std::endl;
-        //     utils->print2DMatrixLastTwoRect(arr, batch_size, num_heads, seq_len, head_dim, "Before");
+        //     std::cout << "Before [batch_size, n_head, T, head_dim]" << std::endl;
+        //     utils->printFlarArray4D(arr, batch_size, num_heads, seq_len, head_dim);
         // }
 
         // deviceQKTSqrtD is the buffer with the size:- batch_size * num_heads * seq_len * head_dim;
         // QKVOutDeviceOut will be out with the same shape because we are just swapping the dimension memory allocation is the same.
-        cudaMemcpy(deviceQKTSqrtD, arr, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyHostToDevice);
+        cudaMemcpy(BATCH_NEAD_TIME_HEADDIM_DEVICE, arr, batch_size * num_heads * seq_len * head_dim * sizeof(float), cudaMemcpyHostToDevice);
 
-        SwapNS(num_heads, head_dim, deviceQKTSqrtD, QKVOutDeviceOut, batch_size, seq_len, true); // I dont expect anyone to be seriously looking at this or reading so I really do not care about the comments right now.
-                                                                                                 // And when I get the working result I am stacking this in one file to make it look scary.
+        SwapNS(num_heads, head_dim, BATCH_NEAD_TIME_HEADDIM_DEVICE, QKVOutDeviceOut, batch_size, seq_len, true); // I dont expect anyone to be seriously looking at this or reading so I really do not care about the comments right now.
+                                                                                                                 // And when I get the working result I am stacking this in one file to make it look scary.
         cudaMemcpy(arr, QKVOutDeviceOut, batch_size * num_heads * seq_len * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
 
         // if (debug)
         // {
 
-        //     std::cout << "After [batch_size, T, n_head, T] " << std::endl;
-        //     utils->print2DMatrixLastTwoRect(arr, batch_size, seq_len, head_dim, seq_len, "After");
+        //     std::cout << "After [batch_size, T, n_head, head_dim] " << std::endl;
+        //     utils->printFlarArray4D(arr, batch_size, seq_len, num_heads, head_dim);
+        // }
+
+        // if (debug)
+        // {
+        //     this->utils->print2DTensorOnDemmand(arr, batch_size, seq_len, num_heads, head_dim, 1, 2);
+        //     this->utils->print2DTensorOnDemmand(arr, batch_size, num_heads, seq_len, head_dim, 1, 1);
         // }
     }
 
@@ -837,9 +845,9 @@ public:
 
         QKmatmul(DeviceQ, DeviceKt, DeviceQKT, seq_len, head_dim, batch_size, num_heads); // S(1, 1, T, T)
 
-        cudaMemcpy(BTC_MULTI_HEAD_BUFFER_DEVICE, DeviceQKT, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(BTC_MULTI_HEAD_BUFFER_HOST, DeviceQKT, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
 
-        // BTC_MULTI_HEAD_BUFFER_DEVICE AFTER QKT (B, H, T, T)
+        // BTC_MULTI_HEAD_BUFFER_HOST AFTER QKT (B, H, T, T)
 
         // DEBUGGER FOR QK^T
         // if (debug)
@@ -851,41 +859,41 @@ public:
         //     utils->print2DMatrixLastTwo(Q, batch_size, num_heads, seq_len, head_dim);
 
         //     std::cout << "Matrix multiplication of QK^T" << std::endl;
-        //     utils->print2DMatrixLastTwo(BTC_MULTI_HEAD_BUFFER_DEVICE, batch_size, num_heads, seq_len, seq_len);
+        //     utils->print2DMatrixLastTwo(BTC_MULTI_HEAD_BUFFER_HOST, batch_size, num_heads, seq_len, seq_len);
         // }
 
         // if (debug)
         // {
         //     std::cout << "Before scaling " << std::endl;
-        //     utils->print2DMatrixLastTwo(BTC_MULTI_HEAD_BUFFER_DEVICE, batch_size, num_heads, seq_len, seq_len);
+        //     utils->print2DMatrixLastTwo(BTC_MULTI_HEAD_BUFFER_HOST, batch_size, num_heads, seq_len, seq_len);
         // }
 
-        scalerDvisionAcrossMat(BTC_MULTI_HEAD_BUFFER_DEVICE, head_dim); // sqrt(head_dim)
+        scalerDvisionAcrossMat(BTC_MULTI_HEAD_BUFFER_HOST, head_dim); // sqrt(head_dim)
 
         // if (debug)
         // {
 
         //     std::cout << "After scalled by sqrt(head_dim) " << sqrtf(head_dim) << std::endl;
-        //     utils->print2DMatrixLastTwo(BTC_MULTI_HEAD_BUFFER_DEVICE, batch_size, num_heads, seq_len, seq_len);
+        //     utils->print2DMatrixLastTwo(BTC_MULTI_HEAD_BUFFER_HOST, batch_size, num_heads, seq_len, seq_len);
         // }
 
         // -1e9f
-        masking(BTC_MULTI_HEAD_BUFFER_DEVICE, -INFINITY);
+        masking(BTC_MULTI_HEAD_BUFFER_HOST, -INFINITY);
 
         // if (debug == true)
         // {
         //     std::cout << "Before softmax " << std::endl;
-        //     utils->print2DMatrixLastTwo(BTC_MULTI_HEAD_BUFFER_DEVICE, batch_size, num_heads, seq_len, seq_len);
+        //     utils->print2DMatrixLastTwo(BTC_MULTI_HEAD_BUFFER_HOST, batch_size, num_heads, seq_len, seq_len);
         // }
 
         // --- Important Note ------
         // see here
         // apply softmax part!
-        cudaMemcpy(deviceQKTSqrtD, BTC_MULTI_HEAD_BUFFER_DEVICE, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyHostToDevice);
+        cudaMemcpy(deviceQKTSqrtD, BTC_MULTI_HEAD_BUFFER_HOST, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyHostToDevice);
         softmax(deviceQKTSqrtD, deviceSoftmaxOut, batch_size * num_heads * seq_len * seq_len, seq_len, num_heads, batch_size);
 
         // copy to host
-        cudaMemcpy(BTC_MULTI_HEAD_BUFFER_DEVICE, deviceSoftmaxOut, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(BTC_MULTI_HEAD_BUFFER_HOST, deviceSoftmaxOut, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
 
         // deviceQKTSqrtD Shape(batch_size, n_head, T, T)
 
@@ -893,7 +901,7 @@ public:
         // {
 
         //     std::cout << "After softmax " << std::endl;
-        //     utils->print2DMatrixLastTwo(BTC_MULTI_HEAD_BUFFER_DEVICE, batch_size, num_heads, seq_len, seq_len);
+        //     utils->print2DMatrixLastTwo(BTC_MULTI_HEAD_BUFFER_HOST, batch_size, num_heads, seq_len, seq_len);
         // }
 
         // value Shape(batch_size, n_head, seq_len, d_head)
@@ -902,8 +910,7 @@ public:
         // Q K determines what to attend, and V determines where to attend.
         // we will write a basic matmul kernel nothing fancy later we can benchmarket and use tensor cores.
 
-        QKVMatmul(BTC_MULTI_HEAD_BUFFER_DEVICE, V); //  (batch_size, n_head, T, d_head)
-        // after the last shape will be (, T, T)
+        QKVMatmul(BTC_MULTI_HEAD_BUFFER_HOST, V); //  (batch_size, n_head, T, d_head)
 
         // if (debug)
         // {
@@ -911,14 +918,14 @@ public:
         //     utils->print2DMatrixLastTwo(V, batch_size, num_heads, seq_len, head_dim);
 
         //     std::cout << "After matmul with QKV" << std::endl;
-        //     utils->print2DMatrixLastTwo(BTC_MULTI_HEAD_BUFFER_DEVICE, batch_size, num_heads, seq_len, head_dim);
+        //     utils->print2DMatrixLastTwo(BTC_MULTI_HEAD_BUFFER_HOST, batch_size, num_heads, seq_len, head_dim);
         // }
 
         // Now we would want to bring back the shape to after the attention score.
         // Shape(batch, T, n_head, d_head) ..so we wap firt and second
-        SwapNT(BTC_MULTI_HEAD_BUFFER_DEVICE);
+        SwapNT(BTC_MULTI_HEAD_BUFFER_HOST);
 
-        ReformShape(BTC_MULTI_HEAD_BUFFER_DEVICE);
+        ReformShape(BTC_MULTI_HEAD_BUFFER_HOST);
 
         // Now we need to make this go thtrough a Linear Transformation without it the model will just learn to stack information together
         // without learning to mix information from multiple heads together.
