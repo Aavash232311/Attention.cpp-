@@ -875,7 +875,7 @@ public:
         // if (debug == true)
         // {
         //     std::cout << "Before softmax " << std::endl;
-        //     utils->print2DMatrixLastTwo(BTC_MULTI_HEAD_BUFFER_DEVICE, batch_size, num_heads, seq_len, "");
+        //     utils->print2DMatrixLastTwo(BTC_MULTI_HEAD_BUFFER_DEVICE, batch_size, num_heads, seq_len, seq_len);
         // }
 
         // --- Important Note ------
@@ -893,7 +893,7 @@ public:
         // {
 
         //     std::cout << "After softmax " << std::endl;
-        //     utils->print2DMatrixLastTwo(BTC_MULTI_HEAD_BUFFER_DEVICE, batch_size, num_heads, seq_len, "");
+        //     utils->print2DMatrixLastTwo(BTC_MULTI_HEAD_BUFFER_DEVICE, batch_size, num_heads, seq_len, seq_len);
         // }
 
         // value Shape(batch_size, n_head, seq_len, d_head)
@@ -907,9 +907,11 @@ public:
 
         // if (debug)
         // {
+        //     std::cout << " Value " << std::endl;
+        //     utils->print2DMatrixLastTwo(V, batch_size, num_heads, seq_len, head_dim);
 
         //     std::cout << "After matmul with QKV" << std::endl;
-        //     utils->print2DMatrixLastTwo(BTC_MULTI_HEAD_BUFFER_DEVICE, batch_size, num_heads, seq_len, "");
+        //     utils->print2DMatrixLastTwo(BTC_MULTI_HEAD_BUFFER_DEVICE, batch_size, num_heads, seq_len, head_dim);
         // }
 
         // Now we would want to bring back the shape to after the attention score.
