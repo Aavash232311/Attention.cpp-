@@ -1045,6 +1045,25 @@ struct NetAttentionParamaters
 class AutoGradEngine
 {
     // welcome to my calculas class
+
+    /* 
+        I like to imagine this neural networks like a function;
+
+        Understanding the first principle or we called it the defniation.
+
+        lim (x -> h) [ f(x + h) - f(x) ] / h
+
+        After changing h, How will the overall error change.
+
+        Physical meaning of derivative from school is slope of tangent of a curve.
+
+        In order to better approximate a result, we need to change slope 
+        which we call weights and y-intercept that is known as a bias.
+
+        From school level mathematics we can apply the chain rule.
+        
+    
+    */
     // The way I have studies hard science in the past is by deriving.
     NetAttentionParamaters model_paramaters;
 
@@ -1058,6 +1077,7 @@ public:
 
     void theChainRule()
     {
+
     }
 };
 
