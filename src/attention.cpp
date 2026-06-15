@@ -53,15 +53,19 @@ struct SingleEmbeddings
 
 struct AttentionParamaters
 {
-    LinearParams Q;
-    LinearParams K;
-    LinearParams V;
+    LinearParams Q_params;
+    LinearParams K_params;
+    LinearParams V_params;
 
     LinearParams Projection;
 
     LinearParams LayerNorm;
 
     SingleEmbeddings Embeddings;
+
+    float *S;
+    float *P;
+    float *O;
 };
 
 class Embeddings
@@ -1016,13 +1020,18 @@ public:
         SingleEmbeddings emebdding_p{embeddings->getEmbeddingsParamaters()};
 
         return {
-            Q_p,
+            Q_p, // weight and bias of QKV
             K_p,
             V_p,
 
             OutputProject_p,
             LayerNorm_p,
-            emebdding_p};
+            emebdding_p,
+        
+            S, // actual value copied from QKV
+            P,
+            O
+        };
     }
 };
 
