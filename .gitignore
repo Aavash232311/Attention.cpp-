@@ -7,6 +7,10 @@ pg
 
 venv
 
+flashback.aux
+flashback.fdb_latexmk
+flashback.fls
+flashback.log
 
 # Ignore Visual Studio / VS Code settings
 .vs/
