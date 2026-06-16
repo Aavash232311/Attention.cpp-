@@ -1,0 +1,266 @@
+* Gradient of the Attention Output \(O = PV\)
+
+From the standard attention formulation:
+
+\[
+S = QK^T
+\]
+
+\[
+P = \operatorname{softmax}(S)
+\]
+
+\[
+O = PV
+\]
+
+We focus on the final matrix multiplication:
+
+\[
+O = PV
+\]
+
+**Important:** Unlike thermodynamics or wave functions, \(O\) is explicitly defined as the product \(PV\), so both \(P\) and \(V\) contribute to its differential.
+
+Taking the differential:
+
+\[
+dO = P\,dV + dP\,V
+\]
+
+* Loss Function and Upstream Gradient
+
+Consider the computation graph:
+
+#+begin_example
+Input -> Layer A -> Layer B -> Loss L
+#+end_example
+
+When computing gradients for Layer A, the gradient arriving from Layer B is called the *upstream gradient*.
+
+Let the loss be a scalar function:
+
+\[
+L(O)
+\]
+
+Using the Frobenius inner product,
+
+\[
+dL = \sum_{i,j} \frac{\partial L}{\partial O_{ij}}\, dO_{ij}
+\]
+
+Define
+
+\[
+G = \frac{\partial L}{\partial O}
+\]
+
+Then
+
+\[
+dL = G : dO
+\]
+
+where ":" denotes the Frobenius inner product,
+
+\[
+A:B = \sum_{i,j} A_{ij}B_{ij}.
+\]
+
+Substituting \(dO\):
+
+\[
+dL = G : (P\,dV + dP\,V)
+\]
+
+Using linearity:
+
+\[
+dL = G:(P\,dV) + G:(dP\,V)
+\]
+
+* First Term: \(G:(P\,dV)\)
+
+Write the term in index notation:
+
+\[
+G:(P\,dV)
+=
+\sum_{i,j}
+G_{ij}(P\,dV)_{ij}
+\]
+
+The matrix product expands as
+
+\[
+(P\,dV)_{ij}
+=
+\sum_k P_{ik}(dV)_{kj}
+\]
+
+Therefore
+
+\[
+G:(P\,dV)
+=
+\sum_{i,j,k}
+G_{ij}P_{ik}(dV)_{kj}
+\]
+
+Regroup terms:
+
+\[
+=
+\sum_{k,j}
+\left(
+\sum_i P_{ik}G_{ij}
+\right)
+(dV)_{kj}
+\]
+
+Using the transpose identity
+
+\[
+(P^T)_{ki}=P_{ik}
+\]
+
+we obtain
+
+\[
+=
+\sum_{k,j}
+\left(
+\sum_i (P^T)_{ki}G_{ij}
+\right)
+(dV)_{kj}
+\]
+
+Recognizing matrix multiplication:
+
+\[
+G:(P\,dV)
+=
+(P^TG):dV
+\]
+
+Thus the contribution to the gradient with respect to \(V\) is
+
+\[
+\frac{\partial L}{\partial V}
+=
+P^TG
+\]
+
+or equivalently
+
+\[
+L_V = P^T L_O.
+\]
+
+* Second Term: \(G:(dP\,V)\)
+
+Start with
+
+\[
+G:(dP\,V)
+=
+\sum_{i,j}
+G_{ij}(dP\,V)_{ij}
+\]
+
+Expand the matrix product:
+
+\[
+(dP\,V)_{ij}
+=
+\sum_k (dP)_{ik}V_{kj}
+\]
+
+Substituting:
+
+\[
+G:(dP\,V)
+=
+\sum_{i,j,k}
+G_{ij}(dP)_{ik}V_{kj}
+\]
+
+Regroup:
+
+\[
+=
+\sum_{i,k}
+\left(
+\sum_j G_{ij}V_{kj}
+\right)
+(dP)_{ik}
+\]
+
+Using
+
+\[
+(V^T)_{jk}=V_{kj}
+\]
+
+gives
+
+\[
+=
+\sum_{i,k}
+(GV^T)_{ik}(dP)_{ik}
+\]
+
+Recognizing the Frobenius inner product:
+
+\[
+G:(dP\,V)
+=
+(GV^T):dP
+\]
+
+Hence
+
+\[
+\frac{\partial L}{\partial P}
+=
+GV^T
+\]
+
+or
+
+\[
+L_P = L_O V^T.
+\]
+
+* Final Results
+
+For
+
+\[
+O = PV
+\]
+
+and upstream gradient
+
+\[
+L_O = \frac{\partial L}{\partial O},
+\]
+
+the gradients are
+
+\[
+\boxed{
+L_V = P^T L_O
+}
+\]
+
+and
+
+\[
+\boxed{
+L_P = L_O V^T
+}
+\]
+
+These are exactly the backward-pass equations used for the matrix multiplication step in attention.
