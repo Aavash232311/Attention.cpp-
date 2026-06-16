@@ -66,6 +66,10 @@ struct AttentionParamaters
     float *S;
     float *P;
     float *O;
+
+    // We are re-using the buffer for BTC and Batch Seq Number of head and head dim to save reources
+    float *DEVCIE_BUFFER_BTC;
+    float *DEVICE_BUFFER_MULTIHEAD;
 };
 
 class Embeddings
@@ -1023,7 +1027,10 @@ public:
         
             S, // actual value copied from QKV
             P,
-            O
+            O,
+
+            BTCdevice,
+            BATCH_NEAD_TIME_HEADDIM_DEVICE
         };
     }
 };
@@ -1032,6 +1039,9 @@ struct NetAttentionParamaters
 {
     AttentionParamaters attention_head;
     LinearParams lm_head;
+
+    // so the above struct contains a pointer reference for CPU memory but we need to make a buffer for gpu memory right here.
+
 };
 
 // The chain rule
