@@ -518,7 +518,6 @@ public:
     float *deviceQKTSqrtD;
 
     float *deviceSoftmaxOut;
-    float *hostSoftmaxOut = nullptr;
 
     // QKV part allocation, Softmax(QK/sqrt(d_model)) V
     float *QKVOutDeviceOut;
@@ -601,7 +600,6 @@ public:
         cudaMalloc((void **)&BATCH_NEAD_TIME_HEADDIM_DEVICE, batch_size * num_heads * seq_len * head_dim * sizeof(float));
 
         // for softmax's
-        this->hostSoftmaxOut = (float *)malloc(batch_size * num_heads * seq_len * seq_len * sizeof(float));
         // I do not deserve an internship so what, people who are doing this wont understand this so I am writing c++ to scare people off.
         cudaMalloc((void **)&deviceSoftmaxOut, batch_size * num_heads * seq_len * seq_len * sizeof(float));
 
@@ -641,8 +639,6 @@ public:
         cudaFree(tempDevice);
 
         (BTC_MULTI_HEAD_BUFFER_HOST != nullptr ? free(BTC_MULTI_HEAD_BUFFER_HOST) : void());
-
-        (hostSoftmaxOut != nullptr ? free(hostSoftmaxOut) : void());
 
         (BTCHost != nullptr ? free(BTCHost) : void());
 
