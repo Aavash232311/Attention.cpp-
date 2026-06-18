@@ -236,12 +236,96 @@ $$\frac{\partial p_{13}}{\partial s_{11}} = -p_{11} p_{13}$$
 
 Remember we are doing a row wise opreation here.
 
-In the second row, we will keep everything constant except $p_{21}$ (when taking the derivative with respect to $s_{21}$), and for the third row, we will keep everything constant except $p_{31}$ (when taking the derivative with respect to $s_{31}$).
-
 From Equation V:
 
 $$\frac{\partial L}{\partial s_{11}} = \frac{\partial L}{\partial p_{11}} (p_{11} - p_{11}^2) + \frac{\partial L}{\partial p_{12}} (-p_{11} p_{12}) + \frac{\partial L}{\partial p_{13}} (-p_{11} p_{13})$$
 
-So this is the example for the first row.
+
+In a similar way we can calculate for row 2 and row 3.
+
+For s₁₂, we take:
+
+$$\frac{\partial L}{\partial s_{12}} = \left(\frac{\partial L}{\partial p_{11}} \cdot (-p_{11}p_{12})\right) + \left(\frac{\partial L}{\partial p_{12}} \cdot p_{12}(1-p_{12})\right) + \left(\frac{\partial L}{\partial p_{13}} \cdot (-p_{12}p_{13})\right)$$
+
+For s₁₃, we take:
+
+$$\frac{\partial L}{\partial s_{13}} = \left(\frac{\partial L}{\partial p_{11}} \cdot (-p_{11}p_{13})\right) + \left(\frac{\partial L}{\partial p_{12}} \cdot (-p_{12}p_{13})\right) + \left(\frac{\partial L}{\partial p_{13}} \cdot p_{13}(1-p_{13})\right)$$
+
+
+Now lets take a look at the original matrix.
+
+$$P = \text{softmax}(S) = 
+\begin{bmatrix}
+p_{11} & p_{12} & p_{13} \\
+p_{21} & p_{22} & p_{23} \\
+p_{31} & p_{32} & p_{33}
+\end{bmatrix}$$
+
+
+Lets pull out gradient vector from equation vi meaning from the first row for example
+
+$$\frac{\partial L}{\partial \mathbf{s}_{1:}} = \begin{bmatrix} \frac{\partial L}{\partial s_{11}} & \frac{\partial L}{\partial s_{12}} & \frac{\partial L}{\partial s_{13}} \end{bmatrix}$$
+
+
+For P which is the output of the softmax
+
+$$\frac{\partial L}{\partial \mathbf{p}_{1:}} = \begin{bmatrix} \frac{\partial L}{\partial p_{11}} & \frac{\partial L}{\partial p_{12}} & \frac{\partial L}{\partial p_{13}} \end{bmatrix}$$
+
+will we wrap those vectors like this, if you multiply then you get the same result as above and remember all this for a single row.
+
+$$\frac{\partial L}{\partial S_1} = \frac{\partial L}{\partial P_1} \cdot
+\begin{bmatrix}
+p_{11}(1-p_{11}) & -p_{11}p_{12} & -p_{11}p_{13} \\
+-p_{11}p_{12} & p_{12}(1-p_{12}) & -p_{12}p_{13} \\
+-p_{11}p_{13} & -p_{12}p_{13} & p_{13}(1-p_{13})
+\end{bmatrix}$$
+
+Now we will split this into Jacobian matrix and if you have doubt then multiply and see a small example its the same.
+
+
+$$J(P_1) = \text{diag}(P_1) - P_1^T P_1$$
+
+Where:
+
+$$\text{diag}(P_1) = 
+\begin{bmatrix}
+p_{11} & 0 & 0 \\
+0 & p_{12} & 0 \\
+0 & 0 & p_{13}
+\end{bmatrix}$$
+
+$$P_1^T P_1 = 
+\begin{bmatrix}
+p_{11} \\ p_{12} \\ p_{13}
+\end{bmatrix}
+\begin{bmatrix}
+p_{11} & p_{12} & p_{13}
+\end{bmatrix}
+=
+\begin{bmatrix}
+p_{11}^2 & p_{11}p_{12} & p_{11}p_{13} \\
+p_{11}p_{12} & p_{12}^2 & p_{12}p_{13} \\
+p_{11}p_{13} & p_{12}p_{13} & p_{13}^2
+\end{bmatrix}$$
+
+$$J(P_1) = 
+\begin{bmatrix}
+p_{11} & 0 & 0 \\
+0 & p_{12} & 0 \\
+0 & 0 & p_{13}
+\end{bmatrix}
+-
+\begin{bmatrix}
+p_{11}^2 & p_{11}p_{12} & p_{11}p_{13} \\
+p_{11}p_{12} & p_{12}^2 & p_{12}p_{13} \\
+p_{11}p_{13} & p_{12}p_{13} & p_{13}^2
+\end{bmatrix}
+=
+\begin{bmatrix}
+p_{11}(1-p_{11}) & -p_{11}p_{12} & -p_{11}p_{13} \\
+-p_{11}p_{12} & p_{12}(1-p_{12}) & -p_{12}p_{13} \\
+-p_{11}p_{13} & -p_{12}p_{13} & p_{13}(1-p_{13})
+\end{bmatrix}$$
+
 
 
