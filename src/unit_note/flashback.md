@@ -261,15 +261,13 @@ p_{21} & p_{22} & p_{23} \\
 p_{31} & p_{32} & p_{33}
 \end{bmatrix}$$
 
-
 Lets pull out gradient vector from equation vi meaning from the first row for example
 
-$$\frac{\partial L}{\partial \mathbf{s}_{1:}} = \begin{bmatrix} \frac{\partial L}{\partial s_{11}} & \frac{\partial L}{\partial s_{12}} & \frac{\partial L}{\partial s_{13}} \end{bmatrix}$$
-
+$$\frac{\partial L}{\partial s_{1:}} = \begin{bmatrix} \frac{\partial L}{\partial s_{11}} & \frac{\partial L}{\partial s_{12}} & \frac{\partial L}{\partial s_{13}} \end{bmatrix}$$
 
 For P which is the output of the softmax
 
-$$\frac{\partial L}{\partial \mathbf{p}_{1:}} = \begin{bmatrix} \frac{\partial L}{\partial p_{11}} & \frac{\partial L}{\partial p_{12}} & \frac{\partial L}{\partial p_{13}} \end{bmatrix}$$
+$$\frac{\partial L}{\partial p_{1:}} = \begin{bmatrix} \frac{\partial L}{\partial p_{11}} & \frac{\partial L}{\partial p_{12}} & \frac{\partial L}{\partial p_{13}} \end{bmatrix}$$
 
 will we wrap those vectors like this, if you multiply then you get the same result as above and remember all this for a single row.
 
@@ -281,7 +279,6 @@ p_{11}(1-p_{11}) & -p_{11}p_{12} & -p_{11}p_{13} \\
 \end{bmatrix}$$
 
 Now we will split this into Jacobian matrix and if you have doubt then multiply and see a small example its the same.
-
 
 $$J(P_1) = \text{diag}(P_1) - P_1^T P_1$$
 
