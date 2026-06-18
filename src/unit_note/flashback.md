@@ -82,8 +82,8 @@ $$L_P = L_O V^T \quad \text{--- b)}$$
 
 Let's unfold exactly what is going on at the matrix level.
 
-### 1. Value Matrix ($V$)
 The Value matrix has shape $(3 \times 3)$:
+
 $$V = \begin{bmatrix} 
 v_{11} & v_{12} & v_{13} \\ 
 v_{21} & v_{22} & v_{23} \\ 
@@ -127,3 +127,45 @@ O_{11} & O_{12} & O_{13} \\
 O_{21} & O_{22} & O_{23} \\ 
 O_{31} & O_{32} & O_{33} 
 \end{bmatrix}$$
+
+
+The upstream gradient for \( P = \text{softmax}(S) = \frac{\partial L}{\partial P} \)
+
+
+**Quotient Rule:**
+
+The quotient rule for derivatives states:
+\[ \left( \frac{u}{v} \right)' = \frac{u'v - uv'}{v^2} \]
+
+where \( u \) and \( v \) are functions of \( x \), and \( u' \) and \( v' \) are their respective derivatives.
+
+Now, what we want to do is evaluate this row-wise for the attention probability matrix $P$.
+
+Let's first look closely at the numerator and the denominator of the softmax fraction. 
+
+For example, consider the position $p_{11}$:
+
+* **Numerator ($N$):** $N = e^{s_{11}}$
+* **Denominator ($D$):** $D = e^{s_{11}} + e^{s_{12}} + e^{s_{13}}$
+
+Let's take the partial derivative with respect to the input score $s_{11}$:
+
+* The derivative of the numerator with respect to $s_{11}$ is:
+  $$N' = \frac{\partial N}{\partial s_{11}} = e^{s_{11}}$$
+
+* The derivative of the denominator with respect to $s_{11}$ is:
+  $$D' = \frac{\partial D}{\partial s_{11}} = e^{s_{11}}$$
+
+### The Full Chain Rule across the Row
+
+Here we apply the chain rule to compute the gradient with respect to the input logit $s_{11}$. 
+
+As you noted, because the denominator is a shared sum across the entire row, changing $s_{11}$ alters the value of *every single probability element* in that row ($p_{11}$, $p_{12}$, and $p_{13}$). This row-wise coupling is exactly why parallel reduction in a GPU kernel requires careful shared memory communication or warp shuffles.
+
+Using the total derivative chain rule, we must sum the gradient contributions flowing back through all elements in that row:
+
+$$\frac{\partial L}{\partial s_{11}} = \frac{\partial L}{\partial p_{11}} \frac{\partial p_{11}}{\partial s_{11}} + \frac{\partial L}{\partial p_{12}} \frac{\partial p_{12}}{\partial s_{11}} + \frac{\partial L}{\partial p_{13}} \frac{\partial p_{13}}{\partial s_{11}}$$
+
+In a more compact notation using the upstream gradient components $(L_P)_{1j}$:
+
+$$\frac{\partial L}{\partial s_{11}} = \sum_{j=1}^{3} \frac{\partial L}{\partial p_{1j}} \frac{\partial p_{1j}}{\partial s_{11}}$$
