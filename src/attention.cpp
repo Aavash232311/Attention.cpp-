@@ -1229,27 +1229,6 @@ public:
         // and this equation beautifully brings mathematics to life in modern AI
     }
 
-    /*
-
-        I came across a very interesting conversation one day.
-        How important is the skill of sounding confident and hireable even when you lack certain technical skills?
-        I'm talking about the kind of people who always look fresh, wear a constant smile, do very little actual work,
-        and appear impressive on the surface.
-
-        My feeling is that this skill is important in certain industries such as hospitality, marketing,
-        reception, or help-desk roles. However, for deeply technical work that creates real impact,
-        it should not be the most important factor. While having such skills
-        is certainly a plus, they are not a substitute for technical competence.
-
-        If an employer rejects you solely because you do not have that polished,
-        outward-facing personality, then they may not be the kind of employer from whom you will learn the most.
-        That might be acceptable if your goal is a small software engineering job at a company,
-        but if your goal is to move forward, build meaningful things, and make a real impact,
-        then my answer would be no.
-
-        The most impactful people I know were mostly introverted and some even difficult to work with.
-
-    */
 
     void train(int epoch)
     {
