@@ -156,16 +156,92 @@ Let's take the partial derivative with respect to the input score $s_{11}$:
 * The derivative of the denominator with respect to $s_{11}$ is:
   $$D' = \frac{\partial D}{\partial s_{11}} = e^{s_{11}}$$
 
-### The Full Chain Rule across the Row
+The Full Chain Rule across the Row
 
 Here we apply the chain rule to compute the gradient with respect to the input logit $s_{11}$. 
 
-As you noted, because the denominator is a shared sum across the entire row, changing $s_{11}$ alters the value of *every single probability element* in that row ($p_{11}$, $p_{12}$, and $p_{13}$). This row-wise coupling is exactly why parallel reduction in a GPU kernel requires careful shared memory communication or warp shuffles.
+Because the denominator is a shared sum across the entire row, changing $s_{11}$ alters the value of *every single probability element* in that row ($p_{11}$, $p_{12}$, and $p_{13}$). This row-wise coupling is exactly why parallel reduction in a GPU kernel requires careful shared memory communication or warp shuffles.
 
 Using the total derivative chain rule, we must sum the gradient contributions flowing back through all elements in that row:
+
+In this case, we have $\frac{\partial L}{\partial P}$ as our **upstream gradient** and $\frac{\partial P}{\partial S_{11}}$ as our **local gradient**. Therefore,
+
+\[
+\frac{\partial L}{\partial S_{11}}
+=
+\frac{\partial L}{\partial P}
+\cdot
+\frac{\partial P}{\partial S_{11}}.
+\]
+
+This follows directly from the chain rule.
+
 
 $$\frac{\partial L}{\partial s_{11}} = \frac{\partial L}{\partial p_{11}} \frac{\partial p_{11}}{\partial s_{11}} + \frac{\partial L}{\partial p_{12}} \frac{\partial p_{12}}{\partial s_{11}} + \frac{\partial L}{\partial p_{13}} \frac{\partial p_{13}}{\partial s_{11}}$$
 
 In a more compact notation using the upstream gradient components $(L_P)_{1j}$:
 
 $$\frac{\partial L}{\partial s_{11}} = \sum_{j=1}^{3} \frac{\partial L}{\partial p_{1j}} \frac{\partial p_{1j}}{\partial s_{11}}$$
+
+$$\frac{\partial L}{\partial s_{11}} = \left( \frac{\partial L}{\partial p_{11}} \cdot \frac{\partial p_{11}}{\partial s_{11}} \right) + \left( \frac{\partial L}{\partial p_{12}} \cdot \frac{\partial p_{12}}{\partial s_{11}} \right) + \left( \frac{\partial L}{\partial p_{13}} \cdot \frac{\partial p_{13}}{\partial s_{11}} \right) \quad \text{--- (Equation V)}$$
+
+Now in our example, at the position $p_{11}$:
+
+$$p_{11} = \frac{e^{s_{11}}}{e^{s_{11}} + e^{s_{12}} + e^{s_{13}}}$$
+
+Now taking the partial derivative of $p_{11}$ with respect to $s_{11}$ using the quotient rule:
+
+$$\frac{\partial p_{11}}{\partial s_{11}} = \frac{e^{s_{11}} \left( e^{s_{11}} + e^{s_{12}} + e^{s_{13}} \right) - e^{s_{11}} \left( e^{s_{11}} \right)}{\left( e^{s_{11}} + e^{s_{12}} + e^{s_{13}} \right)^2}$$
+
+
+$$\frac{\partial p_{11}}{\partial s_{11}} = \frac{e^{s_{11}} e^{s_{11}} + e^{s_{11}} e^{s_{12}} + e^{s_{11}} e^{s_{13}} - e^{s_{11}} e^{s_{11}}}{\left( e^{s_{11}} + e^{s_{12}} + e^{s_{13}} \right)^2}$$
+
+
+$$\frac{\partial p_{11}}{\partial s_{11}} = \frac{e^{s_{11}} e^{s_{12}} + e^{s_{11}} e^{s_{13}}}{\left( e^{s_{11}} + e^{s_{12}} + e^{s_{13}} \right)^2}$$
+
+
+$$\frac{\partial p_{11}}{\partial s_{11}} = \frac{\left(e^{s_{11}} e^{s_{11}} + e^{s_{11}} e^{s_{12}} + e^{s_{11}} e^{s_{13}}\right) - e^{s_{11}} e^{s_{11}}}{\left( e^{s_{11}} + e^{s_{12}} + e^{s_{13}} \right)^2}$$
+
+Now, factor out $e^{s_{11}}$ from the first group in the numerator:
+
+$$\frac{\partial p_{11}}{\partial s_{11}} = \frac{e^{s_{11}} \left( e^{s_{11}} + e^{s_{12}} + e^{s_{13}} \right) - \left(e^{s_{11}}\right)^2}{\left( e^{s_{11}} + e^{s_{12}} + e^{s_{13}} \right)^2}$$
+
+Next, split the fraction into two separate terms across the minus sign:
+
+$$\frac{\partial p_{11}}{\partial s_{11}} = \frac{e^{s_{11}} \left( e^{s_{11}} + e^{s_{12}} + e^{s_{13}} \right)}{\left( e^{s_{11}} + e^{s_{12}} + e^{s_{13}} \right)^2} - \frac{\left(e^{s_{11}}\right)^2}{\left( e^{s_{11}} + e^{s_{12}} + e^{s_{13}} \right)^2}$$
+
+Cancel out the shared terms in the first fraction:
+
+$$\frac{\partial p_{11}}{\partial s_{11}} = \frac{e^{s_{11}}}{e^{s_{11}} + e^{s_{12}} + e^{s_{13}}} - \left( \frac{e^{s_{11}}}{e^{s_{11}} + e^{s_{12}} + e^{s_{13}}} \right)^2$$
+
+Since $p_{11} = \frac{e^{s_{11}}}{e^{s_{11}} + e^{s_{12}} + e^{s_{13}}}$, we can substitute it directly back into the terms:
+
+$$\frac{\partial p_{11}}{\partial s_{11}} = p_{11} - p_{11}^2$$
+
+
+There's nothing to be scared of. Think of this as multiplying by the upstream gradient; it's just the quotient rule applied to the derivative term and then rearranging the terms.
+
+For position $p_{12}$, because this is a partial derivative, everything else is a constant.
+
+$$\frac{\partial p_{12}}{\partial s_{11}} = \frac{0 \cdot \left(e^{s_{11}} + e^{s_{12}} + e^{s_{13}}\right) - e^{s_{12}} e^{s_{11}}}{\left(e^{s_{11}} + e^{s_{12}} + e^{s_{13}}\right)^2}$$
+
+$$\frac{\partial p_{12}}{\partial s_{11}} = \frac{- e^{s_{11}} e^{s_{12}}}{\left(e^{s_{11}} + e^{s_{12}} + e^{s_{13}}\right)^2}$$
+
+$$= -p_{11} p_{12}$$
+
+
+In a similar way for position $p_{13}$:
+
+$$\frac{\partial p_{13}}{\partial s_{11}} = -p_{11} p_{13}$$
+
+Remember we are doing a row wise opreation here.
+
+In the second row, we will keep everything constant except $p_{21}$ (when taking the derivative with respect to $s_{21}$), and for the third row, we will keep everything constant except $p_{31}$ (when taking the derivative with respect to $s_{31}$).
+
+From Equation V:
+
+$$\frac{\partial L}{\partial s_{11}} = \frac{\partial L}{\partial p_{11}} (p_{11} - p_{11}^2) + \frac{\partial L}{\partial p_{12}} (-p_{11} p_{12}) + \frac{\partial L}{\partial p_{13}} (-p_{11} p_{13})$$
+
+So this is the example for the first row.
+
+
