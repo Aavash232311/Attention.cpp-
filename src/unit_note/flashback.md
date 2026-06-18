@@ -79,3 +79,51 @@ $$L_V = P^T L_O \quad \text{--- a)}$$
 $$dL = (G V^T) : dP$$
 
 $$L_P = L_O V^T \quad \text{--- b)}$$
+
+Let's unfold exactly what is going on at the matrix level.
+
+### 1. Value Matrix ($V$)
+The Value matrix has shape $(3 \times 3)$:
+$$V = \begin{bmatrix} 
+v_{11} & v_{12} & v_{13} \\ 
+v_{21} & v_{22} & v_{23} \\ 
+v_{31} & v_{32} & v_{33} 
+\end{bmatrix}$$
+
+---
+
+### 2. Attention Probability Matrix ($P$)
+Each row of $P$ is the result of applying the `softmax` function across the corresponding row of the attention score matrix $S$. 
+
+Let the row-wise denominator sums be defined as:
+* Row 1: $\sum e^{s_1} = e^{s_{11}} + e^{s_{12}} + e^{s_{13}}$
+* Row 2: $\sum e^{s_2} = e^{s_{21}} + e^{s_{22}} + e^{s_{23}}$
+* Row 3: $\sum e^{s_3} = e^{s_{31}} + e^{s_{32}} + e^{s_{33}}$
+
+$$P = \text{softmax}(S) = \begin{bmatrix}
+\frac{e^{s_{11}}}{\sum e^{s_1}} & \frac{e^{s_{12}}}{\sum e^{s_1}} & \frac{e^{s_{13}}}{\sum e^{s_1}} \\
+\frac{e^{s_{21}}}{\sum e^{s_2}} & \frac{e^{s_{22}}}{\sum e^{s_2}} & \frac{e^{s_{23}}}{\sum e^{s_2}} \\
+\frac{e^{s_{31}}}{\sum e^{s_3}} & \frac{e^{s_{32}}}{\sum e^{s_3}} & \frac{e^{s_{33}}}{\sum e^{s_3}}
+\end{bmatrix} = \begin{bmatrix} 
+p_{11} & p_{12} & p_{13} \\ 
+p_{21} & p_{22} & p_{23} \\ 
+p_{31} & p_{32} & p_{33} 
+\end{bmatrix}$$
+
+---
+
+### 3. Output Matrix ($O = PV$)
+Multiplying rows of $P$ by columns of $V$ gives us the fully expanded elements of the output matrix $O$:
+
+$$O = \begin{bmatrix}
+p_{11}v_{11} + p_{12}v_{21} + p_{13}v_{31} & p_{11}v_{12} + p_{12}v_{22} + p_{13}v_{32} & p_{11}v_{13} + p_{12}v_{23} + p_{13}v_{33} \\
+p_{21}v_{11} + p_{22}v_{21} + p_{23}v_{31} & p_{21}v_{12} + p_{22}v_{22} + p_{23}v_{32} & p_{21}v_{13} + p_{22}v_{23} + p_{23}v_{33} \\
+p_{31}v_{11} + p_{32}v_{21} + p_{33}v_{31} & p_{31}v_{12} + p_{32}v_{22} + p_{33}v_{32} & p_{31}v_{13} + p_{32}v_{23} + p_{33}v_{33}
+\end{bmatrix}$$
+
+Which maps directly to the standard layout:
+$$O = \begin{bmatrix} 
+O_{11} & O_{12} & O_{13} \\ 
+O_{21} & O_{22} & O_{23} \\ 
+O_{31} & O_{32} & O_{33} 
+\end{bmatrix}$$
