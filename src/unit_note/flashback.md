@@ -302,7 +302,7 @@ p_{11}p_{13} & p_{12}p_{13} & p_{13}^2
 \end{bmatrix}$$
 
 $$J(P_1) = 
-\begin{bmatrix} p_{11} & 0 & 0 \\ 0 & p_{12} & 0 \\ 0 & 0 & p_{13} \end{bmatrix}$$
+\begin{bmatrix} p_{11} & 0 & 0 \\ 0 & p_{12} & 0 \\ 0 & 0 & p_{13} \end{bmatrix}
 -
 \begin{bmatrix} p_{11}^2 & p_{11}p_{12} & p_{11}p_{13} \\ p_{11}p_{12} & p_{12}^2 & p_{12}p_{13} \\ p_{11}p_{13} & p_{12}p_{13} & p_{13}^2 \end{bmatrix}
 =
