@@ -1058,6 +1058,9 @@ public:
     }
 
     // Wo is the output projectsion like in the paper.
+    // if you cannot handle one kernel too much complication
+    // its completely oaky to get correct logic by seperating kernels even though
+    // its flash attention 
 
     void theChainRule()
     {

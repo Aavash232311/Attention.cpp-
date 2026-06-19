@@ -292,12 +292,8 @@ p_{11} & 0 & 0 \\
 \end{bmatrix}$$
 
 $$P_1^T P_1 = 
-\begin{bmatrix}
-p_{11} \\ p_{12} \\ p_{13}
-\end{bmatrix}
-\begin{bmatrix}
-p_{11} & p_{12} & p_{13}
-\end{bmatrix}
+\begin{bmatrix} p_{11} \\ p_{12} \\ p_{13} \end{bmatrix}
+\begin{bmatrix} p_{11} & p_{12} & p_{13} \end{bmatrix}
 =
 \begin{bmatrix}
 p_{11}^2 & p_{11}p_{12} & p_{11}p_{13} \\
@@ -306,17 +302,9 @@ p_{11}p_{13} & p_{12}p_{13} & p_{13}^2
 \end{bmatrix}$$
 
 $$J(P_1) = 
-\begin{bmatrix}
-p_{11} & 0 & 0 \\
-0 & p_{12} & 0 \\
-0 & 0 & p_{13}
-\end{bmatrix}
+\begin{bmatrix} p_{11} & 0 & 0 \\ 0 & p_{12} & 0 \\ 0 & 0 & p_{13} \end{bmatrix}
 -
-\begin{bmatrix}
-p_{11}^2 & p_{11}p_{12} & p_{11}p_{13} \\
-p_{11}p_{12} & p_{12}^2 & p_{12}p_{13} \\
-p_{11}p_{13} & p_{12}p_{13} & p_{13}^2
-\end{bmatrix}
+\begin{bmatrix} p_{11}^2 & p_{11}p_{12} & p_{11}p_{13} \\ p_{11}p_{12} & p_{12}^2 & p_{12}p_{13} \\ p_{11}p_{13} & p_{12}p_{13} & p_{13}^2 \end{bmatrix}
 =
 \begin{bmatrix}
 p_{11}(1-p_{11}) & -p_{11}p_{12} & -p_{11}p_{13} \\
@@ -324,5 +312,97 @@ p_{11}(1-p_{11}) & -p_{11}p_{12} & -p_{11}p_{13} \\
 -p_{11}p_{13} & -p_{12}p_{13} & p_{13}(1-p_{13})
 \end{bmatrix}$$
 
+And this is for one row. This part is to grab the concept right and we will work on writing kernels which will make this procress even transparent.
+
+Now we will be looking at:
+
+$$S = QK^T$$
+
+Here, the upstream gradient backpropagating into this operation will be $\frac{\partial L}{\partial S}$.
+
+The dot product for an individual element $s_{ij}$ is given by:
+
+$$s_{ij} = \sum_{k} q_{ik} K_{jk}$$
+
+Now let's isolate the component $q_{ij}$ to find its gradient. Using the chain rule:
+
+$$\frac{\partial L}{\partial q_{ij}} = \sum_{k} \frac{\partial L}{\partial s_{ik}} \frac{\partial s_{ik}}{\partial q_{ij}}$$
+
+Therefore, the local gradient is:
+
+$$\frac{\partial s_{ik}}{\partial q_{ij}} = K_{jk}$$
+
+Substituting this back into the chain rule expression yields the matrix multiplication form:
+
+$$\frac{\partial L}{\partial Q} = \frac{\partial L}{\partial S} K$$
+
+<hr />
+
+I will derive O = PV in better way inorder for me to understand better, this is for me to look back at if I forget how does this work and implemnting in code will even make it clear.
+
+$$V = \begin{bmatrix} V_{11} & V_{12} & V_{13} \\ V_{21} & V_{22} & V_{23} \\ V_{31} & V_{32} & V_{33} \end{bmatrix}$$
+
+$$O = \begin{bmatrix} O_{11} & O_{12} & O_{13} \\ O_{21} & O_{22} & O_{23} \\ O_{31} & O_{32} & O_{33} \end{bmatrix}$$
 
 
+$$K = \begin{bmatrix} K_{11} & K_{12} & K_{13} \\ K_{21} & K_{22} & K_{23} \\ K_{31} & K_{32} & K_{33} \end{bmatrix}$$
+
+O = PV
+
+Here, the upstream gradient backpropagating from the loss function down to this layer is:
+
+$$\frac{\partial L}{\partial O} = \begin{bmatrix} \frac{\partial L}{\partial O_{11}} & \frac{\partial L}{\partial O_{12}} & \frac{\partial L}{\partial O_{13}} \\ \frac{\partial L}{\partial O_{21}} & \frac{\partial L}{\partial O_{22}} & \frac{\partial L}{\partial O_{23}} \\ \frac{\partial L}{\partial O_{31}} & \frac{\partial L}{\partial O_{32}} & \frac{\partial L}{\partial O_{33}} \end{bmatrix}$$
+
+$$O = \begin{bmatrix} O_{11} & O_{12} & O_{13} \\ O_{21} & O_{22} & O_{23} \\ O_{31} & O_{32} & O_{33} \end{bmatrix} = \begin{bmatrix}
+p_{11}v_{11} + p_{12}v_{21} + p_{13}v_{31} & p_{11}v_{12} + p_{12}v_{22} + p_{13}v_{32} & p_{11}v_{13} + p_{12}v_{23} + p_{13}v_{33} \\
+p_{21}v_{11} + p_{22}v_{21} + p_{23}v_{31} & p_{21}v_{12} + p_{22}v_{22} + p_{23}v_{32} & p_{21}v_{13} + p_{22}v_{23} + p_{23}v_{33} \\
+p_{31}v_{11} + p_{32}v_{21} + p_{33}v_{31} & p_{31}v_{12} + p_{32}v_{22} + p_{33}v_{32} & p_{31}v_{13} + p_{32}v_{23} + p_{33}v_{33}
+\end{bmatrix}$$
+
+
+$$O_{11} = p_{11}v_{11} + p_{12}v_{21} + p_{13}v_{31}$$
+
+
+This opreation happens column wise.
+
+From our matrix equation for $O$, the terms containing $v_{11}$ appear in the first column ($O_{11}, O_{21}, O_{31}$):
+
+$$O_{11} = p_{11}v_{11} + p_{12}v_{21} + p_{13}v_{31}$$
+$$O_{21} = p_{21}v_{11} + p_{22}v_{21} + p_{23}v_{31}$$
+$$O_{31} = p_{31}v_{11} + p_{32}v_{21} + p_{33}v_{31}$$
+
+Applying the multivariate chain rule:
+
+$$\frac{\partial L}{\partial v_{11}} = \frac{\partial L}{\partial O_{11}} \frac{\partial O_{11}}{\partial v_{11}} + \frac{\partial L}{\partial O_{21}} \frac{\partial O_{21}}{\partial v_{11}} + \frac{\partial L}{\partial O_{31}} \frac{\partial O_{31}}{\partial v_{11}}$$
+
+
+
+Lets take the expression 
+
+$$O_{11} = p_{11}v_{11} + p_{12}v_{21} + p_{13}v_{31}$$
+
+
+$$\frac{\partial O_{11}}{\partial v_{11}} = p_{11} \frac{\partial v_{11}}{\partial v_{11}} = p_{11}$$
+
+Following the same logic for the other elements in that column:
+
+$$\frac{\partial O_{21}}{\partial v_{11}} = p_{21}$$
+
+$$\frac{\partial O_{31}}{\partial v_{11}} = p_{31}$$
+
+
+Substituting those local derivatives back into the chain rule expression gives:
+
+$$\frac{\partial L}{\partial v_{11}} = \frac{\partial L}{\partial O_{11}} p_{11} + \frac{\partial L}{\partial O_{21}} p_{21} + \frac{\partial L}{\partial O_{31}} p_{31}$$
+
+
+So this is equal to the:- 
+
+$$\frac{\partial L}{\partial V} = P^T G$$
+
+### FlashAttention Backpropagation — Derivation and Implementation
+**Author:** Avash Lamichhane 
+**Date:** 2026
+
+### References
+- Dao et al., FlashAttention (2022) https://arxiv.org/abs/2205.14135
