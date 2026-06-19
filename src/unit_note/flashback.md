@@ -291,7 +291,8 @@ p_{11} & 0 & 0 \\
 0 & 0 & p_{13}
 \end{bmatrix}$$
 
-$$P_1^T P_1 = 
+$$
+P_1^T P_1 = 
 \begin{bmatrix} p_{11} \\ p_{12} \\ p_{13} \end{bmatrix}
 \begin{bmatrix} p_{11} & p_{12} & p_{13} \end{bmatrix}
 =
@@ -299,9 +300,11 @@ $$P_1^T P_1 =
 p_{11}^2 & p_{11}p_{12} & p_{11}p_{13} \\
 p_{11}p_{12} & p_{12}^2 & p_{12}p_{13} \\
 p_{11}p_{13} & p_{12}p_{13} & p_{13}^2
-\end{bmatrix}$$
+\end{bmatrix}
+$$
 
-$$J(P_1) = 
+$$
+J(P_1) = 
 \begin{bmatrix} p_{11} & 0 & 0 \\ 0 & p_{12} & 0 \\ 0 & 0 & p_{13} \end{bmatrix}
 -
 \begin{bmatrix} p_{11}^2 & p_{11}p_{12} & p_{11}p_{13} \\ p_{11}p_{12} & p_{12}^2 & p_{12}p_{13} \\ p_{11}p_{13} & p_{12}p_{13} & p_{13}^2 \end{bmatrix}
@@ -310,7 +313,8 @@ $$J(P_1) =
 p_{11}(1-p_{11}) & -p_{11}p_{12} & -p_{11}p_{13} \\
 -p_{11}p_{12} & p_{12}(1-p_{12}) & -p_{12}p_{13} \\
 -p_{11}p_{13} & -p_{12}p_{13} & p_{13}(1-p_{13})
-\end{bmatrix}$$
+\end{bmatrix}
+$$
 
 And this is for one row. This part is to grab the concept right and we will work on writing kernels which will make this procress even transparent.
 
