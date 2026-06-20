@@ -3,15 +3,15 @@ Now that we have the backpropagation for attention head let us understand how gr
 ### Forward pass logic
 
 $$
-y^* = \text{softmax}(z)
+y^{*} = \text{softmax}(z)
 $$
 
 $$
-L = - \sum_i y_i \log y^*_i
+L = - \sum_i y_i \log y^{*}_i
 $$
 
 $$
-\delta_{\text{logits}} = \frac{\partial L}{\partial z} = y^* - y
+\delta_{\text{logits}} = \frac{\partial L}{\partial z} = y^{*} - y
 $$
 
 ---
@@ -19,13 +19,13 @@ $$
 ### Expanding the loss
 
 $$
-L = - \sum_i y_i \log y^*_i
+L = - \sum_i y_i \log y^{*}_i
 $$
 
 Now take partial derivative w.r.t. $z_k$:
 
 $$
-\frac{\partial}{\partial z_k}(y_i \log y^*_i) = y_i \frac{\partial}{\partial z_k}(\log y^*_i) \tag{i}
+\frac{\partial}{\partial z_k}(y_i \log y^{*}_i) = y_i \frac{\partial}{\partial z_k}(\log y^{*}_i) \tag{i}
 $$
 
 Recalling the chain rule of derivatives:
@@ -37,15 +37,15 @@ $$
 Plugging this back into equation (i):
 
 $$
-\frac{\partial (y_i \log y^*_i)}{\partial z_k} = y_i \cdot \frac{1}{y^*_i} \cdot \frac{\partial y^*_i}{\partial z_k}
+\frac{\partial (y_i \log y^{*}_i)}{\partial z_k} = y_i \cdot \frac{1}{y^{*}_i} \cdot \frac{\partial y^{*}_i}{\partial z_k}
 $$
 
 derived in flashback.md
 
 $$
-J(y^*) = \text{diag}(y^*) - y^* {y^*}^T
+J(y^{*}) = \text{diag}(y^{*}) - y^{*} {y^{*}}^T
 $$
 
 $$
-\frac{\partial y^*_i}{\partial z_k} = J_{ik}
+\frac{\partial y^{*}_i}{\partial z_k} = J_{ik}
 $$
