@@ -34,10 +34,18 @@ $$
 \frac{d}{dx}(\log u) = \frac{d \log u}{du} \cdot \frac{du}{dx}
 $$
 
-Plugging this back into equation (i):
+Plugging this back into equation i:
 
 $$
 \frac{\partial (y_i \log y^{*}_i)}{\partial z_k} = y_i \cdot \frac{1}{y^{*}_i} \cdot \frac{\partial y^{*}_i}{\partial z_k}
+$$
+
+$$
+\frac{\partial (y_i \log y^{*}_i)}{\partial z_k} = y_i \cdot \frac{1}{y^{*}_i} \cdot y^{*}_i (\delta_{ik} - y^{*}_k)
+$$
+
+$$
+\frac{\partial (y_i \log y^{*}_i)}{\partial z_k} = y_i (\delta_{ik} - y^{*}_k)
 $$
 
 derived in flashback.md
@@ -48,4 +56,10 @@ $$
 
 $$
 \frac{\partial y^{*}_i}{\partial z_k} = J_{ik}
+$$
+
+Alright this part is optional you can think that this part comes from softmax
+
+$$
+\frac{\partial y^{*}_i}{\partial z_k} = y^{*}_i (\delta_{ik} - y^{*}_k)
 $$
