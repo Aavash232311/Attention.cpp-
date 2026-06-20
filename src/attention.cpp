@@ -587,6 +587,7 @@ public:
         std::cout << "vocab_size: " << vocab_size << std::endl;
         std::cout << "seq_len: " << seq_len << std::endl;
         std::cout << "num_heads: " << num_heads << std::endl;
+        std::cout << "batch size: " << batch_size << std::endl;
 
         this->head_dim = d_model / num_heads;
 
@@ -1040,6 +1041,7 @@ struct NetAttentionParamaters
     AttentionParamaters attention_head;
     LinearParams lm_head;
 
+    float *L; // loss from the cross entropy loss starting of the backpropagation 
     // so the above struct contains a pointer reference for CPU memory but we need to make a buffer for gpu memory right here.
 
 };
@@ -1272,7 +1274,7 @@ public:
 
                 modelParamaters = NetAttentionParamaters{
                     attention->getParamaters(),                              // all the paramaters from the attention head
-                    LinearParams{lm_head->getWeight(), lm_head->getBias()}}; // this is sort of interface paramaters for lm_head
+                    LinearParams{lm_head->getWeight(), lm_head->getBias()}, prob}; // this is sort of interface paramaters for lm_head
 
                 // because the backprops needs to be done for each epoch.
                 // we need to keep in mind that the things hurting performace like cuda malloc and everything declared
@@ -1296,7 +1298,7 @@ int main()
     int d_model = 64;
     int vocab_size; // that depends upon the data that you are passing.
     int num_heads = 2;
-    int batch_size = 4;
+    int batch_size = 16;
     int seq_len = 4;
     int epoch = 12;
     bool drop_last = true; // for training set this to false, if someone is serious about this email me. the cost of implementing this feature will affect everything in depth many tradeoffs
