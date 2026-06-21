@@ -1,5 +1,3 @@
-Now that we have the backpropagation for attention head let us understand how gradient flows between things like softmax + cross entropy loss, lm head, and output projection.
-
 ### Forward pass logic
 
 $$
