@@ -61,3 +61,73 @@ Alright this part is optional you can think that this part comes from softmax
 $$
 \frac{\partial y^{*}_i}{\partial z_k} = y^{*}_i (\delta_{ik} - y^{*}_k)
 $$
+
+### Now lets take a look at lm head
+
+This is a linear transformation task.
+
+Like in the derivation of FlashAttention, we will look at the matrix version of the chain rule to get a better idea of why the transposes appear.
+
+$$Y = AX$$
+
+$$\frac{\partial L}{\partial X} = A^T \frac{\partial L}{\partial Y}$$
+
+$$\frac{\partial L}{\partial A} = \frac{\partial L}{\partial Y} X^T$$
+
+<hr />
+
+$$z = Wh + b$$
+
+Now gradient with respect to W:
+
+$$\frac{\partial z_i}{\partial W_i} = h$$
+
+$$\frac{\partial L}{\partial W_i} = \frac{\partial L}{\partial z_i} \cdot \frac{\partial z_i}{\partial W_i}$$
+
+From the above equations:
+
+$$\frac{\partial L}{\partial W_i} = (y^* - y)h$$
+
+Stacking all the rows:
+
+$$\frac{\partial L}{\partial W} = (y^* - y) h^T$$
+
+Now, the gradient with respect to $b$:
+
+$$\frac{\partial z_i}{\partial b_i} = 0 + \frac{\partial b_i}{\partial b_i}$$
+
+$$\frac{\partial z_i}{\partial b_i} = 1$$
+
+$$\frac{\partial L}{\partial b} = y^* - y$$
+
+Similarly, the gradient with respect to $h$:
+
+$$z = Wh + b$$
+
+$$\frac{\partial z}{\partial h} = W$$
+
+$$\frac{\partial L}{\partial h} = \frac{\partial L}{\partial z} \frac{\partial z}{\partial h} 
+$$
+
+$$\frac{\partial L}{\partial h} = W^T \frac{\partial L}{\partial z}$$
+
+
+Finally,
+
+$$\delta = y^* - y$$
+
+$$\frac{\partial L}{\partial z} = \delta$$
+
+For weights:
+
+$$\frac{\partial L}{\partial W} = \delta h^T$$
+
+For bias:
+
+$$\frac{\partial L}{\partial b} = \delta$$
+
+For $h$:
+
+$$\frac{\partial L}{\partial h} = W^T \delta$$
+
+
