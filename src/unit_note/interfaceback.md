@@ -64,7 +64,10 @@ $$
 
 ### Now lets take a look at lm head
 
-This is a linear transformation task.
+This is a linear transformation task. 
+<i><b>
+Many years ago I might have used this in the output layer of ANN when doing backpropagation from scratch in java.
+</b></i>
 
 Like in the derivation of FlashAttention, we will look at the matrix version of the chain rule to get a better idea of why the transposes appear.
 
@@ -131,3 +134,18 @@ For $h$:
 $$\frac{\partial L}{\partial h} = W^T \delta$$
 
 
+Now `output_proj` inside of the attention head is also a linear transformation.
+
+$$z = Wx + b$$
+
+Upstream gradient:
+
+$$\delta = \frac{\partial L}{\partial z}$$
+
+$$\frac{\partial L}{\partial W} = \delta x^T$$
+
+$$\frac{\partial L}{\partial x} = W^T \delta$$
+
+$$\frac{\partial L}{\partial b} = \delta$$
+
+The linear layer does not generate the upstream gradient; rather, it gets passed along. For example, for $O = PV$, the gradient originates from the Cross-Entropy loss and the softmax function.
