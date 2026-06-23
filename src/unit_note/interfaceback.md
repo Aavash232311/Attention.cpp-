@@ -82,46 +82,6 @@ $$-y_k + y^*_k = y^*_k - y_k = \frac{\partial L}{\partial z_k}$$
 
 <hr />
 
-Lets recall the derivative of softmax
-
-Let the row-wise denominator sums be defined as:
-* Row 1: $\sum e^{s_1} = e^{s_{11}} + e^{s_{12}} + e^{s_{13}}$
-* Row 2: $\sum e^{s_2} = e^{s_{21}} + e^{s_{22}} + e^{s_{23}}$
-* Row 3: $\sum e^{s_3} = e^{s_{31}} + e^{s_{32}} + e^{s_{33}}$
-
-$$P = \text{softmax}(S) = \begin{bmatrix}
-\frac{e^{s_{11}}}{\sum e^{s_1}} & \frac{e^{s_{12}}}{\sum e^{s_1}} & \frac{e^{s_{13}}}{\sum e^{s_1}} \\
-\frac{e^{s_{21}}}{\sum e^{s_2}} & \frac{e^{s_{22}}}{\sum e^{s_2}} & \frac{e^{s_{23}}}{\sum e^{s_2}} \\
-\frac{e^{s_{31}}}{\sum e^{s_3}} & \frac{e^{s_{32}}}{\sum e^{s_3}} & \frac{e^{s_{33}}}{\sum e^{s_3}}
-\end{bmatrix} = \begin{bmatrix} 
-p_{11} & p_{12} & p_{13} \\ 
-p_{21} & p_{22} & p_{23} \\ 
-p_{31} & p_{32} & p_{33} 
-\end{bmatrix}$$
-
-
-
-$$
-J(P_1)
-=
-\begin{bmatrix}
-p_{11}(1-p_{11}) & -p_{11}p_{12} & -p_{11}p_{13} \\
--p_{11}p_{12} & p_{12}(1-p_{12}) & -p_{12}p_{13} \\
--p_{11}p_{13} & -p_{12}p_{13} & p_{13}(1-p_{13})
-\end{bmatrix}
-$$
-
-Case 1: $i = k$
-
-$$f(z_k) = y^*_i(1 - y^*_i)$$
-
-Case 2: $i \neq k$
-
-$$f(z_k) = -y^*_i y^*_k$$
-
----
-
-$$\delta = y^* - y$$
 
 derived in flashback.md
 
