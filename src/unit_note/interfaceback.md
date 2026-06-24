@@ -1,15 +1,15 @@
 ### Forward pass logic
 
 $$
-y^{*} = \text{softmax}(z)
+y^* = \text{softmax}(z)
 $$
 
 $$
-L = - \sum_i y_i \log y^{*}_i
+L = - \sum_i y_i \log y^*_i
 $$
 
 $$
-\delta_{\text{logits}} = \frac{\partial L}{\partial z} = y^{*} - y
+\delta_{\text{logits}} = \frac{\partial L}{\partial z} = y^* - y
 $$
 
 ---
@@ -17,13 +17,13 @@ $$
 ### Expanding the loss
 
 $$
-L = - \sum_i y_i \log y^{*}_i
+L = - \sum_i y_i \log y^*_i
 $$
 
 Now take partial derivative w.r.t. $z_k$:
 
 $$
-\frac{\partial}{\partial z_k}(y_i \log y^{*}_i) = y_i \frac{\partial}{\partial z_k}(\log y^{*}_i) \tag{i}
+\frac{\partial}{\partial z_k}(y_i \log y^*_i) = y_i \frac{\partial}{\partial z_k}(\log y^*_i) \tag{i}
 $$
 
 Recalling the chain rule of derivatives:
@@ -35,26 +35,25 @@ $$
 Plugging this back into equation i:
 
 $$
-\frac{\partial (y_i \log y^{*}_i)}{\partial z_k} = y_i \cdot \frac{1}{y^{*}_i} \cdot \frac{\partial y^{*}_i}{\partial z_k}
+\frac{\partial (y_i \log y^*_i)}{\partial z_k} = y_i \cdot \frac{1}{y^*_i} \cdot \frac{\partial y^*_i}{\partial z_k}
 $$
 
 $$
-\frac{\partial (y_i \log y^{*}_i)}{\partial z_k} = y_i \cdot \frac{1}{y^{*}_i} \cdot y^{*}_i (\delta_{ik} - y^{*}_k)
+\frac{\partial (y_i \log y^*_i)}{\partial z_k} = y_i \cdot \frac{1}{y^*_i} \cdot y^*_i (\delta_{ik} - y^*_k)
 $$
 
 $$
-\frac{\partial (y_i \log y^{*}_i)}{\partial z_k} = y_i (\delta_{ik} - y^{*}_k)
+\frac{\partial (y_i \log y^*_i)}{\partial z_k} = y_i (\delta_{ik} - y^*_k)
 $$
 
 $$
-\frac{\partial (y_i \log y^{*}_i)}{\partial z_k} = y_i \delta_{ik} - y_i \ y^{*}_k
+\frac{\partial (y_i \log y^*_i)}{\partial z_k} = y_i \delta_{ik} - y_i y^*_k
 $$
 
 Now the function
 
-
 $$
-\frac{\partial L}{\partial z_k} = -\sum_i  (y_i \delta_{ik} - y_i \ y^{*}_k)
+\frac{\partial L}{\partial z_k} = -\sum_i  (y_i \delta_{ik} - y_i y^*_k)
 $$
 
 Now let's split the sum:
@@ -74,32 +73,26 @@ $$\sum_i y_i y^*_k$$
 $$y^*_k \sum_i y_i$$
 
 Now because of one hot encode giving us yk:-
+
 $$\sum_i y_i = 1$$
 
 $$-y_k + y^*_k = y^*_k - y_k = \frac{\partial L}{\partial z_k}$$
 
-
-
 <hr />
-
 
 derived in flashback.md
 
 $$
-J(y^{*}) = \text{diag}(y^{*}) - y^{*} {y^{*}}^T
+J(y^*) = \text{diag}(y^*) - y^* {y^*}^T
 $$
 
 $$
-\frac{\partial y^{*}_i}{\partial z_k} = J_{ik}
+\frac{\partial y^*_i}{\partial z_k} = J_{ik}
 $$
-
-
-
-
 
 ### Now lets take a look at lm head
 
-This is a linear transformation task. 
+This is a linear transformation task.
 <i><b>
 Many years ago I might have used this in the output layer of ANN when doing backpropagation from scratch in java.
 </b></i>
@@ -144,11 +137,9 @@ $$z = Wh + b$$
 
 $$\frac{\partial z}{\partial h} = W$$
 
-$$\frac{\partial L}{\partial h} = \frac{\partial L}{\partial z} \frac{\partial z}{\partial h} 
-$$
+$$\frac{\partial L}{\partial h} = \frac{\partial L}{\partial z} \frac{\partial z}{\partial h}$$
 
 $$\frac{\partial L}{\partial h} = W^T \frac{\partial L}{\partial z}$$
-
 
 Finally,
 
@@ -167,7 +158,6 @@ $$\frac{\partial L}{\partial b} = \delta$$
 For $h$:
 
 $$\frac{\partial L}{\partial h} = W^T \delta$$
-
 
 Now `output_proj` inside of the attention head is also a linear transformation.
 
