@@ -608,7 +608,6 @@ public:
         // I do not deserve an internship so what, people who are doing this wont understand this so I am writing c++ to scare people off.
         cudaMalloc((void **)&deviceSoftmaxOut, batch_size * num_heads * seq_len * seq_len * sizeof(float));
 
-
         cudaMalloc((void **)&QKVOutDeviceOut, batch_size * num_heads * seq_len * head_dim * sizeof(float));
 
         cudaMalloc((void **)&deviceValue, batch_size * num_heads * seq_len * head_dim * sizeof(float));
@@ -622,7 +621,6 @@ public:
 
         cudaMalloc((void **)&tempDevice, batch_size * seq_len * d_model * sizeof(float));
         cudaMalloc((void **)&resedualOutDevice, batch_size * seq_len * d_model * sizeof(float));
-
 
         // ---- S, P, O ---- are required for backpropagation allocate here according to reqired size.
         S = (float *)malloc(seq_len * batch_size * num_heads * head_dim * sizeof(float));
@@ -655,7 +653,6 @@ public:
 
         cudaFree(BTCdevice);
         cudaFree(resedualOutDevice);
-
 
         free(S);
         free(P);
@@ -921,7 +918,6 @@ public:
         // ------------ Stage Softmax(P) ----------------
         std::memcpy(P, BTC_MULTI_HEAD_BUFFER_HOST, batch_size * num_heads * seq_len * seq_len * sizeof(float));
 
-
         // deviceQKTSqrtD Shape(batch_size, n_head, T, T)
 
         // if (debug == true)
@@ -941,7 +937,6 @@ public:
 
         // ------------------ Stage PV ------------------------
         std::memcpy(O, BTC_MULTI_HEAD_BUFFER_HOST, batch_size * num_heads * seq_len * head_dim * sizeof(float));
-
 
         // if (debug)
         // {
@@ -1025,14 +1020,13 @@ public:
             OutputProject_p,
             LayerNorm_p,
             emebdding_p,
-        
+
             S, // actual value copied from QKV
             P,
             O,
 
             BTCdevice,
-            BATCH_NEAD_TIME_HEADDIM_DEVICE
-        };
+            BATCH_NEAD_TIME_HEADDIM_DEVICE};
     }
 };
 
@@ -1041,9 +1035,8 @@ struct NetAttentionParamaters
     AttentionParamaters attention_head;
     LinearParams lm_head;
 
-    float *L; // loss from the cross entropy loss starting of the backpropagation 
+    float *L; // loss from the cross entropy loss starting of the backpropagation
     // so the above struct contains a pointer reference for CPU memory but we need to make a buffer for gpu memory right here.
-
 };
 
 // The chain rule
@@ -1053,20 +1046,19 @@ class AutoGradEngine
 
     NetAttentionParamaters model_paramaters;
 
+    bool debug = true;
+
+private:
 public:
-    AutoGradEngine(NetAttentionParamaters paramaters)
+    AutoGradEngine()
     {
-        this->model_paramaters = paramaters;
     }
 
-    // Wo is the output projectsion like in the paper.
-    // if you cannot handle one kernel too much complication
-    // its completely oaky to get correct logic by seperating kernels even though
-    // its flash attention 
-
-    void theChainRule()
+    void backprop(NetAttentionParamaters paramaters)
     {
+        this->model_paramaters = paramaters;
 
+        debug = false;
     }
 };
 
@@ -1107,6 +1099,8 @@ class AttentionInterface
     float *outHotEncodeOut = nullptr;
 
     NetAttentionParamaters modelParamaters;
+
+    std::unique_ptr<AutoGradEngine> autograd = std::make_unique<AutoGradEngine>();
 
 public:
     AttentionInterface(
@@ -1234,7 +1228,6 @@ public:
         // and this equation beautifully brings mathematics to life in modern AI
     }
 
-
     void train(int epoch)
     {
         Batch batch;
@@ -1273,7 +1266,7 @@ public:
                 // ----------- Lets gather overall paramaters here ---------- //
 
                 modelParamaters = NetAttentionParamaters{
-                    attention->getParamaters(),                              // all the paramaters from the attention head
+                    attention->getParamaters(),                                    // all the paramaters from the attention head
                     LinearParams{lm_head->getWeight(), lm_head->getBias()}, prob}; // this is sort of interface paramaters for lm_head
 
                 // because the backprops needs to be done for each epoch.
@@ -1281,12 +1274,11 @@ public:
                 // inside of the constructor of autograd engine is costly.
                 // there is tradeoff between making things modular and fusing everything together.
                 // Lets create a buffer for CPU/GPU memory in this class so that we dont overload the system and free it when the object is destroyed.
-                std::unique_ptr<AutoGradEngine> autograd = std::make_unique<AutoGradEngine>(modelParamaters);
-
+                autograd->backprop(modelParamaters);
                 debug = false;
             }
+            dataLoader->resetIterator(); // just the weird logic that I wrote.
         }
-        dataLoader->resetIterator(); // just the weird logic that I wrote.
     }
 };
 
@@ -1298,7 +1290,7 @@ int main()
     int d_model = 64;
     int vocab_size; // that depends upon the data that you are passing.
     int num_heads = 2;
-    int batch_size = 16;
+    int batch_size = 32;
     int seq_len = 4;
     int epoch = 12;
     bool drop_last = true; // for training set this to false, if someone is serious about this email me. the cost of implementing this feature will affect everything in depth many tradeoffs
