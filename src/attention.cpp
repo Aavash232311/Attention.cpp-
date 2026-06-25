@@ -1048,15 +1048,45 @@ class AutoGradEngine
 
     bool debug = true;
 
-private:
+    // ------- For utility purpose -------------
+    int d_model;
+    int vocab_size;
+    int num_heads;
+    int seq_len;
+    int batch_size;
+    int head_dim;
+
+    // ---------- Handy methods -----------
+    std::unique_ptr<Utility> utils = std::make_unique<Utility>();
+
 public:
-    AutoGradEngine()
+    AutoGradEngine(
+        int d_model,
+        int vocab_size,
+        int num_heads,
+        int seq_len,
+        int batch_size)
     {
+        this->d_model = d_model;
+        this->vocab_size = vocab_size;
+        this->num_heads = num_heads;
+        this->seq_len = seq_len;
+        this->batch_size = batch_size;
+
+        this->head_dim = d_model / num_heads;
+
     }
 
-    void backprop(NetAttentionParamaters paramaters)
+    void backprop(
+        const NetAttentionParamaters &paramaters)
     {
         this->model_paramaters = paramaters;
+
+        if (debug)
+        {
+            std::cout << "Loss " << seq_len * batch_size << std::endl;
+            utils->printFlatArray1D(paramaters.L, seq_len * batch_size);
+        }
 
         debug = false;
     }
@@ -1100,7 +1130,7 @@ class AttentionInterface
 
     NetAttentionParamaters modelParamaters;
 
-    std::unique_ptr<AutoGradEngine> autograd = std::make_unique<AutoGradEngine>();
+    std::unique_ptr<AutoGradEngine> autograd;
 
 public:
     AttentionInterface(
@@ -1121,6 +1151,13 @@ public:
         utils = std::make_unique<Utility>();
 
         attention = std::make_unique<Attention>(
+            d_model,
+            vocab_size,
+            num_heads,
+            seq_len,
+            batch_size);
+
+        autograd = std::make_unique<AutoGradEngine>(
             d_model,
             vocab_size,
             num_heads,
@@ -1266,8 +1303,14 @@ public:
                 // ----------- Lets gather overall paramaters here ---------- //
 
                 modelParamaters = NetAttentionParamaters{
-                    attention->getParamaters(),                                    // all the paramaters from the attention head
-                    LinearParams{lm_head->getWeight(), lm_head->getBias()}, prob}; // this is sort of interface paramaters for lm_head
+                    attention->getParamaters(),                                                   // all the paramaters from the attention head
+                    LinearParams{lm_head->getWeight(), lm_head->getBias()}, outCrossEntropyHost}; // this is sort of interface paramaters for lm_head
+
+                // if (debug)
+                // {
+                //     std::cout << "Apply the cross entropy loss" << std::endl;
+                //     utils->printFlatArray1D(modelParamaters.L, seq_len * batch_size);
+                // }
 
                 // because the backprops needs to be done for each epoch.
                 // we need to keep in mind that the things hurting performace like cuda malloc and everything declared
