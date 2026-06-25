@@ -1030,6 +1030,14 @@ public:
     }
 };
 
+/*
+    The reason this project is considered as complicated is because
+    my mind is constantly noticing the tradeoffs, how to design this
+    correctly so that this does not become hard to read, thinking about
+    the math, efficiency, trade off in splitting as componenet vs blending
+    everything into one logic, managing memory.
+
+*/
 struct NetAttentionParamaters
 {
     AttentionParamaters attention_head;
@@ -1037,6 +1045,10 @@ struct NetAttentionParamaters
 
     float *L; // loss from the cross entropy loss starting of the backpropagation
     // so the above struct contains a pointer reference for CPU memory but we need to make a buffer for gpu memory right here.
+
+    // --------- Variables needed for upstream gradient --------------
+    float *y_actual;
+    float *y_predicted;
 };
 
 // The chain rule
@@ -1074,7 +1086,6 @@ public:
         this->batch_size = batch_size;
 
         this->head_dim = d_model / num_heads;
-
     }
 
     void backprop(
@@ -1084,8 +1095,14 @@ public:
 
         if (debug)
         {
-            std::cout << "Loss " << seq_len * batch_size << std::endl;
-            utils->printFlatArray1D(paramaters.L, seq_len * batch_size);
+            // std::cout << "Loss " << seq_len * batch_size << std::endl;
+            // utils->printFlatArray1D(paramaters.L, seq_len * batch_size);
+
+            std::cout << "Actual proballity" << std::endl;
+            utils->printFlatArray3D(paramaters.y_actual, batch_size, seq_len, vocab_size);
+
+            std::cout << "Predicted proballity" << std::endl;
+            utils->printFlatArray3D(paramaters.y_predicted, batch_size, seq_len, vocab_size);
         }
 
         debug = false;
@@ -1223,8 +1240,7 @@ public:
             seq_len,
             vocab_size);
 
-        // TO DEBUG THE SOFTMAX ACTIVATION ACROSS THE KERNELS HERE
-        // cudaMemcpy(probality, DeviceSoftmaxBLout, batch_size * seq_len * vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(probality, DeviceSoftmaxBLout, batch_size * seq_len * vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
 
         CrossEntropy(
             DeviceSoftmaxBLout, // out from softmaxed
@@ -1236,8 +1252,6 @@ public:
             vocab_size);
 
         cudaMemcpy(outCrossEntropyHost, outCrossEntropyDevice, batch_size * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
-
-        // -- For testing if the kernel launch for one hot works, we have wrapped two kernels for the cross entropy loss REMOVE FOR PERFORMACE
 
         cudaMemcpy(outHotEncodeOut, yHotEncodeDeviceOut, batch_size * vocab_size * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
 
@@ -1303,8 +1317,11 @@ public:
                 // ----------- Lets gather overall paramaters here ---------- //
 
                 modelParamaters = NetAttentionParamaters{
-                    attention->getParamaters(),                                                   // all the paramaters from the attention head
-                    LinearParams{lm_head->getWeight(), lm_head->getBias()}, outCrossEntropyHost}; // this is sort of interface paramaters for lm_head
+                    attention->getParamaters(), // all the paramaters from the attention head
+                    LinearParams{lm_head->getWeight(), lm_head->getBias()},
+                    outCrossEntropyHost,
+                    outHotEncodeOut, // this will turn (B, T) to (B, T, C) each position is one hot encoded
+                    prob}; // this is sort of interface paramaters for lm_head
 
                 // if (debug)
                 // {
