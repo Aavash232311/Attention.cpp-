@@ -843,8 +843,44 @@ __global__ void crossEntropyLoss(
     // for each B,T shape you have 1 thats B,T
 }
 
+// ----------------- MIGHTY BACKPROPAGATION ------------------------
+
+// Derivation interfaceback.md
+__global__ void upstream_dl_dz_kernel(
+    float *actual,
+    float *predicted,
+    float *delta,
+    int B,
+    int T,
+    int C)
+{
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= B * T * C)
+        return;
+
+    int b = idx / (T * C);
+    int t = (idx % (T * C)) / C;
+    int c = idx % C;
+
+    delta[idx] = predicted[idx] - actual[idx];
+}
+
 extern "C"
 {
+    // -------------- Backpropagation kernel wrappers -----------------
+    void upstream_dl_dz(
+        float *actual,
+        float *predicted,
+        float *delta,
+        int B,
+        int T,
+        int C)
+    {
+        int blocks = (B * T * C + 255) / 256;
+        upstream_dl_dz_kernel<<<blocks, 256>>>(delta, predicted, actual, B, T, C);
+
+        cudaDeviceSynchronize();
+    }
 
     void CrossEntropy(
         float *x,

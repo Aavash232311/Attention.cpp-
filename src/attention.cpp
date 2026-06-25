@@ -38,6 +38,8 @@ extern "C" void vectorKernel(float *A, float *B, float *C, int N);
 extern "C" void softmax2D(float *arr, float *out, int batch_size, int seq_len, int vocab_size);
 extern "C" void CrossEntropy(float *x, int *y, float *oneHotOut, float *lossOut, int batch_size, int seq_len, int vocab_size);
 
+// ----------- Backpropgation ------------------------
+extern "C" void upstream_dl_dz(float *actual, float *predicted, float *delta, int B, int T, int C);
 // ---- Paramaters for our custom backgrad engine -----
 
 struct LinearParams // just binary pointer can be used for layer norm or anything that contains two paramater pairs
@@ -1071,6 +1073,20 @@ class AutoGradEngine
     // ---------- Handy methods -----------
     std::unique_ptr<Utility> utils = std::make_unique<Utility>();
 
+private:
+    // NOTE- TO MAKE SURE WE DO NOT RESERVE TOO MUCH MEMORY ON THE RUNETIME USE THE
+    // "BUFFER" FROM THE STRUCTURE
+    void upstream_dL_dz(
+        float *actual,
+        float *predited,
+        int B,
+        int T,
+        int C
+    )
+    {
+
+    }
+
 public:
     AutoGradEngine(
         int d_model,
@@ -1086,6 +1102,10 @@ public:
         this->batch_size = batch_size;
 
         this->head_dim = d_model / num_heads;
+
+        // NOTE- Memory allocation in RAM or VRAM is done per epoch if done here
+        // huritng the performace, allocate and re-use ones from the attention
+        // consturcotr and pass as a buffer.
     }
 
     void backprop(
@@ -1098,11 +1118,11 @@ public:
             // std::cout << "Loss " << seq_len * batch_size << std::endl;
             // utils->printFlatArray1D(paramaters.L, seq_len * batch_size);
 
-            std::cout << "Actual proballity" << std::endl;
-            utils->printFlatArray3D(paramaters.y_actual, batch_size, seq_len, vocab_size);
+            // std::cout << "Actual proballity" << std::endl;
+            // utils->printFlatArray3D(paramaters.y_actual, batch_size, seq_len, vocab_size);
 
-            std::cout << "Predicted proballity" << std::endl;
-            utils->printFlatArray3D(paramaters.y_predicted, batch_size, seq_len, vocab_size);
+            // std::cout << "Predicted proballity" << std::endl;
+            // utils->printFlatArray3D(paramaters.y_predicted, batch_size, seq_len, vocab_size);
         }
 
         debug = false;
@@ -1321,7 +1341,7 @@ public:
                     LinearParams{lm_head->getWeight(), lm_head->getBias()},
                     outCrossEntropyHost,
                     outHotEncodeOut, // this will turn (B, T) to (B, T, C) each position is one hot encoded
-                    prob}; // this is sort of interface paramaters for lm_head
+                    prob};           // this is sort of interface paramaters for lm_head
 
                 // if (debug)
                 // {
