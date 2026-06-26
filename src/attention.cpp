@@ -1094,41 +1094,7 @@ class AutoGradEngine
 private:
     // NOTE- TO MAKE SURE WE DO NOT RESERVE TOO MUCH MEMORY ON THE RUNETIME USE THE
     // "BUFFER" FROM THE STRUCTURE
-    void CalcUpstreamDlDz(
-        float *actual, // CPU
-        float *predicted,
-        float *out,
-        int B,
-        int T,
-        int C)
-    {
-        float *device_predicted_y = model_paramaters.deviceBufferAF.predicted_device_y;
-        float *device_actual_y = model_paramaters.deviceBufferAF.actual_device_y;
-        float *device_out_dl_dz = model_paramaters.deviceBufferAF.dl_dz_out_device;
 
-        // COPY the data to the buffer.
-        cudaMemcpy(device_actual_y, actual,
-                   seq_len * batch_size * vocab_size * sizeof(float),
-                   cudaMemcpyHostToDevice);
-
-        cudaMemcpy(
-            device_predicted_y, predicted,
-            seq_len * batch_size * vocab_size * sizeof(float),
-            cudaMemcpyHostToDevice);
-
-        // upstream_dl_dz(
-        //     device_actual_y,
-        //     device_predicted_y,
-        //     device_out_dl_dz,
-        //     B,
-        //     T,
-        //     C);
-
-        cudaMemcpy(
-            out, device_out_dl_dz,
-            seq_len * batch_size * vocab_size * sizeof(float),
-            cudaMemcpyDeviceToHost);
-    }
 
 public:
     AutoGradEngine(
@@ -1156,13 +1122,6 @@ public:
     {
         this->model_paramaters = paramaters;
 
-        CalcUpstreamDlDz(
-            model_paramaters.y_actual,
-            model_paramaters.y_predicted,
-            model_paramaters.dl_dz_out_host,
-            batch_size,
-            seq_len,
-            vocab_size);
 
         if (debug)
         {
