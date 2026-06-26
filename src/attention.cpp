@@ -1071,23 +1071,23 @@ private:
     void dl_dz_upstream_gradient(
         float *actual,    // (B, T, vocab_size) on device
         float *predicted, // (B, T, vocab_size) on device
-        float *detla,     // (B, T, vocab_size) on device upstream gradient
+        float *delta,     // (B, T, vocab_size) on device upstream gradient
         float *delta_host,
         int B,
         int T,
         int C)
     {
         // interfaceback.md derivation using the chain rule of derivative
-        upstream_dl_dz(
+        upstream_dl_dz( // dl_dz is partial derivative
             actual,
             predicted,
-            detla,
+            delta,
             B,
             T,
             C);
 
         // upstream gradient to host
-        cudaMemcpy(delta_host, delta_host, B * T * C * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(delta_host, delta, B * T * C * sizeof(float), cudaMemcpyDeviceToHost);
     }
 
 public:
@@ -1127,17 +1127,17 @@ public:
 
         if (debug)
         {
-            std::cout << "Predicted" << std::endl;
-            DebugBTCFlatArray3D(paramaters.y_predicted, batch_size, seq_len, vocab_size);
+            // std::cout << "Predicted" << std::endl;
+            // DebugBTCFlatArray3D(paramaters.y_predicted, batch_size, seq_len, vocab_size);
 
-            std::cout << "Actual" << std::endl;
-            DebugBTCFlatArray3D(paramaters.y_actual, batch_size, seq_len, vocab_size);
+            // std::cout << "Actual" << std::endl;
+            // DebugBTCFlatArray3D(paramaters.y_actual, batch_size, seq_len, vocab_size);
 
             // std::cout << "dl_dz detla" << std::endl;
             // utils->printLastOneOf3D(paramaters.dl_dz_out_host,
             //     batch_size,
             //     seq_len,
-            //     d_model
+            //     vocab_size
             // );
 
             // std::cout << "Loss " << seq_len * batch_size << std::endl;

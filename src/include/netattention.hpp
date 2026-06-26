@@ -17,5 +17,5 @@ struct NetAttentionParamaters
     float *y_actual;
     float *y_predicted;
     float *dl_dz_out_device;
-    float *dl_dz_out_host;
+    float *dl_dz_out_host; // upstream gradient dl/dz
 };
