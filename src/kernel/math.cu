@@ -857,11 +857,7 @@ __global__ void upstream_dl_dz_kernel(
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx >= B * T * C)
         return;
-
-    int b = idx / (T * C);
-    int t = (idx % (T * C)) / C;
-    int c = idx % C;
-
+        
     delta[idx] = predicted[idx] - actual[idx];
 }
 

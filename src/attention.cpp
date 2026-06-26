@@ -11,6 +11,8 @@
 // making the things right at first rather than micro level optimization
 // The goal is to learn the underlying concept we can always bring the performace up later on.
 
+// I handtyped this again why not
+
 // nvcc src/attention.cpp src/kernel/math.cu -o src/bin/attention
 // ./src/bin/attention
 
@@ -1040,6 +1042,17 @@ public:
     everything into one logic, managing memory.
 
 */
+
+/*
+    ALLOCATION AND FREE OF MEMORY IN THE AUTO GRAD ENGINE IS
+    CONSTLY BECAUSE IT RUNS PER EPOCH
+
+    FOCUS ON GETTING RESULT RIGHT AT FIRST, IT IS DIFFICULT TO
+    THINK THROUGH MATH, C++, DESIGN PATTERN, LOW LEVEL GPU INSTRUCTONS ALL AT THE SAME TIME.
+*/
+
+
+
 struct NetAttentionParamaters
 {
     AttentionParamaters attention_head;
@@ -1049,8 +1062,13 @@ struct NetAttentionParamaters
     // so the above struct contains a pointer reference for CPU memory but we need to make a buffer for gpu memory right here.
 
     // --------- Variables needed for upstream gradient --------------
+
+
+    // MAKE SURE THAT THSE ARE VARIABLES FROM THE DEVICE
     float *y_actual;
     float *y_predicted;
+    float *dl_dz_out_device;
+    float *dl_dz_out_host;
 };
 
 // The chain rule
@@ -1076,15 +1094,40 @@ class AutoGradEngine
 private:
     // NOTE- TO MAKE SURE WE DO NOT RESERVE TOO MUCH MEMORY ON THE RUNETIME USE THE
     // "BUFFER" FROM THE STRUCTURE
-    void upstream_dL_dz(
-        float *actual,
-        float *predited,
+    void CalcUpstreamDlDz(
+        float *actual, // CPU
+        float *predicted,
+        float *out,
         int B,
         int T,
-        int C
-    )
+        int C)
     {
+        float *device_predicted_y = model_paramaters.deviceBufferAF.predicted_device_y;
+        float *device_actual_y = model_paramaters.deviceBufferAF.actual_device_y;
+        float *device_out_dl_dz = model_paramaters.deviceBufferAF.dl_dz_out_device;
 
+        // COPY the data to the buffer.
+        cudaMemcpy(device_actual_y, actual,
+                   seq_len * batch_size * vocab_size * sizeof(float),
+                   cudaMemcpyHostToDevice);
+
+        cudaMemcpy(
+            device_predicted_y, predicted,
+            seq_len * batch_size * vocab_size * sizeof(float),
+            cudaMemcpyHostToDevice);
+
+        // upstream_dl_dz(
+        //     device_actual_y,
+        //     device_predicted_y,
+        //     device_out_dl_dz,
+        //     B,
+        //     T,
+        //     C);
+
+        cudaMemcpy(
+            out, device_out_dl_dz,
+            seq_len * batch_size * vocab_size * sizeof(float),
+            cudaMemcpyDeviceToHost);
     }
 
 public:
@@ -1112,6 +1155,14 @@ public:
         const NetAttentionParamaters &paramaters)
     {
         this->model_paramaters = paramaters;
+
+        CalcUpstreamDlDz(
+            model_paramaters.y_actual,
+            model_paramaters.y_predicted,
+            model_paramaters.dl_dz_out_host,
+            batch_size,
+            seq_len,
+            vocab_size);
 
         if (debug)
         {
@@ -1169,6 +1220,11 @@ class AttentionInterface
 
     std::unique_ptr<AutoGradEngine> autograd;
 
+    // LOW LEVEL BY DESIGN IS LITTLE BIT MESSY COMES WITH A TRADE OFFS ANYWAY
+
+    float *dl_dz_out_device;
+    float *dl_dz_out_host;
+
 public:
     AttentionInterface(
         int d_model,
@@ -1200,6 +1256,10 @@ public:
             num_heads,
             seq_len,
             batch_size);
+
+        // BUFFER CPU/GPU allocation for the auto grad engine
+        dl_dz_out_host = (float *)malloc(batch_size * seq_len * vocab_size * sizeof(float));
+        cudaMalloc((void **)&dl_dz_out_device, batch_size * seq_len * vocab_size * sizeof(float));
 
         dataLoader = std::make_unique<DataLoader>(batch_size, data, seq_len, drop_last);
 
@@ -1236,6 +1296,9 @@ public:
         free(outCrossEntropyHost);
 
         (outHotEncodeOut != nullptr ? free(outHotEncodeOut) : void());
+
+        cudaFree(dl_dz_out_device);
+        free(dl_dz_out_host);
     }
 
     LinearParams getLmHeadParams()
@@ -1336,12 +1399,15 @@ public:
 
                 // ----------- Lets gather overall paramaters here ---------- //
 
+                // GPU buffer for the autograd engine in the attention interface.
+
                 modelParamaters = NetAttentionParamaters{
                     attention->getParamaters(), // all the paramaters from the attention head
                     LinearParams{lm_head->getWeight(), lm_head->getBias()},
-                    outCrossEntropyHost,
-                    outHotEncodeOut, // this will turn (B, T) to (B, T, C) each position is one hot encoded
-                    prob};           // this is sort of interface paramaters for lm_head
+                    outCrossEntropyDevice,
+                    DeviceSoftmaxBLout, // this will turn (B, T) to (B, T, C) each position is one hot encoded
+                    prob,
+                    dl_dz_out_host}; // this is sort of interface paramaters for lm_head
 
                 // if (debug)
                 // {
