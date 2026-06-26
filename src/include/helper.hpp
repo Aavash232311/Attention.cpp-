@@ -537,7 +537,7 @@ public:
     }
 
     // THIS IS FOR PRINTING FLAT ARRAY OUTPUT
-
+    // If type is device we allocate temp memory to print
     template <typename T>
     void printFlatArray1D(const T *arr, int N)
     {

@@ -894,7 +894,7 @@ extern "C"
         dim3 grid(blocksPerGrid);
         dim3 block(threadsPerBlock);
 
-        // um thats your step 1
+        // actual (B, T) to one-hot encoded (B, T, vocab_size)
         oneHotKernel<<<grid, block>>>(y, oneHotOut, N, vocab_size);
 
         crossEntropyLoss<<<grid, block>>>(x, oneHotOut, lossOut, seq_len, vocab_size, N);
@@ -975,6 +975,9 @@ extern "C"
         cudaDeviceSynchronize();
     }
 
+    /*
+
+    */
     void softmax2D(
         float *arr,
         float *out,

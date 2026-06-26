@@ -11,7 +11,6 @@
 #include "include/attention_params.hpp"
 #include "include/netattention.hpp"
 
-
 // Again my background is beginner here with little concept from C
 // Transformer are complex neural network artitecture so I will focus on
 // making the things right at first rather than micro level optimization
@@ -1011,21 +1010,23 @@ public:
 };
 
 /*
-    The reason this project is considered as complicated is because
-    my mind is constantly noticing the tradeoffs, how to design this
-    correctly so that this does not become hard to read, thinking about
-    the math, efficiency, trade off in splitting as componenet vs blending
-    everything into one logic, managing memory.
+    For performace reason we do not move the data between VRAM and RAM.
+    So to reduce the cudaMemcpy we use the globally allocated memory
+    To print and debug this in low level code is is equally important
+    we create a temp array in CPU to see it.
 
 */
+template <typename PrintFunc>
+void DebugBuffer(size_t count, PrintFunc print)
+{
+    float *temp = new float[count];
 
-/*
-    ALLOCATION AND FREE OF MEMORY IN THE AUTO GRAD ENGINE IS
-    CONSTLY BECAUSE IT RUNS PER EPOCH
+    // Fill temp somehow (e.g. cudaMemcpy)
 
-    FOCUS ON GETTING RESULT RIGHT AT FIRST, IT IS DIFFICULT TO
-    THINK THROUGH MATH, C++, DESIGN PATTERN, LOW LEVEL GPU INSTRUCTONS ALL AT THE SAME TIME.
-*/
+    print(temp, count);
+
+    delete[] temp;
+}
 
 // The chain rule
 class AutoGradEngine
@@ -1048,9 +1049,49 @@ class AutoGradEngine
     std::unique_ptr<Utility> utils = std::make_unique<Utility>();
 
 private:
-    // NOTE- TO MAKE SURE WE DO NOT RESERVE TOO MUCH MEMORY ON THE RUNETIME USE THE
-    // "BUFFER" FROM THE STRUCTURE
+    // ----------- TEMPORARY DEBUGGER SCRIPT ---------------------
 
+    // B,T,C shape use if you want to see and inspeace device
+    void DebugBTCFlatArray3D(
+        float *d_arr,
+        int B,
+        int T,
+        int C // vocab size
+    )
+    {
+        float *h_arr = (float *)malloc(B * T * C * sizeof(float));
+
+        cudaMemcpy(h_arr, d_arr, B * T * C * sizeof(float), cudaMemcpyDeviceToHost);
+
+        utils->printFlatArray3D(h_arr, B, T, C);
+
+        free(h_arr);
+    }
+
+
+    void dl_dz_upstream_gradient(
+        float *actual, // (B, T, vocab_size) on device
+        float *predicted, // (B, T, vocab_size) on device
+        float *detla, // (B, T, vocab_size) on device upstream gradient 
+        float *delta_host,
+        int B, 
+        int T,
+        int C
+    )
+    {
+        // interfaceback.md derivation using the chain rule of derivative
+        upstream_dl_dz(
+            actual,
+            predicted,
+            detla,
+            B,
+            T,
+            C
+        );
+
+        // upstream gradient to host
+        cudaMemcpy(delta_host, delta_host, B * T * C * sizeof(float), cudaMemcpyDeviceToHost);
+    }
 
 public:
     AutoGradEngine(
@@ -1078,9 +1119,19 @@ public:
     {
         this->model_paramaters = paramaters;
 
+        dl_dz_upstream_gradient(
+            paramaters.y_actual,
+            paramaters.y_predicted,
+            paramaters.dl_dz_out_device,
+            paramaters.dl_dz_out_host,
+            batch_size, 
+            seq_len,
+            vocab_size
+        );
 
         if (debug)
         {
+            // DebugBTCFlatArray3D(paramaters.y_predicted, batch_size, seq_len, vocab_size);
             // std::cout << "Loss " << seq_len * batch_size << std::endl;
             // utils->printFlatArray1D(paramaters.L, seq_len * batch_size);
 
@@ -1221,16 +1272,19 @@ public:
         return LinearParams{lm_head->getWeight(), lm_head->getBias()};
     }
 
-    // Burned out, isolated, lonely, homesick, sleepy, confused, scared, uncertian, multiple rejection, whats drving me
-    // to write and debug this raw thousands and thousands of lines of raw C++ code
-    // the answer is little escape from the reality and thats the beauty -Avash Lamichhane
-
     void softmaxAcrossProballityCrossEntropyLoss(float *probality, int *y)
     {
         cudaMemcpy(DeviceSoftmaxBLin, probality, batch_size * seq_len * vocab_size * sizeof(float), cudaMemcpyHostToDevice);
         cudaMemcpy(deviceY, y, batch_size * seq_len * sizeof(int), cudaMemcpyHostToDevice);
 
         // this accounts for whatever we are doing softmax on being greater than 32 i.e warp size.
+        // THIS IS SOFTMAX ACROSS the logits (B, T, vocab_size)
+
+        /*
+            DeviceSoftmaxBLout: Proballity from logits (predicted)
+            yHotEncodeDeviceOut: Actual Y (B, T) -> (B, T, vocab_size)
+            outCrossEntropyDevice: CE out flat list
+        */
         softmax2D(
             DeviceSoftmaxBLin,
             DeviceSoftmaxBLout,
@@ -1269,12 +1323,6 @@ public:
             // std::cout << "Apply the cross entropy loss" << std::endl;
             // utils->printFlatArray1D(outCrossEntropyHost, seq_len * batch_size);
         }
-
-        // After sfotmax do the cross entropy loss here
-        // Fuse everything like one hot encode and everything here.
-        // THE SECOND LAW OF THERMODYNAMICS
-        // DelS universe = Del S system + Del surroundings >= 0
-        // and this equation beautifully brings mathematics to life in modern AI
     }
 
     void train(int epoch)
@@ -1315,15 +1363,14 @@ public:
                 // ----------- Lets gather overall paramaters here ---------- //
 
                 // GPU buffer for the autograd engine in the attention interface.
+                modelParamaters.attention_head = attention->getParamaters();
+                modelParamaters.lm_head = LinearParams{lm_head->getWeight(), lm_head->getBias()};
+                modelParamaters.L = outCrossEntropyDevice;        // CE Out
+                modelParamaters.y_actual = yHotEncodeDeviceOut;   // (B, T, vocab_size) from actual
+                modelParamaters.y_predicted = DeviceSoftmaxBLout; // (B, T, vocab_size) to predicted proballity
 
-                modelParamaters = NetAttentionParamaters{
-                    attention->getParamaters(), // all the paramaters from the attention head
-                    LinearParams{lm_head->getWeight(), lm_head->getBias()},
-                    outCrossEntropyDevice,
-                    DeviceSoftmaxBLout, // this will turn (B, T) to (B, T, C) each position is one hot encoded
-                    prob,
-                    dl_dz_out_host}; // this is sort of interface paramaters for lm_head
-
+                modelParamaters.dl_dz_out_device = dl_dz_out_device;
+                modelParamaters.dl_dz_out_host = dl_dz_out_host;
 
                 // because the backprops needs to be done for each epoch.
                 // we need to keep in mind that the things hurting performace like cuda malloc and everything declared
