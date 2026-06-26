@@ -1,10 +1,17 @@
-#include "include/helper.h"
+#include "include/helper.hpp"
 #include <curand_kernel.h>
 #include <cuda_runtime.h>
 #include <iostream>
 #include <memory>
 #include <cstdio>
 #include <chrono>
+
+#include "include/autograd.hpp"
+#include "include/linear.hpp"
+#include "include/single_embeddings.hpp"
+#include "include/attention_params.hpp"
+#include "include/netattention.hpp"
+#include "include/autograd.hpp"
 
 // Again my background is beginner here with little concept from C
 // Transformer are complex neural network artitecture so I will focus on
@@ -43,38 +50,6 @@ extern "C" void CrossEntropy(float *x, int *y, float *oneHotOut, float *lossOut,
 // ----------- Backpropgation ------------------------
 extern "C" void upstream_dl_dz(float *actual, float *predicted, float *delta, int B, int T, int C);
 // ---- Paramaters for our custom backgrad engine -----
-
-struct LinearParams // just binary pointer can be used for layer norm or anything that contains two paramater pairs
-{
-    float *Weight;
-    float *Bias;
-};
-
-struct SingleEmbeddings
-{
-    float *emebddings;
-};
-
-struct AttentionParamaters
-{
-    LinearParams Q_params;
-    LinearParams K_params;
-    LinearParams V_params;
-
-    LinearParams Projection;
-
-    LinearParams LayerNorm;
-
-    SingleEmbeddings Embeddings;
-
-    float *S;
-    float *P;
-    float *O;
-
-    // We are re-using the buffer for BTC and Batch Seq Number of head and head dim to save reources
-    float *DEVCIE_BUFFER_BTC;
-    float *DEVICE_BUFFER_MULTIHEAD;
-};
 
 class Embeddings
 {
@@ -1051,26 +1026,6 @@ public:
     THINK THROUGH MATH, C++, DESIGN PATTERN, LOW LEVEL GPU INSTRUCTONS ALL AT THE SAME TIME.
 */
 
-
-
-struct NetAttentionParamaters
-{
-    AttentionParamaters attention_head;
-    LinearParams lm_head;
-
-    float *L; // loss from the cross entropy loss starting of the backpropagation
-    // so the above struct contains a pointer reference for CPU memory but we need to make a buffer for gpu memory right here.
-
-    // --------- Variables needed for upstream gradient --------------
-
-
-    // MAKE SURE THAT THSE ARE VARIABLES FROM THE DEVICE
-    float *y_actual;
-    float *y_predicted;
-    float *dl_dz_out_device;
-    float *dl_dz_out_host;
-};
-
 // The chain rule
 class AutoGradEngine
 {
@@ -1329,7 +1284,7 @@ public:
         {
             while (!(batch = dataLoader->iter()).empty())
             {
-                // // std::cout << batch.width << std::endl;
+                // std::cout << batch.width << std::endl;
                 // utils->printFlatArray2D(batch.x, seq_len, batch.width);
 
                 // we have a variable batch_size and if not fixed now, if the batch_size is smaller then whats passed in the consturctor the kernel will have a bug and we will never ever know, thats the pain.
@@ -1368,11 +1323,6 @@ public:
                     prob,
                     dl_dz_out_host}; // this is sort of interface paramaters for lm_head
 
-                // if (debug)
-                // {
-                //     std::cout << "Apply the cross entropy loss" << std::endl;
-                //     utils->printFlatArray1D(modelParamaters.L, seq_len * batch_size);
-                // }
 
                 // because the backprops needs to be done for each epoch.
                 // we need to keep in mind that the things hurting performace like cuda malloc and everything declared
