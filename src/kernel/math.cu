@@ -873,7 +873,7 @@ extern "C"
         int C)
     {
         int blocks = (B * T * C + 255) / 256;
-        upstream_dl_dz_kernel<<<blocks, 256>>>(delta, predicted, actual, B, T, C);
+        upstream_dl_dz_kernel<<<blocks, 256>>>(actual, predicted, delta, B, T, C);
 
         cudaDeviceSynchronize();
     }

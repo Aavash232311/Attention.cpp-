@@ -1063,21 +1063,19 @@ private:
 
         cudaMemcpy(h_arr, d_arr, B * T * C * sizeof(float), cudaMemcpyDeviceToHost);
 
-        utils->printFlatArray3D(h_arr, B, T, C);
+        utils->printLastOneOf3D(h_arr, B, T, C);
 
         free(h_arr);
     }
 
-
     void dl_dz_upstream_gradient(
-        float *actual, // (B, T, vocab_size) on device
+        float *actual,    // (B, T, vocab_size) on device
         float *predicted, // (B, T, vocab_size) on device
-        float *detla, // (B, T, vocab_size) on device upstream gradient 
+        float *detla,     // (B, T, vocab_size) on device upstream gradient
         float *delta_host,
-        int B, 
+        int B,
         int T,
-        int C
-    )
+        int C)
     {
         // interfaceback.md derivation using the chain rule of derivative
         upstream_dl_dz(
@@ -1086,8 +1084,7 @@ private:
             detla,
             B,
             T,
-            C
-        );
+            C);
 
         // upstream gradient to host
         cudaMemcpy(delta_host, delta_host, B * T * C * sizeof(float), cudaMemcpyDeviceToHost);
@@ -1124,14 +1121,25 @@ public:
             paramaters.y_predicted,
             paramaters.dl_dz_out_device,
             paramaters.dl_dz_out_host,
-            batch_size, 
+            batch_size,
             seq_len,
-            vocab_size
-        );
+            vocab_size);
 
         if (debug)
         {
-            // DebugBTCFlatArray3D(paramaters.y_predicted, batch_size, seq_len, vocab_size);
+            std::cout << "Predicted" << std::endl;
+            DebugBTCFlatArray3D(paramaters.y_predicted, batch_size, seq_len, vocab_size);
+
+            std::cout << "Actual" << std::endl;
+            DebugBTCFlatArray3D(paramaters.y_actual, batch_size, seq_len, vocab_size);
+
+            // std::cout << "dl_dz detla" << std::endl;
+            // utils->printLastOneOf3D(paramaters.dl_dz_out_host,
+            //     batch_size,
+            //     seq_len,
+            //     d_model
+            // );
+
             // std::cout << "Loss " << seq_len * batch_size << std::endl;
             // utils->printFlatArray1D(paramaters.L, seq_len * batch_size);
 
@@ -1182,14 +1190,32 @@ class AttentionInterface
     // ------ For testing one hot encode kernel --------- //
     float *outHotEncodeOut = nullptr;
 
-    NetAttentionParamaters modelParamaters;
-
     std::unique_ptr<AutoGradEngine> autograd;
 
     // LOW LEVEL BY DESIGN IS LITTLE BIT MESSY COMES WITH A TRADE OFFS ANYWAY
 
     float *dl_dz_out_device;
     float *dl_dz_out_host;
+
+private:
+    // ----------- TEMPORARY DEBUGGER SCRIPT ---------------------
+
+    // B,T,C shape use if you want to see and inspeace device
+    void DebugBTCFlatArray3D(
+        float *d_arr,
+        int B,
+        int T,
+        int C // vocab size
+    )
+    {
+        float *h_arr = (float *)malloc(B * T * C * sizeof(float));
+
+        cudaMemcpy(h_arr, d_arr, B * T * C * sizeof(float), cudaMemcpyDeviceToHost);
+
+        utils->printLastOneOf3D(h_arr, B, T, C);
+
+        free(h_arr);
+    }
 
 public:
     AttentionInterface(
@@ -1311,17 +1337,23 @@ public:
         {
             //  Here basically every element of the y must have its position encoded based on all of the vocab_size
             // std::cout << "Vocab size of all BT" << std::endl;
-            // utils->printFlatArray3D(probality, batch_size, seq_len, vocab_size);
+            // utils->printLastOneOf3D(probality, batch_size, seq_len, vocab_size);
 
             // std::cout << "Before one hot encode" << std::endl;
             // utils->printFlatArray2D(y, batch_size, seq_len);
 
-            // // Shape
+            // Shape
             // std::cout << " After one hot encode " << std::endl;
-            // utils->printFlatArray3D(outHotEncodeOut, batch_size, seq_len, vocab_size);
+            // utils->printLastOneOf3D(outHotEncodeOut, batch_size, seq_len, vocab_size);
 
             // std::cout << "Apply the cross entropy loss" << std::endl;
             // utils->printFlatArray1D(outCrossEntropyHost, seq_len * batch_size);
+
+            // std::cout << "Predicted" << std::endl;
+            // DebugBTCFlatArray3D(DeviceSoftmaxBLout, batch_size, seq_len, vocab_size);
+
+            // std::cout << "Actual" << std::endl;
+            // DebugBTCFlatArray3D(yHotEncodeDeviceOut, batch_size, seq_len, vocab_size);
         }
     }
 
@@ -1363,6 +1395,7 @@ public:
                 // ----------- Lets gather overall paramaters here ---------- //
 
                 // GPU buffer for the autograd engine in the attention interface.
+                NetAttentionParamaters modelParamaters;
                 modelParamaters.attention_head = attention->getParamaters();
                 modelParamaters.lm_head = LinearParams{lm_head->getWeight(), lm_head->getBias()};
                 modelParamaters.L = outCrossEntropyDevice;        // CE Out
