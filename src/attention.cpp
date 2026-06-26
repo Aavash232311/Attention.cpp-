@@ -6,12 +6,11 @@
 #include <cstdio>
 #include <chrono>
 
-#include "include/autograd.hpp"
 #include "include/linear.hpp"
 #include "include/single_embeddings.hpp"
 #include "include/attention_params.hpp"
 #include "include/netattention.hpp"
-#include "include/autograd.hpp"
+
 
 // Again my background is beginner here with little concept from C
 // Transformer are complex neural network artitecture so I will focus on
@@ -26,6 +25,8 @@
 // flat memory are efficient but the project for a beginner is so complicated that it will be fine just to get the model running.
 // NVIDA cuda core kernel functions
 // again optimising this might be even more difficult anyway lets just make it work.
+
+// Note- I was learning and now I realized this is very difficult to split headers.
 
 // backprop https://arxiv.org/pdf/2307.08691
 extern "C" void positionalEmbeddings(float *out, int seq_len, int d_model);
