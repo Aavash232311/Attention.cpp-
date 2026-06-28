@@ -876,6 +876,22 @@ __global__ void gradient_linear_tranpose_kernel(
     }
 }
 
+__global__ void gradient_linear_tranpose_kernel(float* h, float* out, int height, int width)
+{
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;  
+    int N = height * width;
+
+    if (idx < N)
+    {
+        int x = idx / width;   // row
+        int y = idx % width;   // col
+
+        int inputIdx  = x * width + y;    
+        int outputIdx = y * height + x;   
+
+        out[outputIdx] = h[inputIdx];
+    }
+}
 
 extern "C"
 {
