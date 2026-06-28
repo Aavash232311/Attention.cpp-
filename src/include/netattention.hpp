@@ -18,4 +18,10 @@ struct NetAttentionParamaters
     float *y_predicted;
     float *dl_dz_out_device;
     float *dl_dz_out_host; // upstream gradient dl/dz
+
+    // -------------- Linear Layer LM head paramaters ------------
+    float *h; // (B, T, d_model) output from the attention head
+    float *device_h;
+    float *device_out_h; // (B, C, T) transpose head
+
 };

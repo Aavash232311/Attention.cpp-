@@ -859,43 +859,44 @@ __global__ void upstream_dl_dz_kernel(
     delta[idx] = predicted[idx] - actual[idx];
 }
 
-__global__ void gradient_linear_tranpose_kernel(
-    float *h,
-    float *out,
-    int height,
-    int width)
+__global__ void transpose_last_two_kernel(float* input, float* output, int B, int T, int C)
 {
-    int x = blockIdx.x * blockDim.x + threadIdx.x;
-    int y = blockIdx.y * blockDim.y + threadIdx.y;
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    int total = B * T * C;
 
-    if (x <= height && y <= width)
+    if (idx < total)
     {
-        int inputIdx = y * width + x; 
-        int outputIdx = x * height + y; 
-        out[outputIdx] = h[inputIdx];
-    }
-}
+        int b = idx / (T * C);          
+        int remainder = idx % (T * C);
+        int t = remainder / C;           
+        int c = remainder % C;        
 
-__global__ void gradient_linear_tranpose_kernel(float* h, float* out, int height, int width)
-{
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;  
-    int N = height * width;
+        int inputIdx  = b * (T * C) + t * C + c;   // (B, T, C) 
+        int outputIdx = b * (C * T) + c * T + t;   // (B, C, T)
 
-    if (idx < N)
-    {
-        int x = idx / width;   // row
-        int y = idx % width;   // col
-
-        int inputIdx  = x * width + y;    
-        int outputIdx = y * height + x;   
-
-        out[outputIdx] = h[inputIdx];
+        output[outputIdx] = input[inputIdx];
     }
 }
 
 extern "C"
 {
     // -------------- Backpropagation kernel wrappers -----------------
+
+    // Gradient flow in the LM head from (B, T, C) to (B, T, vocab_size) as a proballity score
+    void lm_head_transpose_h(
+        float *h, // (B, T, d_model)
+        float *out,
+        int B,
+        int T,
+        int C)
+    {
+        int threads = 256;
+        int blocks = (B * T * C + 255) / 256;
+
+        transpose_last_two_kernel<<<blocks, threads>>>(h, out, B, T, C);
+
+        cudaDeviceSynchronize();
+    }
 
     void upstream_dl_dz(
         float *actual,

@@ -49,6 +49,7 @@ extern "C" void CrossEntropy(float *x, int *y, float *oneHotOut, float *lossOut,
 
 // ----------- Backpropgation ------------------------
 extern "C" void upstream_dl_dz(float *actual, float *predicted, float *delta, int B, int T, int C);
+extern "C" void lm_head_transpose_h(float *h, float *out, int B, int T, int C);
 // ---- Paramaters for our custom backgrad engine -----
 
 class Embeddings
@@ -977,6 +978,11 @@ public:
         cudaMemcpy(input, resedualOutDevice, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
     }
 
+    float *BorrowBTCDevice()
+    {
+        return this->BTCdevice;
+    }
+
     AttentionParamaters attentionParamaters; // just the reference so stack allocation is fine
 
     AttentionParamaters getParamaters()
@@ -1086,20 +1092,34 @@ private:
             T,
             C);
 
-        // upstream gradient to host
+        // upstream gradient to host, we can keep this in the device but we will fix this later, first goal is to get the result right
         cudaMemcpy(delta_host, delta, B * T * C * sizeof(float), cudaMemcpyDeviceToHost);
         // delta_host = partial L / partial z
     }
 
     void gradient_linear(
-        float *h, // input (B, T, d_model) and after the lm head (B, T, vocab_size)
-        float *delta,
+        float *h_host, // input (B, T, d_model) and after the lm head (B, T, vocab_size)
+        float *h_device,
+        float *h_out, // device (B, C, T) shape for delta h^T
+        float *delta, // (B, T, vocab_size)
         int B,
         int T,
-        int C
-    )
+        int d_model,
+        int vocab_size)
     {
+        // Copy from host to device
+        cudaMemcpy(h_device, h_host, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyHostToDevice);
 
+        lm_head_transpose_h(
+            h_device,
+            h_out,
+            batch_size,
+            seq_len,
+            d_model);
+
+        // copy back to host
+
+        cudaMemcpy(h_host, h_out, batch_size * d_model * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
     }
 
 public:
@@ -1137,20 +1157,30 @@ public:
             seq_len,
             vocab_size);
 
+        gradient_linear(
+            paramaters.h,
+            paramaters.device_h,
+            paramaters.device_out_h,
+            paramaters.dl_dz_out_device, // delta on device
+            batch_size,
+            seq_len,
+            d_model,
+            vocab_size);
+
         if (debug)
         {
-            std::cout << "Predicted" << std::endl;
-            DebugBTCFlatArray3D(paramaters.y_predicted, batch_size, seq_len, vocab_size);
+            // std::cout << "Predicted" << std::endl;
+            // DebugBTCFlatArray3D(paramaters.y_predicted, batch_size, seq_len, vocab_size);
 
-            std::cout << "Actual" << std::endl;
-            DebugBTCFlatArray3D(paramaters.y_actual, batch_size, seq_len, vocab_size);
+            // std::cout << "Actual" << std::endl;
+            // DebugBTCFlatArray3D(paramaters.y_actual, batch_size, seq_len, vocab_size);
 
-            std::cout << "dl_dz detla" << std::endl;
-            utils->printLastOneOf3D(paramaters.dl_dz_out_host,
-                batch_size,
-                seq_len,
-                vocab_size
-            );
+            // std::cout << "dl_dz detla" << std::endl;
+            // utils->printLastOneOf3D(paramaters.dl_dz_out_host,
+            //     batch_size,
+            //     seq_len,
+            //     vocab_size
+            // );
 
             // std::cout << "Loss " << seq_len * batch_size << std::endl;
             // utils->printFlatArray1D(paramaters.L, seq_len * batch_size);
@@ -1211,6 +1241,9 @@ class AttentionInterface
 
     // GPU buffer for the autograd engine in the attention interface.
     NetAttentionParamaters modelParamaters;
+
+    // ---------- Autograd engine declaration --------------------
+    float *out_h;
 
 private:
     // ----------- TEMPORARY DEBUGGER SCRIPT ---------------------
@@ -1288,6 +1321,8 @@ public:
 
         // -- For testing if the kernel launch for one hot works, we have wrapped two kernels for the cross entropy loss REMOVE FOR PERFORMACE
         outHotEncodeOut = (float *)malloc(batch_size * seq_len * vocab_size * sizeof(float));
+
+        cudaMalloc((void **)&out_h, batch_size * seq_len * vocab_size * sizeof(float));
     }
 
     ~AttentionInterface()
@@ -1306,6 +1341,8 @@ public:
 
         cudaFree(dl_dz_out_device);
         free(dl_dz_out_host);
+
+        cudaFree(out_h);
     }
 
     LinearParams getLmHeadParams()
@@ -1392,7 +1429,7 @@ public:
                 //     this->utils->printFlatArray3D(x, batch_size, seq_len, d_model);
                 // }
 
-                float *prob = lm_head->forward(x); // Shape (B, T, vocab_size)
+                float *prob = lm_head->forward(x); // Shape (B, T, vocab_size) x is not changed here.
 
                 // if (debug)
                 // {
@@ -1416,6 +1453,9 @@ public:
 
                 modelParamaters.dl_dz_out_device = dl_dz_out_device;
                 modelParamaters.dl_dz_out_host = dl_dz_out_host;
+                modelParamaters.h = x;                                   // Shape(B, T, vocab_size)
+                modelParamaters.device_h = attention->BorrowBTCDevice(); // (B, T, d_model) on device
+                modelParamaters.device_out_h = out_h;
 
                 // because the backprops needs to be done for each epoch.
                 // we need to keep in mind that the things hurting performace like cuda malloc and everything declared
