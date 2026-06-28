@@ -5,6 +5,7 @@
 #include <random>
 #include <vector>
 #include <cfloat>
+#include <cstdlib>
 #include <cuda_runtime.h>
 #include <curand_kernel.h>
 
@@ -529,6 +530,9 @@ __global__ void softmaxKrenel4D(
     int seq_len_idx1 = blockIdx.x;  // row
     int seq_len_idx2 = threadIdx.x; // cols 0-31 thread in a wrap
 
+    if (seq_len_idx2 >= seq_len)
+        return;
+
     int idx = batch_idx * (n_head * seq_len * seq_len) + nhead_idx * (seq_len * seq_len) + seq_len_idx1 * seq_len + seq_len_idx2;
 
     float val = (idx < N) ? arr[idx] : -FLT_MAX;
@@ -859,20 +863,20 @@ __global__ void upstream_dl_dz_kernel(
     delta[idx] = predicted[idx] - actual[idx];
 }
 
-__global__ void transpose_last_two_kernel(float* input, float* output, int B, int T, int C)
+__global__ void transpose_last_two_kernel(float *input, float *output, int B, int T, int C)
 {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     int total = B * T * C;
 
     if (idx < total)
     {
-        int b = idx / (T * C);          
+        int b = idx / (T * C);
         int remainder = idx % (T * C);
-        int t = remainder / C;           
-        int c = remainder % C;        
+        int t = remainder / C;
+        int c = remainder % C;
 
-        int inputIdx  = b * (T * C) + t * C + c;   // (B, T, C) 
-        int outputIdx = b * (C * T) + c * T + t;   // (B, C, T)
+        int inputIdx = b * (T * C) + t * C + c;  // (B, T, C)
+        int outputIdx = b * (C * T) + c * T + t; // (B, C, T)
 
         output[outputIdx] = input[inputIdx];
     }
@@ -880,6 +884,16 @@ __global__ void transpose_last_two_kernel(float* input, float* output, int B, in
 
 extern "C"
 {
+    // ---------------- Simple debugger ---------------------------
+
+    void KernelErrorFlag(cudaError_t err, std::string kernelLabel)
+    {
+        if (err != cudaSuccess)
+        {
+            std::cout << "Kernel launch error " << kernelLabel << " " << cudaGetErrorString(err) << std::endl;
+        }
+    }
+
     // -------------- Backpropagation kernel wrappers -----------------
 
     // Gradient flow in the LM head from (B, T, C) to (B, T, vocab_size) as a proballity score
@@ -1013,27 +1027,22 @@ extern "C"
 
     */
     void softmax2D(
-        float *arr,
+        float *arr, // (B, T, vocab_size)
         float *out,
         int batch_size,
         int seq_len,
         int vocab_size)
     {
-        int block_size = min(((vocab_size + 31) / 32) * 32, 1024);
 
-        dim3 block(block_size);
-        dim3 grid(seq_len, batch_size);
+        dim3 grid(batch_size * seq_len, 1);
+        dim3 block(min(((seq_len + 31) / 32) * 32, 1024));
 
         SoftmaxKernel2D<<<grid, block>>>(arr, out, batch_size, seq_len, vocab_size);
 
         cudaDeviceSynchronize();
 
         cudaError_t err = cudaGetLastError();
-        if (err != cudaSuccess)
-        {
-            printf("Kernel launch error softmax 2D: %s\n", cudaGetErrorString(err));
-            return;
-        }
+        KernelErrorFlag(err, "CE+Softmax 2D");
     }
 
     void softmax(
@@ -1048,18 +1057,27 @@ extern "C"
         // internel registers in our thread and softmaxKernel4D will be enough.
         // else we will need to use other kernel
 
+        int rows = batch_size * n_head * seq_len; // each row gets softmaxed, and this 2D works for 2D
+
         if (seq_len > 32)
         {
-            int rows = batch_size * n_head * seq_len; // each row gets softmaxed, and this 2D works for 2D
+
             dim3 grid(rows, 1);
             dim3 block(min(((seq_len + 31) / 32) * 32, 1024));
 
             SoftmaxKernel2D<<<grid, block>>>(arr, out, batch_size, rows, seq_len);
+
+            cudaError_t err = cudaGetLastError();
+            KernelErrorFlag(err, "Softmax attention head 2D kernel error ");
         }
         else
         {
-            int num_rows = batch_size * n_head * seq_len;
-            softmaxKrenel4D<<<num_rows, seq_len>>>(arr, out, N, seq_len, n_head);
+            dim3 grid(seq_len, n_head, N);
+            dim3 block(min(((seq_len + 31) / 32) * 32, 1024));
+            softmaxKrenel4D<<<grid, block>>>(arr, out, N, seq_len, n_head);
+
+            cudaError_t err = cudaGetLastError();
+            KernelErrorFlag(err, "Softmax attention head 4D kernel error ");
         }
         cudaDeviceSynchronize();
     }

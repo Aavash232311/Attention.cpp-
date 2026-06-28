@@ -495,7 +495,12 @@ public:
     float *DeviceKt;
     float *DeviceQ;
     float *DeviceQKT;
+    // shape is like B, num head, head_dim, seq_len
     float *BTC_MULTI_HEAD_BUFFER_HOST = nullptr; // most of this null pointer is uncessary but ok does not hurt.
+
+    float *B_NUMHEAD_T_T; // QK^T host
+
+    float *B_NUMHEAD_SEQLEN_HEADDIM;
 
     bool debug = true;
 
@@ -584,6 +589,8 @@ public:
         cudaMalloc((void **)&deviceQKTSqrtD, batch_size * num_heads * seq_len * seq_len * sizeof(float));
         cudaMalloc((void **)&BATCH_NEAD_TIME_HEADDIM_DEVICE, batch_size * num_heads * seq_len * head_dim * sizeof(float));
 
+        B_NUMHEAD_T_T = (float *)malloc(batch_size * num_heads * seq_len * seq_len * sizeof(float)); // T,T end shape after QK^T
+
         // for softmax's
         // I do not deserve an internship so what, people who are doing this wont understand this so I am writing c++ to scare people off.
         cudaMalloc((void **)&deviceSoftmaxOut, batch_size * num_heads * seq_len * seq_len * sizeof(float));
@@ -591,6 +598,8 @@ public:
         cudaMalloc((void **)&QKVOutDeviceOut, batch_size * num_heads * seq_len * head_dim * sizeof(float));
 
         cudaMalloc((void **)&deviceValue, batch_size * num_heads * seq_len * head_dim * sizeof(float));
+
+        B_NUMHEAD_SEQLEN_HEADDIM = (float *)malloc(batch_size * num_heads * seq_len * head_dim * sizeof(float));
 
         // Here we will start the memory allocation for (B,T,C) since after computation the shapes are brought back
         this->BTCHost = (float *)malloc(batch_size * seq_len * d_model * sizeof(float)); // we aready have the in buffer allocation so I wont worry about that for right now., this is for output. we bring back the original shape.
@@ -633,6 +642,9 @@ public:
 
         cudaFree(BTCdevice);
         cudaFree(resedualOutDevice);
+
+        free(B_NUMHEAD_T_T);
+        free(B_NUMHEAD_SEQLEN_HEADDIM);
 
         free(S);
         free(P);
@@ -700,7 +712,7 @@ public:
         // }
     }
 
-    void QKVMatmul(float *QK, float *V)
+    void QKVMatmul(float *QK, float *V, float *out)
     {
         // this is the pattern of learning we could have organized this in the wrapper but its fine here. if we did that then more number of paramaters in the wrapper.
         // deviceQKTSqrtD this as a BUFFER was well, forgive me I am just learning I will tewak and fix this weird naming.
@@ -709,7 +721,7 @@ public:
 
         QKVMatmulFinal(deviceQKTSqrtD, deviceValue, BATCH_NEAD_TIME_HEADDIM_DEVICE, seq_len, head_dim, num_heads, batch_size);
 
-        cudaMemcpy(QK, BATCH_NEAD_TIME_HEADDIM_DEVICE, batch_size * num_heads * seq_len * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(out, BATCH_NEAD_TIME_HEADDIM_DEVICE, batch_size * num_heads * seq_len * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
     }
 
     // This method swaps the first and second dimension
@@ -842,10 +854,10 @@ public:
 
         QKmatmul(DeviceQ, DeviceKt, DeviceQKT, seq_len, head_dim, batch_size, num_heads); // S(1, 1, T, T)
 
-        cudaMemcpy(BTC_MULTI_HEAD_BUFFER_HOST, DeviceQKT, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(B_NUMHEAD_T_T, DeviceQKT, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
 
         // -------- Stage QK^T ----------------
-        std::memcpy(S, BTC_MULTI_HEAD_BUFFER_HOST, seq_len * batch_size * num_heads * head_dim * sizeof(float));
+        std::memcpy(S, B_NUMHEAD_T_T, batch_size * num_heads * seq_len * seq_len * sizeof(float));
 
         // BTC_MULTI_HEAD_BUFFER_HOST AFTER QKT (B, H, T, T)
 
@@ -868,7 +880,7 @@ public:
         //     utils->print2DMatrixLastTwo(BTC_MULTI_HEAD_BUFFER_HOST, batch_size, num_heads, seq_len, seq_len);
         // }
 
-        scalerDvisionAcrossMat(BTC_MULTI_HEAD_BUFFER_HOST, head_dim); // sqrt(head_dim)
+        scalerDvisionAcrossMat(B_NUMHEAD_T_T, head_dim); // sqrt(head_dim)
 
         // if (debug)
         // {
@@ -878,7 +890,7 @@ public:
         // }
 
         // -1e9f
-        masking(BTC_MULTI_HEAD_BUFFER_HOST, -INFINITY);
+        masking(B_NUMHEAD_T_T, -INFINITY);
 
         // if (debug == true)
         // {
@@ -889,14 +901,18 @@ public:
         // --- Important Note ------
         // see here
         // apply softmax part!
-        cudaMemcpy(deviceQKTSqrtD, BTC_MULTI_HEAD_BUFFER_HOST, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyHostToDevice);
-        softmax(deviceQKTSqrtD, deviceSoftmaxOut, batch_size * num_heads * seq_len * seq_len, seq_len, num_heads, batch_size);
+        cudaMemcpy(deviceQKTSqrtD, B_NUMHEAD_T_T, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyHostToDevice);
+        softmax(deviceQKTSqrtD, // Shape(batch_size, n_head, T, T)
+                deviceSoftmaxOut,
+                batch_size * num_heads * seq_len * seq_len,
+                seq_len, num_heads,
+                batch_size);
 
         // copy to host
-        cudaMemcpy(BTC_MULTI_HEAD_BUFFER_HOST, deviceSoftmaxOut, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(B_NUMHEAD_T_T, deviceSoftmaxOut, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
 
         // ------------ Stage Softmax(P) ----------------
-        std::memcpy(P, BTC_MULTI_HEAD_BUFFER_HOST, batch_size * num_heads * seq_len * seq_len * sizeof(float));
+        std::memcpy(P, B_NUMHEAD_T_T, batch_size * num_heads * seq_len * seq_len * sizeof(float));
 
         // deviceQKTSqrtD Shape(batch_size, n_head, T, T)
 
@@ -913,10 +929,10 @@ public:
         // Q K determines what to attend, and V determines where to attend.
         // we will write a basic matmul kernel nothing fancy later we can benchmarket and use tensor cores.
 
-        QKVMatmul(BTC_MULTI_HEAD_BUFFER_HOST, V); //  (batch_size, n_head, T, d_head)
+        QKVMatmul(B_NUMHEAD_T_T, V, B_NUMHEAD_SEQLEN_HEADDIM); //  (batch_size, n_head, T, d_head)
 
         // ------------------ Stage PV ------------------------
-        std::memcpy(O, BTC_MULTI_HEAD_BUFFER_HOST, batch_size * num_heads * seq_len * head_dim * sizeof(float));
+        std::memcpy(O, B_NUMHEAD_SEQLEN_HEADDIM, batch_size * num_heads * seq_len * head_dim * sizeof(float));
 
         // if (debug)
         // {
@@ -929,7 +945,7 @@ public:
 
         // Now we would want to bring back the shape to after the attention score.
         // Shape(batch, T, n_head, d_head) ..so we wap firt and second
-        SwapNT(BTC_MULTI_HEAD_BUFFER_HOST);
+        SwapNT(B_NUMHEAD_SEQLEN_HEADDIM);
 
         ReformShape(BTC_MULTI_HEAD_BUFFER_HOST);
 
@@ -1166,6 +1182,13 @@ public:
             seq_len,
             d_model,
             vocab_size);
+
+        if (debug)
+        {
+            // here we swap the dimension from (B, T, d_model) to (B, d_model, T)
+            std::cout << "h^T Shape (B, C, T)" << std::endl;
+            utils->printFlatArray3D(paramaters.h, batch_size, d_model, seq_len);
+        }
 
         if (debug)
         {
@@ -1429,41 +1452,41 @@ public:
                 //     this->utils->printFlatArray3D(x, batch_size, seq_len, d_model);
                 // }
 
-                float *prob = lm_head->forward(x); // Shape (B, T, vocab_size) x is not changed here.
+                // float *prob = lm_head->forward(x); // Shape (B, T, vocab_size) x is not changed here.
 
-                // if (debug)
-                // {
-                //     std::cout << " After LM head " << std::endl;
-                //     this->utils->printFlatArray3D(prob, batch_size, seq_len, vocab_size);
-                // }
-                softmaxAcrossProballityCrossEntropyLoss(prob, batch.y);
+                // // if (debug)
+                // // {
+                // //     std::cout << " After LM head " << std::endl;
+                // //     this->utils->printFlatArray3D(prob, batch_size, seq_len, vocab_size);
+                // // }
+                // softmaxAcrossProballityCrossEntropyLoss(prob, batch.y);
 
-                // if (debug)
-                // {
-                //     std::cout << " After sfotmax last two dimension " << std::endl;
-                //     this->utils->printLastOneOf3D(prob, batch_size, seq_len, vocab_size);
-                // }
+                // // if (debug)
+                // // {
+                // //     std::cout << " After sfotmax last two dimension " << std::endl;
+                // //     this->utils->printLastOneOf3D(prob, batch_size, seq_len, vocab_size);
+                // // }
 
-                // ----------- Lets gather overall paramaters here ---------- //
-                modelParamaters.attention_head = attention->getParamaters();
-                modelParamaters.lm_head = LinearParams{lm_head->getWeight(), lm_head->getBias()};
-                modelParamaters.L = outCrossEntropyDevice;        // CE Out
-                modelParamaters.y_actual = yHotEncodeDeviceOut;   // (B, T, vocab_size) from actual
-                modelParamaters.y_predicted = DeviceSoftmaxBLout; // (B, T, vocab_size) to predicted proballity
+                // // ----------- Lets gather overall paramaters here ---------- //
+                // modelParamaters.attention_head = attention->getParamaters();
+                // modelParamaters.lm_head = LinearParams{lm_head->getWeight(), lm_head->getBias()};
+                // modelParamaters.L = outCrossEntropyDevice;        // CE Out
+                // modelParamaters.y_actual = yHotEncodeDeviceOut;   // (B, T, vocab_size) from actual
+                // modelParamaters.y_predicted = DeviceSoftmaxBLout; // (B, T, vocab_size) to predicted proballity
 
-                modelParamaters.dl_dz_out_device = dl_dz_out_device;
-                modelParamaters.dl_dz_out_host = dl_dz_out_host;
-                modelParamaters.h = x;                                   // Shape(B, T, vocab_size)
-                modelParamaters.device_h = attention->BorrowBTCDevice(); // (B, T, d_model) on device
-                modelParamaters.device_out_h = out_h;
+                // modelParamaters.dl_dz_out_device = dl_dz_out_device;
+                // modelParamaters.dl_dz_out_host = dl_dz_out_host;
+                // modelParamaters.h = x;                                   // Shape(B, T, vocab_size)
+                // modelParamaters.device_h = attention->BorrowBTCDevice(); // (B, T, d_model) on device
+                // modelParamaters.device_out_h = out_h;
 
-                // because the backprops needs to be done for each epoch.
-                // we need to keep in mind that the things hurting performace like cuda malloc and everything declared
-                // inside of the constructor of autograd engine is costly.
-                // there is tradeoff between making things modular and fusing everything together.
-                // Lets create a buffer for CPU/GPU memory in this class so that we dont overload the system and free it when the object is destroyed.
-                autograd->backprop(modelParamaters);
-                debug = false;
+                // // because the backprops needs to be done for each epoch.
+                // // we need to keep in mind that the things hurting performace like cuda malloc and everything declared
+                // // inside of the constructor of autograd engine is costly.
+                // // there is tradeoff between making things modular and fusing everything together.
+                // // Lets create a buffer for CPU/GPU memory in this class so that we dont overload the system and free it when the object is destroyed.
+                // autograd->backprop(modelParamaters);
+                // debug = false;
             }
             dataLoader->resetIterator(); // just the weird logic that I wrote.
         }
@@ -1475,10 +1498,10 @@ int main()
     cudaDeviceSynchronize();
     auto start = std::chrono::high_resolution_clock::now();
 
-    int d_model = 64;
+    int d_model = 16;
     int vocab_size; // that depends upon the data that you are passing.
     int num_heads = 2;
-    int batch_size = 32;
+    int batch_size = 8;
     int seq_len = 4;
     int epoch = 12;
     bool drop_last = true; // for training set this to false, if someone is serious about this email me. the cost of implementing this feature will affect everything in depth many tradeoffs
