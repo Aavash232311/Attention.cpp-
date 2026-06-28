@@ -843,8 +843,6 @@ __global__ void crossEntropyLoss(
     // for each B,T shape you have 1 thats B,T
 }
 
-// ----------------- MIGHTY BACKPROPAGATION ------------------------
-
 // Derivation interfaceback.md
 __global__ void upstream_dl_dz_kernel(
     float *actual,
@@ -857,13 +855,32 @@ __global__ void upstream_dl_dz_kernel(
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx >= B * T * C)
         return;
-        
+
     delta[idx] = predicted[idx] - actual[idx];
 }
+
+__global__ void gradient_linear_tranpose_kernel(
+    float *h,
+    float *out,
+    int height,
+    int width)
+{
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
+    int y = blockIdx.y * blockDim.y + threadIdx.y;
+
+    if (x <= height && y <= width)
+    {
+        int inputIdx = y * width + x; 
+        int outputIdx = x * height + y; 
+        out[outputIdx] = h[inputIdx];
+    }
+}
+
 
 extern "C"
 {
     // -------------- Backpropagation kernel wrappers -----------------
+
     void upstream_dl_dz(
         float *actual,
         float *predicted,

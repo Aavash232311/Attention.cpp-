@@ -1088,6 +1088,18 @@ private:
 
         // upstream gradient to host
         cudaMemcpy(delta_host, delta, B * T * C * sizeof(float), cudaMemcpyDeviceToHost);
+        // delta_host = partial L / partial z
+    }
+
+    void gradient_linear(
+        float *h, // input (B, T, d_model) and after the lm head (B, T, vocab_size)
+        float *delta,
+        int B,
+        int T,
+        int C
+    )
+    {
+
     }
 
 public:
@@ -1127,18 +1139,18 @@ public:
 
         if (debug)
         {
-            // std::cout << "Predicted" << std::endl;
-            // DebugBTCFlatArray3D(paramaters.y_predicted, batch_size, seq_len, vocab_size);
+            std::cout << "Predicted" << std::endl;
+            DebugBTCFlatArray3D(paramaters.y_predicted, batch_size, seq_len, vocab_size);
 
-            // std::cout << "Actual" << std::endl;
-            // DebugBTCFlatArray3D(paramaters.y_actual, batch_size, seq_len, vocab_size);
+            std::cout << "Actual" << std::endl;
+            DebugBTCFlatArray3D(paramaters.y_actual, batch_size, seq_len, vocab_size);
 
-            // std::cout << "dl_dz detla" << std::endl;
-            // utils->printLastOneOf3D(paramaters.dl_dz_out_host,
-            //     batch_size,
-            //     seq_len,
-            //     vocab_size
-            // );
+            std::cout << "dl_dz detla" << std::endl;
+            utils->printLastOneOf3D(paramaters.dl_dz_out_host,
+                batch_size,
+                seq_len,
+                vocab_size
+            );
 
             // std::cout << "Loss " << seq_len * batch_size << std::endl;
             // utils->printFlatArray1D(paramaters.L, seq_len * batch_size);
@@ -1196,6 +1208,9 @@ class AttentionInterface
 
     float *dl_dz_out_device;
     float *dl_dz_out_host;
+
+    // GPU buffer for the autograd engine in the attention interface.
+    NetAttentionParamaters modelParamaters;
 
 private:
     // ----------- TEMPORARY DEBUGGER SCRIPT ---------------------
@@ -1393,9 +1408,6 @@ public:
                 // }
 
                 // ----------- Lets gather overall paramaters here ---------- //
-
-                // GPU buffer for the autograd engine in the attention interface.
-                NetAttentionParamaters modelParamaters;
                 modelParamaters.attention_head = attention->getParamaters();
                 modelParamaters.lm_head = LinearParams{lm_head->getWeight(), lm_head->getBias()};
                 modelParamaters.L = outCrossEntropyDevice;        // CE Out
