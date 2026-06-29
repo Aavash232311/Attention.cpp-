@@ -1183,12 +1183,12 @@ public:
             d_model,
             vocab_size);
 
-        if (debug)
-        {
-            // here we swap the dimension from (B, T, d_model) to (B, d_model, T)
-            std::cout << "h^T Shape (B, C, T)" << std::endl;
-            utils->printFlatArray3D(paramaters.h, batch_size, d_model, seq_len);
-        }
+        // if (debug)
+        // {
+        //     // here we swap the dimension from (B, T, d_model) to (B, d_model, T)
+        //     std::cout << "h^T Shape (B, C, T)" << std::endl;
+        //     utils->printFlatArray3D(paramaters.h, batch_size, d_model, seq_len);
+        // }
 
         if (debug)
         {
@@ -1452,14 +1452,15 @@ public:
                 //     this->utils->printFlatArray3D(x, batch_size, seq_len, d_model);
                 // }
 
-                // float *prob = lm_head->forward(x); // Shape (B, T, vocab_size) x is not changed here.
+                float *prob = lm_head->forward(x); // Shape (B, T, vocab_size) x is not changed here.
 
-                // // if (debug)
-                // // {
-                // //     std::cout << " After LM head " << std::endl;
-                // //     this->utils->printFlatArray3D(prob, batch_size, seq_len, vocab_size);
-                // // }
-                // softmaxAcrossProballityCrossEntropyLoss(prob, batch.y);
+                // if (debug)
+                // {
+                //     std::cout << " After LM head " << std::endl;
+                //     this->utils->printLastOneOf3D(prob, batch_size, seq_len, vocab_size);
+                // }
+
+                softmaxAcrossProballityCrossEntropyLoss(prob, batch.y);
 
                 // // if (debug)
                 // // {
@@ -1498,7 +1499,7 @@ int main()
     cudaDeviceSynchronize();
     auto start = std::chrono::high_resolution_clock::now();
 
-    int d_model = 8;
+    int d_model = 32;
     int vocab_size; // that depends upon the data that you are passing.
     int num_heads = 2;
     int batch_size = 8;

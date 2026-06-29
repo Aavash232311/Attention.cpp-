@@ -455,12 +455,16 @@ __device__ __forceinline__ void warpReducerHelper(float &m, float &d)
 __global__ void SoftmaxKernel2D(
     float *arr, // (B, T, vocab_size)
     float *out,
-    int N,
+    int batch_size,
     int seq_len,
     int vocab_size)
 {
     int batch_idx = blockIdx.y;
     int row_idx = blockIdx.x;
+
+    int col = threadIdx.x;
+    if (col >= vocab_size)
+        return;
 
     const float *row = arr + batch_idx * (seq_len * vocab_size) + row_idx * vocab_size;
     float *out_row = out + batch_idx * (seq_len * vocab_size) + row_idx * vocab_size;
@@ -884,15 +888,6 @@ __global__ void transpose_last_two_kernel(float *input, float *output, int B, in
 
 extern "C"
 {
-    // ---------------- Simple debugger ---------------------------
-
-    void KernelErrorFlag(cudaError_t err, std::string kernelLabel)
-    {
-        if (err != cudaSuccess)
-        {
-            std::cout << "Kernel launch error " << kernelLabel << " " << cudaGetErrorString(err) << std::endl;
-        }
-    }
 
     // -------------- Backpropagation kernel wrappers -----------------
 
@@ -1034,15 +1029,15 @@ extern "C"
         int vocab_size)
     {
 
-        dim3 grid(batch_size * seq_len, 1);
-        dim3 block(min(((seq_len + 31) / 32) * 32, 1024));
+        dim3 grid(seq_len, batch_size);
+        dim3 block(min(((vocab_size + 31) / 32) * 32, 1024));
 
         SoftmaxKernel2D<<<grid, block>>>(arr, out, batch_size, seq_len, vocab_size);
 
         cudaDeviceSynchronize();
 
-        cudaError_t err = cudaGetLastError();
-        KernelErrorFlag(err, "CE+Softmax 2D");
+        // cudaError_t err = cudaGetLastError();
+        // KernelErrorFlag(err, "CE+Softmax 2D");
     }
 
     void softmax(
@@ -1066,18 +1061,12 @@ extern "C"
             dim3 block(min(((seq_len + 31) / 32) * 32, 1024));
 
             SoftmaxKernel2D<<<grid, block>>>(arr, out, batch_size, rows, seq_len);
-
-            cudaError_t err = cudaGetLastError();
-            KernelErrorFlag(err, "Softmax attention head 2D kernel error ");
         }
         else
         {
             dim3 grid(seq_len, n_head, N);
             dim3 block(min(((seq_len + 31) / 32) * 32, 1024));
             softmaxKrenel4D<<<grid, block>>>(arr, out, N, seq_len, n_head);
-
-            cudaError_t err = cudaGetLastError();
-            KernelErrorFlag(err, "Softmax attention head 4D kernel error ");
         }
         cudaDeviceSynchronize();
     }
@@ -1258,6 +1247,13 @@ extern "C"
         LookUpKernel<<<grid, block>>>(x, embeddings, C, d_model, seq_len, batch_size, vocab_size);
 
         cudaDeviceSynchronize();
+
+        //                         cudaError_t err = cudaGetLastError();
+        // if (err != cudaSuccess)
+        // {
+        //     printf("Kernel launch failed: %s\n", cudaGetErrorString(err));
+        //     return;
+        // }
     }
 
     void positionalEmbeddings(float *out, int seq_len, int d_model)
