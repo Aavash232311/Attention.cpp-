@@ -581,7 +581,7 @@ public:
         // Q K^t matmul device and host allocation
         cudaMalloc((void **)&DeviceKt, batch_size * num_heads * head_dim * seq_len * sizeof(float));
         cudaMalloc((void **)&DeviceQ, batch_size * num_heads * head_dim * seq_len * sizeof(float));
-        cudaMalloc((void **)&DeviceQKT, batch_size * num_heads * head_dim * seq_len * sizeof(float));
+        cudaMalloc((void **)&DeviceQKT, batch_size * num_heads * seq_len * seq_len * sizeof(float));
 
         // Q K^T Host
         BTC_MULTI_HEAD_BUFFER_HOST = (float *)malloc(batch_size * num_heads * head_dim * seq_len * sizeof(float));
@@ -766,7 +766,7 @@ public:
         // }
     }
 
-    // BEFORE (B, T, N_HEAD, D_EAD) AFTER: (B, T, C)
+    // BEFORE (B, T, n_head, head_dim) AFTER: (B, T, C)
     void ReformShape(float *arr)
     {
         /*
@@ -871,13 +871,13 @@ public:
         //     utils->print2DMatrixLastTwo(Q, batch_size, num_heads, seq_len, head_dim);
 
         //     std::cout << "Matrix multiplication of QK^T" << std::endl;
-        //     utils->print2DMatrixLastTwo(BTC_MULTI_HEAD_BUFFER_HOST, batch_size, num_heads, seq_len, seq_len);
+        //     utils->print2DMatrixLastTwo(B_NUMHEAD_T_T, batch_size, num_heads, seq_len, seq_len);
         // }
 
         // if (debug)
         // {
         //     std::cout << "Before scaling " << std::endl;
-        //     utils->print2DMatrixLastTwo(BTC_MULTI_HEAD_BUFFER_HOST, batch_size, num_heads, seq_len, seq_len);
+        //     utils->print2DMatrixLastTwo(B_NUMHEAD_T_T, batch_size, num_heads, seq_len, seq_len);
         // }
 
         scalerDvisionAcrossMat(B_NUMHEAD_T_T, head_dim); // sqrt(head_dim)
@@ -886,7 +886,7 @@ public:
         // {
 
         //     std::cout << "After scalled by sqrt(head_dim) " << sqrtf(head_dim) << std::endl;
-        //     utils->print2DMatrixLastTwo(BTC_MULTI_HEAD_BUFFER_HOST, batch_size, num_heads, seq_len, seq_len);
+        //     utils->print2DMatrixLastTwo(B_NUMHEAD_T_T, batch_size, num_heads, seq_len, seq_len);
         // }
 
         // -1e9f
@@ -895,7 +895,7 @@ public:
         // if (debug == true)
         // {
         //     std::cout << "Before softmax " << std::endl;
-        //     utils->print2DMatrixLastTwo(BTC_MULTI_HEAD_BUFFER_HOST, batch_size, num_heads, seq_len, seq_len);
+        //     utils->print2DMatrixLastTwo(B_NUMHEAD_T_T, batch_size, num_heads, seq_len, seq_len);
         // }
 
         // --- Important Note ------
@@ -920,7 +920,7 @@ public:
         // {
 
         //     std::cout << "After softmax " << std::endl;
-        //     utils->print2DMatrixLastTwo(BTC_MULTI_HEAD_BUFFER_HOST, batch_size, num_heads, seq_len, seq_len);
+        //     utils->print2DMatrixLastTwo(B_NUMHEAD_T_T, batch_size, num_heads, seq_len, seq_len);
         // }
 
         // value Shape(batch_size, n_head, seq_len, d_head)
@@ -940,14 +940,14 @@ public:
         //     utils->print2DMatrixLastTwo(V, batch_size, num_heads, seq_len, head_dim);
 
         //     std::cout << "After matmul with QKV" << std::endl;
-        //     utils->print2DMatrixLastTwo(BTC_MULTI_HEAD_BUFFER_HOST, batch_size, num_heads, seq_len, head_dim);
+        //     utils->print2DMatrixLastTwo(B_NUMHEAD_SEQLEN_HEADDIM, batch_size, num_heads, seq_len, head_dim);
         // }
 
         // Now we would want to bring back the shape to after the attention score.
         // Shape(batch, T, n_head, d_head) ..so we wap firt and second
         SwapNT(B_NUMHEAD_SEQLEN_HEADDIM);
 
-        ReformShape(BTC_MULTI_HEAD_BUFFER_HOST);
+        ReformShape(B_NUMHEAD_SEQLEN_HEADDIM);
 
         // Now we need to make this go thtrough a Linear Transformation without it the model will just learn to stack information together
         // without learning to mix information from multiple heads together.
@@ -1498,7 +1498,7 @@ int main()
     cudaDeviceSynchronize();
     auto start = std::chrono::high_resolution_clock::now();
 
-    int d_model = 16;
+    int d_model = 8;
     int vocab_size; // that depends upon the data that you are passing.
     int num_heads = 2;
     int batch_size = 8;
