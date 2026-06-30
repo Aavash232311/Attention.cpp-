@@ -924,7 +924,7 @@ extern "C"
     void CrossEntropy(
         float *x, // (B, T, vocab_size)
         int *y,   // actual y (B, T) dimension
-        float *oneHotOut,
+        float *oneHotOut, // (B, T, vocab_size)
         float *lossOut,
         int batch_size,
         int seq_len,

@@ -1173,15 +1173,15 @@ public:
             seq_len,
             vocab_size);
 
-        gradient_linear(
-            paramaters.h,
-            paramaters.device_h,
-            paramaters.device_out_h,
-            paramaters.dl_dz_out_device, // delta on device
-            batch_size,
-            seq_len,
-            d_model,
-            vocab_size);
+        // gradient_linear(
+        //     paramaters.h,
+        //     paramaters.device_h,
+        //     paramaters.device_out_h,
+        //     paramaters.dl_dz_out_device, // delta on device
+        //     batch_size,
+        //     seq_len,
+        //     d_model,
+        //     vocab_size);
 
         // if (debug)
         // {
@@ -1205,8 +1205,7 @@ public:
             //     vocab_size
             // );
 
-            // std::cout << "Loss " << seq_len * batch_size << std::endl;
-            // utils->printFlatArray1D(paramaters.L, seq_len * batch_size);
+
 
             // std::cout << "Actual proballity" << std::endl;
             // utils->printFlatArray3D(paramaters.y_actual, batch_size, seq_len, vocab_size);
@@ -1339,6 +1338,7 @@ public:
 
         // YOU DO NEED THIS PART BECAUSE ANOTHER KERNEL FOR THE CORSS ENTROPY LOSS WILL BE USING THIS.
         cudaMalloc((void **)&yHotEncodeDeviceOut, vocab_size * seq_len * batch_size * sizeof(float)); // (B, T)
+        cudaMemset(yHotEncodeDeviceOut, 0, batch_size * seq_len * vocab_size * sizeof(float)); // make default 0
 
         outCrossEntropyHost = (float *)malloc(batch_size * seq_len * vocab_size * sizeof(float));
 
@@ -1417,9 +1417,9 @@ public:
             // std::cout << "Before one hot encode" << std::endl;
             // utils->printFlatArray2D(y, batch_size, seq_len);
 
-            // Shape
+            // // Shape
             // std::cout << " After one hot encode " << std::endl;
-            // utils->printLastOneOf3D(outHotEncodeOut, batch_size, seq_len, vocab_size);
+            // utils->printFlatArray3D(outHotEncodeOut, batch_size, seq_len, vocab_size);
 
             // std::cout << "Apply the cross entropy loss" << std::endl;
             // utils->printFlatArray1D(outCrossEntropyHost, seq_len * batch_size);
@@ -1430,6 +1430,9 @@ public:
             // std::cout << "Actual" << std::endl;
             // DebugBTCFlatArray3D(yHotEncodeDeviceOut, batch_size, seq_len, vocab_size);
         }
+
+
+        debug = false;
     }
 
     void train(int epoch)
@@ -1470,26 +1473,26 @@ public:
                 //     this->utils->printLastOneOf3D(prob, batch_size, seq_len, vocab_size);
                 // }
 
-                // // ----------- Lets gather overall paramaters here ---------- //
-                // modelParamaters.attention_head = attention->getParamaters();
-                // modelParamaters.lm_head = LinearParams{lm_head->getWeight(), lm_head->getBias()};
-                // modelParamaters.L = outCrossEntropyDevice;        // CE Out
-                // modelParamaters.y_actual = yHotEncodeDeviceOut;   // (B, T, vocab_size) from actual
-                // modelParamaters.y_predicted = DeviceSoftmaxBLout; // (B, T, vocab_size) to predicted proballity
+                // ----------- Lets gather overall paramaters here ---------- //
+                modelParamaters.attention_head = attention->getParamaters();
+                modelParamaters.lm_head = LinearParams{lm_head->getWeight(), lm_head->getBias()};
+                modelParamaters.L = outCrossEntropyDevice;        // CE Out
+                modelParamaters.y_actual = yHotEncodeDeviceOut;   // (B, T, vocab_size) from actual
+                modelParamaters.y_predicted = DeviceSoftmaxBLout; // (B, T, vocab_size) to predicted proballity
 
-                // modelParamaters.dl_dz_out_device = dl_dz_out_device;
-                // modelParamaters.dl_dz_out_host = dl_dz_out_host;
-                // modelParamaters.h = x;                                   // Shape(B, T, vocab_size)
-                // modelParamaters.device_h = attention->BorrowBTCDevice(); // (B, T, d_model) on device
-                // modelParamaters.device_out_h = out_h;
+                modelParamaters.dl_dz_out_device = dl_dz_out_device;
+                modelParamaters.dl_dz_out_host = dl_dz_out_host;
+                modelParamaters.h = x;                                   // Shape(B, T, vocab_size)
+                modelParamaters.device_h = attention->BorrowBTCDevice(); // (B, T, d_model) on device
+                modelParamaters.device_out_h = out_h;
 
-                // // because the backprops needs to be done for each epoch.
-                // // we need to keep in mind that the things hurting performace like cuda malloc and everything declared
-                // // inside of the constructor of autograd engine is costly.
-                // // there is tradeoff between making things modular and fusing everything together.
-                // // Lets create a buffer for CPU/GPU memory in this class so that we dont overload the system and free it when the object is destroyed.
-                // autograd->backprop(modelParamaters);
-                // debug = false;
+                // because the backprops needs to be done for each epoch.
+                // we need to keep in mind that the things hurting performace like cuda malloc and everything declared
+                // inside of the constructor of autograd engine is costly.
+                // there is tradeoff between making things modular and fusing everything together.
+                // Lets create a buffer for CPU/GPU memory in this class so that we dont overload the system and free it when the object is destroyed.
+                autograd->backprop(modelParamaters);
+                debug = false;
             }
             dataLoader->resetIterator(); // just the weird logic that I wrote.
         }
@@ -1535,23 +1538,6 @@ int main()
         encodedData);
 
     model->train(epoch);
-
-    // float X[32] = {
-    //     1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f,
-    //     9.0f, 10.0f, 11.0f, 12.0f, 13.0f, 14.0f, 15.0f, 16.0f,
-    //     17.0f, 18.0f, 19.0f, 20.0f, 21.0f, 22.0f, 23.0f, 24.0f,
-    //     25.0f, 26.0f, 27.0f, 28.0f, 29.0f, 30.0f, 31.0f, 32.0f};
-    // auto linear1 = std::make_unique<Linear>(
-    //     8,
-    //     8,
-    //     4,
-    //     1,
-    //     2 // n_heads
-    // );
-
-    // linear1->forward(X);
-    // linear1->reshapeHead(); // Writes as (B, n_head, T, head_dim) so no tranpose needed
-    // linear1->teansposeKeyForAttnScore();
 
     auto end = std::chrono::high_resolution_clock::now();
     cudaDeviceSynchronize(); // CPU is waiting for the GPU to finish
