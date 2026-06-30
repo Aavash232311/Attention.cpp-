@@ -1192,18 +1192,18 @@ public:
 
         if (debug)
         {
-            // std::cout << "Predicted" << std::endl;
-            // DebugBTCFlatArray3D(paramaters.y_predicted, batch_size, seq_len, vocab_size);
+            std::cout << "Predicted" << std::endl;
+            DebugBTCFlatArray3D(paramaters.y_predicted, batch_size, seq_len, vocab_size);
 
-            // std::cout << "Actual" << std::endl;
-            // DebugBTCFlatArray3D(paramaters.y_actual, batch_size, seq_len, vocab_size);
+            std::cout << "Actual" << std::endl;
+            DebugBTCFlatArray3D(paramaters.y_actual, batch_size, seq_len, vocab_size);
 
-            // std::cout << "dl_dz detla" << std::endl;
-            // utils->printLastOneOf3D(paramaters.dl_dz_out_host,
-            //     batch_size,
-            //     seq_len,
-            //     vocab_size
-            // );
+            std::cout << "dl_dz detla" << std::endl;
+            utils->printLastOneOf3D(paramaters.dl_dz_out_host,
+                batch_size,
+                seq_len,
+                vocab_size
+            );
 
 
 
