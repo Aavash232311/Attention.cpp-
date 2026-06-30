@@ -947,12 +947,12 @@ public:
         // Shape(batch, T, n_head, d_head) ..so we wap firt and second
         SwapNT(B_NUMHEAD_SEQLEN_HEADDIM);
 
-        ReformShape(B_NUMHEAD_SEQLEN_HEADDIM);
+        ReformShape(B_NUMHEAD_SEQLEN_HEADDIM); // [B, num_heads, T, head_dim]
 
         // Now we need to make this go thtrough a Linear Transformation without it the model will just learn to stack information together
         // without learning to mix information from multiple heads together.
 
-        outputProj->forward(BTCHost);
+        float *projectedBTC = outputProj->forward(B_NUMHEAD_SEQLEN_HEADDIM);
 
         // I will add the resudual here to give it a context on what's it is attending to
         // if (debug)
@@ -961,7 +961,7 @@ public:
         //     this->utils->printFlatArray3D(BTCHost, batch_size, seq_len, d_model);
         // }
 
-        addResidual(BTCHost, tempX);
+        addResidual(projectedBTC, tempX);
 
         // if (debug)
         // {
@@ -1443,8 +1443,10 @@ public:
                 // std::cout << batch.width << std::endl;
                 // utils->printFlatArray2D(batch.x, seq_len, batch.width);
 
-                // we have a variable batch_size and if not fixed now, if the batch_size is smaller then whats passed in the consturctor the kernel will have a bug and we will never ever know, thats the pain.
+                // Shape (B, T, C) only pointer dependent upon the channel dimension is here
+                // And there is an illegal memory access somewhere here.
                 float *x = attention->forward(batch);
+
 
                 // if (debug)
                 // {
@@ -1462,11 +1464,11 @@ public:
 
                 softmaxAcrossProballityCrossEntropyLoss(prob, batch.y);
 
-                // // if (debug)
-                // // {
-                // //     std::cout << " After sfotmax last two dimension " << std::endl;
-                // //     this->utils->printLastOneOf3D(prob, batch_size, seq_len, vocab_size);
-                // // }
+                // if (debug)
+                // {
+                //     std::cout << " After sfotmax last two dimension " << std::endl;
+                //     this->utils->printLastOneOf3D(prob, batch_size, seq_len, vocab_size);
+                // }
 
                 // // ----------- Lets gather overall paramaters here ---------- //
                 // modelParamaters.attention_head = attention->getParamaters();

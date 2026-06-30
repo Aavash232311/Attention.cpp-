@@ -826,7 +826,7 @@ __global__ void oneHotKernel(
 // SO: for our each B,T we will have a unique vocab as proballity.
 __global__ void crossEntropyLoss(
     float *x,   // (B, T, vocab_size)
-    float *y,   // (vocab_size)
+    int *y,   // (vocab_size)
     float *out, // N loss across all B,T basically.
     int seq_len,
     int vocab_size,
@@ -922,8 +922,8 @@ extern "C"
     }
 
     void CrossEntropy(
-        float *x,
-        int *y,
+        float *x, // (B, T, vocab_size)
+        int *y,   // actual y (B, T) dimension
         float *oneHotOut,
         float *lossOut,
         int batch_size,
@@ -936,11 +936,10 @@ extern "C"
 
         dim3 grid(blocksPerGrid);
         dim3 block(threadsPerBlock);
-
         // actual (B, T) to one-hot encoded (B, T, vocab_size)
         oneHotKernel<<<grid, block>>>(y, oneHotOut, N, vocab_size);
 
-        crossEntropyLoss<<<grid, block>>>(x, oneHotOut, lossOut, seq_len, vocab_size, N);
+        crossEntropyLoss<<<grid, block>>>(x, y, lossOut, seq_len, vocab_size, N);
 
         cudaDeviceSynchronize();
     }
@@ -1035,9 +1034,6 @@ extern "C"
         SoftmaxKernel2D<<<grid, block>>>(arr, out, batch_size, seq_len, vocab_size);
 
         cudaDeviceSynchronize();
-
-        // cudaError_t err = cudaGetLastError();
-        // KernelErrorFlag(err, "CE+Softmax 2D");
     }
 
     void softmax(
@@ -1248,12 +1244,12 @@ extern "C"
 
         cudaDeviceSynchronize();
 
-        //                         cudaError_t err = cudaGetLastError();
-        // if (err != cudaSuccess)
-        // {
-        //     printf("Kernel launch failed: %s\n", cudaGetErrorString(err));
-        //     return;
-        // }
+        cudaError_t err = cudaGetLastError();
+        if (err != cudaSuccess)
+        {
+            printf("Kernel launch failed: %s\n", cudaGetErrorString(err));
+            return;
+        }
     }
 
     void positionalEmbeddings(float *out, int seq_len, int d_model)
