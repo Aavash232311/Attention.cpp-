@@ -1173,18 +1173,24 @@ public:
             seq_len,
             vocab_size);
 
-        // gradient_linear(
-        //     paramaters.h,
-        //     paramaters.device_h,
-        //     paramaters.device_out_h,
-        //     paramaters.dl_dz_out_device, // delta on device
-        //     batch_size,
-        //     seq_len,
-        //     d_model,
-        //     vocab_size);
+        // if (debug) {
+        //     // before transpose the shape if (B, T, C)
+        //     utils->printFlatArray3D(paramaters.h, batch_size, seq_len, d_model);
+        // }
+
+        gradient_linear(
+            paramaters.h,
+            paramaters.device_h,
+            paramaters.device_out_h,
+            paramaters.dl_dz_out_device, // delta on device
+            batch_size,
+            seq_len,
+            d_model,
+            vocab_size);
 
         // if (debug)
         // {
+            
         //     // here we swap the dimension from (B, T, d_model) to (B, d_model, T)
         //     std::cout << "h^T Shape (B, C, T)" << std::endl;
         //     utils->printFlatArray3D(paramaters.h, batch_size, d_model, seq_len);
@@ -1192,20 +1198,18 @@ public:
 
         if (debug)
         {
-            std::cout << "Predicted" << std::endl;
-            DebugBTCFlatArray3D(paramaters.y_predicted, batch_size, seq_len, vocab_size);
+            // std::cout << "Predicted" << std::endl;
+            // DebugBTCFlatArray3D(paramaters.y_predicted, batch_size, seq_len, vocab_size);
 
-            std::cout << "Actual" << std::endl;
-            DebugBTCFlatArray3D(paramaters.y_actual, batch_size, seq_len, vocab_size);
+            // std::cout << "Actual" << std::endl;
+            // DebugBTCFlatArray3D(paramaters.y_actual, batch_size, seq_len, vocab_size);
 
-            std::cout << "dl_dz detla" << std::endl;
-            utils->printLastOneOf3D(paramaters.dl_dz_out_host,
-                batch_size,
-                seq_len,
-                vocab_size
-            );
-
-
+            // std::cout << "dl_dz detla" << std::endl;
+            // utils->printLastOneOf3D(paramaters.dl_dz_out_host,
+            //     batch_size,
+            //     seq_len,
+            //     vocab_size
+            // );
 
             // std::cout << "Actual proballity" << std::endl;
             // utils->printFlatArray3D(paramaters.y_actual, batch_size, seq_len, vocab_size);
