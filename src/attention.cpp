@@ -1134,7 +1134,6 @@ private:
             d_model);
 
         // copy back to host
-
         cudaMemcpy(h_host, h_out, batch_size * d_model * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
     }
 

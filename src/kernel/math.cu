@@ -886,6 +886,8 @@ __global__ void transpose_last_two_kernel(float *input, float *output, int B, in
     }
 }
 
+
+
 extern "C"
 {
 
