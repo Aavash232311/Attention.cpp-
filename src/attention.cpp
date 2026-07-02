@@ -84,12 +84,13 @@ public:
 
     float *devicePositionalEncoding;
 
-    Embeddings(int d_model, int vocab_size, int seq_len, int batch_size) // this batch size can very depending upon the use use
+    Embeddings(int d_model, int vocab_size, int seq_len, int batch_size, bool debug) // this batch size can very depending upon the use use
     {
         this->d_model = d_model;
         this->vocab_size = vocab_size;
         this->seq_len = seq_len;
         this->batch_size = batch_size;
+        this->debug = debug;
 
         cudaMalloc((void **)&devicePositionalEncoding, seq_len * d_model * sizeof(float));
         positionalEmbeddings(devicePositionalEncoding, seq_len, d_model); // Let positional embedding stay on the global memory
@@ -198,7 +199,7 @@ class Linear
     float *deviceArrInTranspose;
 
 public:
-    Linear(int feature_in, int feature_out, int seq_len, int batch_size, int n_head)
+    Linear(int feature_in, int feature_out, int seq_len, int batch_size, int n_head, bool debug)
     {
         this->seq_len = seq_len;
         this->batch_size = batch_size;
@@ -207,6 +208,7 @@ public:
         this->n_head = n_head;
         this->head_dim = feature_out / n_head;
         this->LinearParams(feature_in, feature_out);
+        this->debug = debug;
 
         // pre-allocate memroy in the constructor
         // because we need to flattern this, x (batch_size, seq_len, d_model)
@@ -540,7 +542,8 @@ public:
         int vocab_size,
         int num_heads,
         int seq_len,
-        int batch_size)
+        int batch_size,
+        bool debug)
     {
 
         this->d_model = d_model;
@@ -548,6 +551,7 @@ public:
         this->num_heads = num_heads;
         this->seq_len = seq_len;
         this->batch_size = batch_size;
+        this->debug = debug;
 
         // Its okay to free this in destructor because we are using this buffer throught the duration of
         // this object or iteration anyway.
@@ -556,14 +560,15 @@ public:
             this->d_model,
             this->vocab_size,
             this->seq_len,
-            this->batch_size);
+            this->batch_size,
+            debug);
 
         // Lets seed Q,K,V
-        key = std::make_unique<Linear>(d_model, d_model, seq_len, batch_size, num_heads);
-        query = std::make_unique<Linear>(d_model, d_model, seq_len, batch_size, num_heads);
-        value = std::make_unique<Linear>(d_model, d_model, seq_len, batch_size, num_heads);
+        key = std::make_unique<Linear>(d_model, d_model, seq_len, batch_size, num_heads, debug);
+        query = std::make_unique<Linear>(d_model, d_model, seq_len, batch_size, num_heads, debug);
+        value = std::make_unique<Linear>(d_model, d_model, seq_len, batch_size, num_heads, debug);
 
-        outputProj = std::make_unique<Linear>(d_model, d_model, seq_len, batch_size, num_heads);
+        outputProj = std::make_unique<Linear>(d_model, d_model, seq_len, batch_size, num_heads, debug);
 
         layerNorm = std::make_unique<LayerNorm>(batch_size, seq_len, d_model);
 
@@ -1143,13 +1148,15 @@ public:
         int vocab_size,
         int num_heads,
         int seq_len,
-        int batch_size)
+        int batch_size,
+        bool debug)
     {
         this->d_model = d_model;
         this->vocab_size = vocab_size;
         this->num_heads = num_heads;
         this->seq_len = seq_len;
         this->batch_size = batch_size;
+        this->debug = debug;
 
         this->head_dim = d_model / num_heads;
 
@@ -1189,7 +1196,7 @@ public:
 
         // if (debug)
         // {
-            
+
         //     // here we swap the dimension from (B, T, d_model) to (B, d_model, T)
         //     std::cout << "h^T Shape (B, C, T)" << std::endl;
         //     utils->printFlatArray3D(paramaters.h, batch_size, d_model, seq_len);
@@ -1297,7 +1304,7 @@ public:
         int batch_size,
         int seq_len,
         bool drop_last,
-        const std::vector<int> &data) : data(data)
+        const std::vector<int> &data, bool debug) : data(data)
     {
         this->d_model = d_model;
         this->vocab_size = data.size();
@@ -1305,6 +1312,7 @@ public:
         this->seq_len = seq_len;
         this->drop_last = drop_last;
         this->num_heads = num_heads;
+        this->debug = debug;
 
         utils = std::make_unique<Utility>();
 
@@ -1313,14 +1321,16 @@ public:
             vocab_size,
             num_heads,
             seq_len,
-            batch_size);
+            batch_size,
+            debug);
 
         autograd = std::make_unique<AutoGradEngine>(
             d_model,
             vocab_size,
             num_heads,
             seq_len,
-            batch_size);
+            batch_size,
+            debug);
 
         // BUFFER CPU/GPU allocation for the auto grad engine
         dl_dz_out_host = (float *)malloc(batch_size * seq_len * vocab_size * sizeof(float));
@@ -1328,7 +1338,7 @@ public:
 
         dataLoader = std::make_unique<DataLoader>(batch_size, data, seq_len, drop_last);
 
-        lm_head = std::make_unique<Linear>(d_model, vocab_size, seq_len, batch_size, num_heads);
+        lm_head = std::make_unique<Linear>(d_model, vocab_size, seq_len, batch_size, num_heads, debug);
 
         cudaMalloc((void **)&DeviceSoftmaxBLin, batch_size * seq_len * vocab_size * sizeof(float)); // wont something like this reserve GDDR RAM for too long till the liftspan of the object? Yes. -Avash
         cudaMalloc((void **)&DeviceSoftmaxBLout, batch_size * seq_len * vocab_size * sizeof(float));
@@ -1341,7 +1351,7 @@ public:
 
         // YOU DO NEED THIS PART BECAUSE ANOTHER KERNEL FOR THE CORSS ENTROPY LOSS WILL BE USING THIS.
         cudaMalloc((void **)&yHotEncodeDeviceOut, vocab_size * seq_len * batch_size * sizeof(float)); // (B, T)
-        cudaMemset(yHotEncodeDeviceOut, 0, batch_size * seq_len * vocab_size * sizeof(float)); // make default 0
+        cudaMemset(yHotEncodeDeviceOut, 0, batch_size * seq_len * vocab_size * sizeof(float));        // make default 0
 
         outCrossEntropyHost = (float *)malloc(batch_size * seq_len * vocab_size * sizeof(float));
 
@@ -1434,7 +1444,6 @@ public:
             // DebugBTCFlatArray3D(yHotEncodeDeviceOut, batch_size, seq_len, vocab_size);
         }
 
-
         debug = false;
     }
 
@@ -1452,7 +1461,6 @@ public:
                 // Shape (B, T, C) only pointer dependent upon the channel dimension is here
                 // And there is an illegal memory access somewhere here.
                 float *x = attention->forward(batch);
-
 
                 // if (debug)
                 // {
@@ -1507,6 +1515,14 @@ int main()
     cudaDeviceSynchronize();
     auto start = std::chrono::high_resolution_clock::now();
 
+    bool debug = false;
+
+#ifdef DEBUG
+    debug = true;
+#endif
+
+    std::cout << "Debug: " << debug << std::endl;
+
     int d_model = 32;
     int vocab_size; // that depends upon the data that you are passing.
     int num_heads = 2;
@@ -1536,7 +1552,9 @@ int main()
         batch_size,
         seq_len,
         drop_last,
-        encodedData);
+        encodedData,
+        debug   
+    );
 
     model->train(epoch);
 
