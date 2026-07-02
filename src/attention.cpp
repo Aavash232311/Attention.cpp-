@@ -1530,8 +1530,6 @@ int main()
 
     const std::vector<int> &encodedData = helper->getEncodedList();
 
-    // /* For something like attention we need heap allocation. */
-
     std::unique_ptr<AttentionInterface> model = std::make_unique<AttentionInterface>(
         d_model,
         num_heads,
