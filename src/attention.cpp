@@ -6,10 +6,12 @@
 #include <cstdio>
 #include <chrono>
 
+
 #include "include/linear.hpp"
-#include "include/single_embeddings.hpp"
-#include "include/attention_params.hpp"
+#include "include/cache_out.hpp"
 #include "include/netattention.hpp"
+#include "include/attention_params.hpp"
+#include "include/single_embeddings.hpp"
 
 // Again my background is beginner here with little concept from C
 // Transformer are complex neural network artitecture so I will focus on
@@ -1520,8 +1522,6 @@ int main()
 #ifdef DEBUG
     debug = true;
 #endif
-
-    std::cout << "Debug: " << debug << std::endl;
 
     int d_model = 32;
     int vocab_size; // that depends upon the data that you are passing.
