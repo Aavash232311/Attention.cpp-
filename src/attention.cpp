@@ -156,8 +156,16 @@ public:
         //     this->utils->printFlatArray3D(addedEmbeddingsOut, actual_batch, seq_len, d_model);
         // }
 
-        debug = false;
+        if (debug) 
+        {
+            releaseFile(
+                "token_embeddings.bin",
+                this->hostEmbeddings,
+                d_model * vocab_size
+            );
+        }
 
+        debug = false;
         return addedEmbeddingsOut;
     }
 
