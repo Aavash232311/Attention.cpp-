@@ -23,4 +23,4 @@ with open("./src/cache/token_embeddings.bin", "rb") as f:
 
 token_embeddings = torch.frombuffer(buf, dtype=torch.float32).reshape(32, 892)
 
-# print(token_embeddings)
+print(token_embeddings)

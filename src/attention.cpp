@@ -1324,6 +1324,29 @@ public:
         this->num_heads = num_heads;
         this->debug = debug;
 
+        if (debug)
+        {
+            std::vector<string> key = {
+                "d_model",
+                "vocab_size",
+                "batch_size",
+                "seq_len",
+                "num_heads"
+            };
+
+            std::vector<int> value = {
+                d_model,
+                vocab_size,
+                batch_size,
+                seq_len,
+                num_heads  
+            };
+            
+            // releases the configuration in .json file for
+            // python script to read the dimensiions
+            releaseConfig(key, value);
+        }
+
         utils = std::make_unique<Utility>();
 
         attention = std::make_unique<Attention>(
