@@ -5,7 +5,7 @@ y^* = \text{softmax}(z)
 $$
 
 $$
-L = - \sum_i y_i \log y^*_i
+L = - \sum_i y_i \log {y^*}_i
 $$
 
 $$
@@ -17,13 +17,13 @@ $$
 ### Expanding the loss
 
 $$
-L = - \sum_i y_i \log y^*_i
+L = - \sum_i y_i \log {y^*}_i
 $$
 
 Now take partial derivative w.r.t. $z_k$:
 
 $$
-\frac{\partial}{\partial z_k}(y_i \log y^*_i) = y_i \frac{\partial}{\partial z_k}(\log y^*_i) \tag{i}
+\frac{\partial}{\partial z_k}(y_i \log {y^*}_i) = y_i \frac{\partial}{\partial z_k}(\log {y^*}_i) \tag{i}
 $$
 
 Recalling the chain rule of derivatives:
@@ -35,30 +35,30 @@ $$
 Plugging this back into equation i:
 
 $$
-\frac{\partial (y_i \log y^*_i)}{\partial z_k} = y_i \cdot \frac{1}{y^*_i} \cdot \frac{\partial y^*_i}{\partial z_k}
+\frac{\partial (y_i \log {y^*}_i)}{\partial z_k} = y_i \cdot \frac{1}{{y^*}_i} \cdot \frac{\partial {y^*}_i}{\partial z_k}
 $$
 
 $$
-\frac{\partial (y_i \log y^*_i)}{\partial z_k} = y_i \cdot \frac{1}{y^*_i} \cdot y^*_i (\delta_{ik} - y^*_k)
+\frac{\partial (y_i \log {y^*}_i)}{\partial z_k} = y_i \cdot \frac{1}{{y^*}_i} \cdot {y^*}_i (\delta_{ik} - {y^*}_k)
 $$
 
 $$
-\frac{\partial (y_i \log y^*_i)}{\partial z_k} = y_i (\delta_{ik} - y^*_k)
+\frac{\partial (y_i \log {y^*}_i)}{\partial z_k} = y_i (\delta_{ik} - {y^*}_k)
 $$
 
 $$
-\frac{\partial (y_i \log y^*_i)}{\partial z_k} = y_i \delta_{ik} - y_i y^*_k
+\frac{\partial (y_i \log {y^*}_i)}{\partial z_k} = y_i \delta_{ik} - y_i {y^*}_k
 $$
 
 Now the function
 
 $$
-\frac{\partial L}{\partial z_k} = -\sum_i  (y_i \delta_{ik} - y_i y^*_k)
+\frac{\partial L}{\partial z_k} = -\sum_i  (y_i \delta_{ik} - y_i {y^*}_k)
 $$
 
 Now let's split the sum:
 
-$$-\sum_i y_i \delta_{ik} + \sum_i y_i y^*_k$$
+$$-\sum_i y_i \delta_{ik} + \sum_i y_i {y^*}_k$$
 
 Since $\delta_{ik} = 1$ if and only if $i = k$ (and $0$ otherwise), the first summation collapses to a single term where the index $i$ is replaced by $k$:
 
@@ -68,15 +68,15 @@ $$\sum_i y_i \delta_{ik} = y_k$$
 
 Now lets take a look at the second term
 
-$$\sum_i y_i y^*_k$$
+$$\sum_i y_i {y^*}_k$$
 
-$$y^*_k \sum_i y_i$$
+$${y^*}_k \sum_i y_i$$
 
 Now because of one hot encode giving us yk:-
 
 $$\sum_i y_i = 1$$
 
-$$-y_k + y^*_k = y^*_k - y_k = \frac{\partial L}{\partial z_k}$$
+$$-y_k + {y^*}_k = {y^*}_k - y_k = \frac{\partial L}{\partial z_k}$$
 
 <hr />
 
@@ -87,7 +87,7 @@ J(y^*) = \text{diag}(y^*) - y^* {y^*}^T
 $$
 
 $$
-\frac{\partial y^*_i}{\partial z_k} = J_{ik}
+\frac{\partial {y^*}_i}{\partial z_k} = J_{ik}
 $$
 
 ### Now lets take a look at lm head
