@@ -12,7 +12,6 @@ $$
 \delta_{\text{logits}} = \frac{\partial L}{\partial z} = \hat{y} - y
 $$
 
----
 
 ### Expanding the loss
 
