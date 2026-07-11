@@ -58,13 +58,7 @@ class Predictability:
 
     def token_embeddings(self, fan_in, fan_out):
         p = self.he_init(fan_in, fan_out)
-
-        # with open("output.bin", "wb") as file:
-        #     pass
-
-        print(Path.cwd())
-
-
+        p.detach().cpu().numpy().tofile("./src/cache/token_embeddings.bin")
 
 d_model = data['d_model']
 vocab_size = data['vocab_size']
