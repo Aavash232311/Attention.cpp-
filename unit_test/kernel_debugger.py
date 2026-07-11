@@ -51,13 +51,19 @@ class Predictability:
         self.batch_size = batch_size
 
 
-    def he_init(fan_in, fan_out):
+    def he_init(self, fan_in, fan_out):
         std = (2.0 / fan_in) ** 0.5
         return torch.randn(fan_out, fan_in) * std  # For initillization of token embeddings
 
 
     def token_embeddings(self, fan_in, fan_out):
-        return self.he_init(fan_in, fan_out)
+        p = self.he_init(fan_in, fan_out)
+
+        # with open("output.bin", "wb") as file:
+        #     pass
+
+        print(Path.cwd())
+
 
 
 d_model = data['d_model']
@@ -66,8 +72,15 @@ batch_size = data['batch_size']
 seq_len = data['seq_len']
 num_heads = data['num_heads']
 
-# print(d_model)
-# print(vocab_size)
-# print(batch_size)
-# print(seq_len)
-# print(num_heads)
+predictability = Predictability(
+    d_model=d_model,
+    vocab_size=vocab_size,
+    seq_len=seq_len,
+    batch_size=batch_size
+)
+
+
+predictability.token_embeddings(
+    vocab_size,
+    d_model
+)

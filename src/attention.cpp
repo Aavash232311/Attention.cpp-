@@ -1539,6 +1539,19 @@ int main()
 
     bool hyperParamaterRelease = false;
 
+    std::string path = "./src/data/chunk.txt";
+
+    auto utils = std::make_unique<Utility>();
+
+    auto textEncoderFile = std::make_unique<EncoderText>();
+
+    textEncoderFile->loadTextChunk(path); // load that into char arr
+
+    auto &charPool = textEncoderFile->getFileAsChar();
+    auto helper = std::make_unique<Helper>(charPool);
+
+    vocab_size = charPool.size();
+
 #ifdef PARAMS
     hyperParamaterRelease = true;
 #endif
@@ -1553,23 +1566,9 @@ int main()
             vocab_size,
             batch_size,
             seq_len,
-            num_heads
-        );
+            num_heads);
         return 0;
     }
-
-    std::string path = "./src/data/chunk.txt";
-
-    auto utils = std::make_unique<Utility>();
-
-    auto textEncoderFile = std::make_unique<EncoderText>();
-
-    textEncoderFile->loadTextChunk(path); // load that into char arr
-
-    auto &charPool = textEncoderFile->getFileAsChar();
-    auto helper = std::make_unique<Helper>(charPool);
-
-    vocab_size = charPool.size();
 
     const std::vector<int> &encodedData = helper->getEncodedList();
 
