@@ -7,8 +7,10 @@ from pathlib import Path
     File based dump verification
  '''
 
-# Execute and compile with the debugger flag
-os.system("nvcc -DDEBUG src/attention.cpp src/kernel/math.cu -o src/bin/attention")
+# First C++ execution to retrive the hyperparamaters with -PARAMS flag
+os.system(
+    "nvcc -DDEBUG -DPARAMS src/attention.cpp src/kernel/math.cu -o src/bin/attention"
+)
 os.system("./src/bin/attention")
 
 
@@ -29,10 +31,43 @@ except (FileNotFoundError, json.JSONDecodeError) as e:
     print("Exiting program.")
     sys.exit(1)  
 
-with open("./src/cache/token_embeddings.bin", "rb") as f:
-    buf = f.read()
-
-token_embeddings = torch.frombuffer(buf, dtype=torch.float32).reshape(data['d_model'], data['vocab_size'])
+# with open("./src/cache/token_embeddings.bin", "rb") as f:
+#     buf = f.read()
 
 
-print(token_embeddings)
+'''
+Randomness lies in the init of weight and bias.
+So we are going to generate that in python and load in C++
+and then run the debugger.
+
+'''
+
+class Predictability:
+
+    def __init__(self, d_model, vocab_size, seq_len, batch_size):
+        self.d_model = d_model
+        self.vocab_size = vocab_size
+        self.seq_len = seq_len
+        self.batch_size = batch_size
+
+
+    def he_init(fan_in, fan_out):
+        std = (2.0 / fan_in) ** 0.5
+        return torch.randn(fan_out, fan_in) * std  # For initillization of token embeddings
+
+
+    def token_embeddings(self, fan_in, fan_out):
+        return self.he_init(fan_in, fan_out)
+
+
+d_model = data['d_model']
+vocab_size = data['vocab_size']
+batch_size = data['batch_size']
+seq_len = data['seq_len']
+num_heads = data['num_heads']
+
+# print(d_model)
+# print(vocab_size)
+# print(batch_size)
+# print(seq_len)
+# print(num_heads)

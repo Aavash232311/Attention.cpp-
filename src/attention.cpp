@@ -6,7 +6,6 @@
 #include <cstdio>
 #include <chrono>
 
-
 #include "include/linear.hpp"
 #include "include/cache_out.hpp"
 #include "include/netattention.hpp"
@@ -156,13 +155,12 @@ public:
         //     this->utils->printFlatArray3D(addedEmbeddingsOut, actual_batch, seq_len, d_model);
         // }
 
-        if (debug) 
+        if (debug)
         {
             releaseFile(
                 "token_embeddings.bin",
                 this->hostEmbeddings,
-                d_model * vocab_size
-            );
+                d_model * vocab_size);
         }
 
         debug = false;
@@ -1324,27 +1322,6 @@ public:
         this->num_heads = num_heads;
         this->debug = debug;
 
-        if (debug)
-        {
-            std::vector<string> key = {
-                "d_model",
-                "vocab_size",
-                "batch_size",
-                "seq_len",
-                "num_heads"
-            };
-
-            std::vector<int> value = {
-                d_model,
-                vocab_size,
-                batch_size,
-                seq_len,
-                num_heads  
-            };
-            
-            releaseConfig(key, value);
-        }
-
         utils = std::make_unique<Utility>();
 
         attention = std::make_unique<Attention>(
@@ -1560,6 +1537,27 @@ int main()
     int epoch = 12;
     bool drop_last = true; // for training set this to false, if someone is serious about this email me. the cost of implementing this feature will affect everything in depth many tradeoffs
 
+    bool hyperParamaterRelease = false;
+
+#ifdef PARAMS
+    hyperParamaterRelease = true;
+#endif
+
+    if (hyperParamaterRelease)
+    {
+        // Python debugger wants hyperparams to initlize item to totally remove randomness
+        // to redice the kernels, if compiled with this flag then the program ends here
+
+        releaseHyperParamaters(
+            d_model,
+            vocab_size,
+            batch_size,
+            seq_len,
+            num_heads
+        );
+        return 0;
+    }
+
     std::string path = "./src/data/chunk.txt";
 
     auto utils = std::make_unique<Utility>();
@@ -1582,8 +1580,7 @@ int main()
         seq_len,
         drop_last,
         encodedData,
-        debug   
-    );
+        debug);
 
     model->train(epoch);
 

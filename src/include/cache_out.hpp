@@ -74,3 +74,30 @@ void releaseConfig(
 
     out.close();
 }
+
+// Realeses json for hyperparamaters config
+
+void releaseHyperParamaters(
+    int d_model,
+    int vocab_size,
+    int batch_size,
+    int seq_len,
+    int num_heads
+)
+{
+    std::vector<string> key = {
+        "d_model",
+        "vocab_size",
+        "batch_size",
+        "seq_len",
+        "num_heads"};
+
+    std::vector<int> value = {
+        d_model,
+        vocab_size,
+        batch_size,
+        seq_len,
+        num_heads};
+
+    releaseConfig(key, value);
+}
