@@ -1342,8 +1342,6 @@ public:
                 num_heads  
             };
             
-            // releases the configuration in .json file for
-            // python script to read the dimensiions
             releaseConfig(key, value);
         }
 
