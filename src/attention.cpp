@@ -7,6 +7,7 @@
 #include <chrono>
 
 #include "include/linear.hpp"
+#include "include/cache_in.hpp"
 #include "include/cache_out.hpp"
 #include "include/netattention.hpp"
 #include "include/attention_params.hpp"
@@ -96,6 +97,9 @@ public:
         cudaMalloc((void **)&devicePositionalEncoding, seq_len * d_model * sizeof(float));
         positionalEmbeddings(devicePositionalEncoding, seq_len, d_model); // Let positional embedding stay on the global memory
 
+        // If we have the debugger flag then use the paramaters from the python so that we can test the
+        // equilvalent code.
+
         // this gets changed in the backpropagation
         this->tokenEmbeddings = initilizer->HeInit(this->vocab_size, this->d_model); // token embeddings, Shape(vocab_size, d_model)
                                                                                      // initlize fixed memory here so that our program runs faster.
@@ -154,14 +158,6 @@ public:
         //     std::cout << " Added embeddings from embedding method " << std::endl;
         //     this->utils->printFlatArray3D(addedEmbeddingsOut, actual_batch, seq_len, d_model);
         // }
-
-        if (debug)
-        {
-            releaseFile(
-                "token_embeddings.bin",
-                this->hostEmbeddings,
-                d_model * vocab_size);
-        }
 
         debug = false;
         return addedEmbeddingsOut;
@@ -1567,6 +1563,8 @@ int main()
             batch_size,
             seq_len,
             num_heads);
+
+        readHyperparameters();
         return 0;
     }
 
