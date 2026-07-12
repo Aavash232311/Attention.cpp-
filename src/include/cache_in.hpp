@@ -22,7 +22,6 @@ struct Hyperparamaters
     int batch_size;
 };
 
-
 // why would we want to do something like this?
 // to load hyperparamaters in the seed that we are trying to initlize
 
@@ -31,22 +30,33 @@ Hyperparamaters readHyperparameters()
     std::string path = "./src/cache/config.json";
     std::ifstream file(path);
 
-    if (!file.is_open())
+    try
     {
-        std::cerr << "Failed to open: " << path << '\n';
-        throw exception();
+        if (!file.is_open())
+        {
+            // Throw a specific runtime error with a helpful message
+            throw std::runtime_error("Failed to open config file: " + path);
+        }
+
+        json data;
+        file >> data;
+
+        Hyperparamaters paramaters = {
+            data["d_model"],
+            data["vocab_size"],
+            data["seq_len"],
+            data["seq_len"],
+            data["batch_size"]
+        };
+        
+        return paramaters;
     }
-
-    json data;
-    file >> data;
-
-    Hyperparamaters paramaters = {
-        data["d_model"],
-        data["vocab_size"],
-        data["seq_len"],
-        data["seq_len"],
-        data["batch_size"]
-    };
-
-    return paramaters;
+    catch (const std::exception& e)
+    {
+        // Log the actual error message
+        std::cerr << "Error: " << e.what() << '\n';
+        
+        // Re-throw the exception or return a default object depending on your architectural needs
+        throw; 
+    }
 }

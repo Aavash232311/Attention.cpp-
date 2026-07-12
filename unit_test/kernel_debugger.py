@@ -7,7 +7,11 @@ from pathlib import Path
     File based dump verification
  '''
 
-# First C++ execution to retrive the hyperparamaters with -PARAMS flag
+
+
+'''
+Reaseases hyperparamaters from C++ in a json file
+'''
 os.system(
     "nvcc -DDEBUG -DPARAMS src/attention.cpp src/kernel/math.cu -o src/bin/attention"
 )
@@ -78,3 +82,11 @@ predictability.token_embeddings(
     vocab_size,
     d_model
 )
+
+'''
+    Loads C++ with python generated paramaters to avoid randomness
+'''
+os.system(
+    "nvcc -DDEBUG -DDRUN src/attention.cpp src/kernel/math.cu -o src/bin/attention"
+)
+os.system("./src/bin/attention")
