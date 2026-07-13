@@ -45,7 +45,7 @@ So we are going to generate that in python and load in C++
 and then run the debugger.
 
 '''
-
+# Output of component that have randomness
 class Predictability:
 
     def __init__(self, d_model, vocab_size, seq_len, batch_size):
@@ -62,7 +62,11 @@ class Predictability:
 
     def token_embeddings(self, fan_in, fan_out):
         p = self.he_init(fan_in, fan_out)
-        p.detach().cpu().numpy().tofile("./src/cache/token_embeddings.bin")
+        p.detach().cpu().numpy().tofile("./src/cache/pytorch_out/token_embeddings.bin")
+
+
+    def positional_encoding(self, seq_len, d_model):
+        pass
 
 d_model = data['d_model']
 vocab_size = data['vocab_size']
@@ -90,3 +94,40 @@ os.system(
     "nvcc -DDEBUG -DDRUN src/attention.cpp src/kernel/math.cu -o src/bin/attention"
 )
 os.system("./src/bin/attention")
+
+'''
+    DEBUG EMBEDDINGS
+
+    HE-INIT is done in python and loaded in C++
+    C++ kernels outputs added positional embeddings
+'''
+
+
+class Debugger:
+
+    def __init__(self, d_model, vocab_size, batch_size, seq_len, num_heads ,folder):
+        self.folder = folder
+        self.d_model = d_model
+        self.batch_size = batch_size
+        self.seq_len = seq_len
+        self.num_heads = num_heads
+
+
+    def readEmbeddings(self, file_name):
+        num_elements = batch_size * seq_len * d_model
+        path = os.path.join(self.folder, file_name)
+
+        flat = torch.from_file(path, size=num_elements, dtype=torch.float32)
+        tensor = flat.reshape(batch_size, seq_len, d_model)
+        print(tensor)
+
+
+debugger = Debugger(
+    d_model=d_model,
+    vocab_size=vocab_size,
+    batch_size=batch_size,
+    seq_len=seq_len,
+    num_heads=num_heads,
+    folder='./src/cache/cpp_out'
+)
+debugger.readEmbeddings('embedding.bin')

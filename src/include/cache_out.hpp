@@ -12,7 +12,7 @@ void releaseFile(
     const float *data,
     size_t num_elements)
 {
-    const string path = "./src/cache/" + filename;
+    const string path = "./src/cache/cpp_out/" + filename;
 
     std::ofstream out(path, std::ios::binary);
 
