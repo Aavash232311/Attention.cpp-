@@ -98,9 +98,6 @@ public:
         cudaMalloc((void **)&devicePositionalEncoding, seq_len * d_model * sizeof(float));
         positionalEmbeddings(devicePositionalEncoding, seq_len, d_model); // Let positional embedding stay on the global memory
 
-        // If we have the debugger flag then use the paramaters from the python so that we can test the
-        // equilvalent code.
-
         // this gets changed in the backpropagation
         if (debug)
         {

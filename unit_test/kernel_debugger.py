@@ -1,6 +1,7 @@
 
 import os
 from pathlib import Path
+from ml_components.positional_encoding import sinusoidal_positional_encoding
 
 
 ''' Automated debugging script for CUDA kernel in attention.cpp
@@ -57,16 +58,16 @@ class Predictability:
 
     def he_init(self, fan_in, fan_out):
         std = (2.0 / fan_in) ** 0.5
-        return torch.randn(fan_out, fan_in) * std  # For initillization of token embeddings
+        dist = torch.randn(fan_out, fan_in) * std  # For initillization of token embeddings
+        return dist
 
 
     def token_embeddings(self, fan_in, fan_out):
         p = self.he_init(fan_in, fan_out)
         p.detach().cpu().numpy().tofile("./src/cache/pytorch_out/token_embeddings.bin")
+        return p
 
 
-    def positional_encoding(self, seq_len, d_model):
-        pass
 
 d_model = data['d_model']
 vocab_size = data['vocab_size']
@@ -82,7 +83,7 @@ predictability = Predictability(
 )
 
 
-predictability.token_embeddings(
+token_embeddings = predictability.token_embeddings(
     vocab_size,
     d_model
 )
@@ -112,14 +113,13 @@ class Debugger:
         self.seq_len = seq_len
         self.num_heads = num_heads
 
-
     def readEmbeddings(self, file_name):
         num_elements = batch_size * seq_len * d_model
         path = os.path.join(self.folder, file_name)
 
         flat = torch.from_file(path, size=num_elements, dtype=torch.float32)
-        tensor = flat.reshape(batch_size, seq_len, d_model)
-        print(tensor)
+        return flat.reshape(batch_size, seq_len, d_model)
+    
 
 
 debugger = Debugger(
@@ -130,4 +130,20 @@ debugger = Debugger(
     num_heads=num_heads,
     folder='./src/cache/cpp_out'
 )
-debugger.readEmbeddings('embedding.bin')
+
+
+def total_emebddings(te, pe):
+    # positional encoding [seq_len, d_model]
+    # token embedding [vocab_size, d_model]
+    pass
+
+
+pe = sinusoidal_positional_encoding(seq_len=seq_len, d_model=d_model)
+
+# total embeddings from pytorch
+p_embeddings = total_emebddings(token_embeddings, pe)
+
+# total emebddings output from the kernel
+k_embeddings = debugger.readEmbeddings('embedding.bin')
+
+

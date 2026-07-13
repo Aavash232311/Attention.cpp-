@@ -1,23 +1,12 @@
-import math
 import torch
 
-def get_positional_encoding(seq_len: int, d_model: int) -> torch.Tensor:
-    position = torch.arange(seq_len).unsqueeze(1)  
-
-    div_term = torch.exp(
-        torch.arange(0, d_model, 2) * (-math.log(10000.0) / d_model)
-    )
-
+def sinusoidal_positional_encoding(seq_len, d_model):
     pe = torch.zeros(seq_len, d_model)
-    
-    pe[:, 0::2] = torch.sin(position * div_term)
-    pe[:, 1::2] = torch.cos(position * div_term)
+    position = torch.arange(0, seq_len, dtype=torch.float32).unsqueeze(1)  # [seq_len, 1]
+    div_term = torch.exp(torch.arange(0, d_model, 2, dtype=torch.float32) *
+                          (-torch.log(torch.tensor(10000.0)) / d_model))
 
-    return pe
+    pe[:, 0::2] = torch.sin(position * div_term)  # even indices
+    pe[:, 1::2] = torch.cos(position * div_term)  # odd indices
 
-
-seq_len = 128
-d_model = 512
-
-pe = get_positional_encoding(seq_len, d_model)
-print(pe.shape) 
+    return pe  # [seq_len, d_model]
