@@ -131,19 +131,32 @@ debugger = Debugger(
     folder='./src/cache/cpp_out'
 )
 
+# I understand low level kernel code better than this python, idk if this is normal
+def total_emebddings(te, pe, input_ids):
+    # positional encoding (seq_len, d_model)
+    # token embedding [d_model, vocab_size]
 
-def total_emebddings(te, pe):
-    # positional encoding [seq_len, d_model]
-    # token embedding [vocab_size, d_model]
-    pass
+    # takes all rows
+    token_embeddings = te[:, input_ids]          # (d_model, B, T)
+    token_embeddings = token_embeddings.permute(1, 2, 0)  # (B, T, d_model)
 
+    total = token_embeddings + pe.unsqueeze(0)   # (B, T, d_model)
+    return total
 
 pe = sinusoidal_positional_encoding(seq_len=seq_len, d_model=d_model)
 
+input_ids = torch.randint(0, vocab_size, (batch_size, seq_len))
+
 # total embeddings from pytorch
-p_embeddings = total_emebddings(token_embeddings, pe)
+
+torch.set_printoptions(precision=4)
+p_total_embeddings = total_emebddings(token_embeddings, pe, input_ids)
 
 # total emebddings output from the kernel
-k_embeddings = debugger.readEmbeddings('embedding.bin')
+k_total_emebddings = debugger.readEmbeddings('embedding.bin')
 
 
+print("From C++ kernel")
+print(k_total_emebddings)
+print("From pytorch")
+print(p_total_embeddings)

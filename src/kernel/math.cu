@@ -46,28 +46,31 @@ __global__ void addVec(const float *a, const float *b, float *c, int N)
 __global__ void LookUpKernel(
     int *x,            // Shape(seq_len, batch_size)
     float *embeddings, // Shape(vocab_size, d_mdoel)
-    float *C,
+    float *C, // (seq_len, batch_size, d_model)
     int d_model,
     int seq_len,
     int batch_size,
     int vocab_size)
 {
     // We want the loopup into embeddings table.
-    int rows = blockIdx.x;
-    int cols = blockIdx.y;
+    int rows = blockIdx.x; // this is future me reading god you were a genious.
+    int cols = blockIdx.y; 
     int e = threadIdx.x;
 
     if (rows >= seq_len || cols >= batch_size)
         return;
 
     int index = (rows * batch_size) + cols;
+    // for each entry of x, you grab matching row,
     int valX = x[index]; // now this value will be used to search on lookup table.
 
+    // (row * size) + cols, remember 8-5 react dev the formula you used when debugging the kernel 
     int indexB = (valX * d_model) + e; // when the kenrnel launches its distrubuted acrosss the matrix B in our case in embeddins so we are accounting for threads.
     float valB = embeddings[indexB];
 
     // Final shape of the output we would want it to be Shape(seq_len, batch_size, d_model)
-    C[rows * batch_size * d_model + cols * d_model + e] = valB;
+    int out_idx = rows * (batch_size * d_model) + cols * d_model + e;
+    C[out_idx] = valB;
     // if we were do another kenel launch then data gets transfered from PCIe express BUS that is costly lets so that here.
     // Lets think through here.
     // Things are happenning in parallel and we could end up writing one memory address many times so
@@ -92,7 +95,7 @@ __global__ void FinalEmbeddingKernel(
 
     int idxSinosudialEncoding = (rows * d_model) + e; // width = d_model of sinosudial encoding
 
-    int idxLookedUpEmbeddings = rows * batch_size * d_model + cols * d_model + e;
+    int idxLookedUpEmbeddings = rows * (batch_size * d_model) + cols * d_model + e; 
 
     C[idxLookedUpEmbeddings] = lookedUpEmbeddings[idxLookedUpEmbeddings] + sinosudialEncoding[idxSinosudialEncoding];
 }
@@ -1225,8 +1228,8 @@ extern "C"
         cudaDeviceSynchronize();
     }
     void lookup(
-        int *x,
-        float *embeddings,
+        int *x, // something like seq x batch_size
+        float *embeddings, // te (vocab_size * d_model)
         float *C,
         int d_model,
         int seq_len,
