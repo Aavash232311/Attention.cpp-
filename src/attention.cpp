@@ -1543,7 +1543,6 @@ int main()
     cudaDeviceSynchronize();
     auto start = std::chrono::high_resolution_clock::now();
 
-    // This meant for quick debug using the print statement
     bool debug = true;
 // #ifdef DEBUG
 //     debug = true;
