@@ -1,14 +1,10 @@
-
 import os
 from pathlib import Path
 from ml_components.positional_encoding import sinusoidal_positional_encoding
 
-
 ''' Automated debugging script for CUDA kernel in attention.cpp
     File based dump verification
  '''
-
-
 
 '''
 Reaseases hyperparamaters from C++ in a json file
@@ -30,23 +26,18 @@ import sys
 try:
     with open('./src/cache/config.json', 'r', encoding='utf-8') as file:
         data = json.load(file)
-        
+
 except (FileNotFoundError, json.JSONDecodeError) as e:
     print(f"Critical Error: {e}")
     print("Exiting program.")
-    sys.exit(1)  
-
-# with open("./src/cache/token_embeddings.bin", "rb") as f:
-#     buf = f.read()
+    sys.exit(1)
 
 
 '''
 Randomness lies in the init of weight and bias.
 So we are going to generate that in python and load in C++
 and then run the debugger.
-
 '''
-# Output of component that have randomness
 class Predictability:
 
     def __init__(self, d_model, vocab_size, seq_len, batch_size):
@@ -55,18 +46,15 @@ class Predictability:
         self.seq_len = seq_len
         self.batch_size = batch_size
 
-
     def he_init(self, fan_in, fan_out):
         std = (2.0 / fan_in) ** 0.5
-        dist = torch.randn(fan_out, fan_in) * std  # For initillization of token embeddings
+        dist = torch.randn(fan_out, fan_in) * std
         return dist
-
 
     def token_embeddings(self, fan_in, fan_out):
         p = self.he_init(fan_in, fan_out)
         p.detach().cpu().numpy().tofile("./src/cache/pytorch_out/token_embeddings.bin")
         return p
-
 
 
 d_model = data['d_model']
@@ -84,9 +72,12 @@ predictability = Predictability(
 
 
 token_embeddings = predictability.token_embeddings(
-    vocab_size,
-    d_model
+    d_model,
+    vocab_size
 )
+
+input_ids = torch.randint(0, vocab_size, (seq_len, batch_size))
+input_ids.to(torch.int32).numpy().tofile("./src/cache/pytorch_out/input_ids.bin")
 
 '''
     Loads C++ with python generated paramaters to avoid randomness
@@ -106,19 +97,24 @@ os.system("./src/bin/attention")
 
 class Debugger:
 
-    def __init__(self, d_model, vocab_size, batch_size, seq_len, num_heads ,folder):
+    def __init__(self, d_model, vocab_size, batch_size, seq_len, num_heads, folder):
         self.folder = folder
         self.d_model = d_model
         self.batch_size = batch_size
         self.seq_len = seq_len
         self.num_heads = num_heads
 
-    def readEmbeddings(self, file_name):
-        num_elements = batch_size * seq_len * d_model
+    def readEmbeddings(self, file_name, N):
         path = os.path.join(self.folder, file_name)
 
-        flat = torch.from_file(path, size=num_elements, dtype=torch.float32)
-        return flat.reshape(batch_size, seq_len, d_model)
+        flat = torch.from_file(path, size=N, dtype=torch.float32)
+        return flat.reshape(self.batch_size, self.seq_len, self.d_model)
+    
+    def readX(self, file_name, N):
+        path = os.path.join(self.folder, file_name)
+
+        flat = torch.from_file(path, size=N, dtype=torch.int32) 
+        return flat.reshape(self.seq_len, self.batch_size)
     
 
 
@@ -131,32 +127,36 @@ debugger = Debugger(
     folder='./src/cache/cpp_out'
 )
 
-# I understand low level kernel code better than this python, idk if this is normal
+
+
+# standard nn.Embedding convention te[input_ids]  no more
+# te[:, input_ids] + permute dance.
 def total_emebddings(te, pe, input_ids):
-    # positional encoding (seq_len, d_model)
-    # token embedding [d_model, vocab_size]
+    # te: (vocab_size, d_model)
+    # pe: (seq_len, d_model)
+    # input_ids: (seq_len, batch_size)
 
-    # takes all rows
-    token_embeddings = te[:, input_ids]          # (d_model, B, T)
-    token_embeddings = token_embeddings.permute(1, 2, 0)  # (B, T, d_model)
+    token_embeddings = te[input_ids]            # (seq_len, batch_size, d_model)
+    token_embeddings = token_embeddings.permute(1, 0, 2)  # (batch_size, seq_len, d_model)
 
-    total = token_embeddings + pe.unsqueeze(0)   # (B, T, d_model)
+    total = token_embeddings + pe.unsqueeze(0)  # (batch_size, seq_len, d_model)
     return total
+
 
 pe = sinusoidal_positional_encoding(seq_len=seq_len, d_model=d_model)
 
-input_ids = torch.randint(0, vocab_size, (batch_size, seq_len))
-
-# total embeddings from pytorch
-
 torch.set_printoptions(precision=4)
+
+
 p_total_embeddings = total_emebddings(token_embeddings, pe, input_ids)
 
 # total emebddings output from the kernel
-k_total_emebddings = debugger.readEmbeddings('embedding.bin')
+k_total_emebddings = debugger.readEmbeddings('embedding.bin', batch_size * seq_len * d_model)
+x = debugger.readX("x.bin", seq_len * batch_size)
 
+print(x)
 
-print("From C++ kernel")
-print(k_total_emebddings)
-print("From pytorch")
-print(p_total_embeddings)
+# print("From C++ kernel")
+# print(k_total_emebddings)
+# print("From pytorch")
+# print(p_total_embeddings)

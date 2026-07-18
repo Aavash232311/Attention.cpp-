@@ -173,6 +173,17 @@ public:
 
         if (debug)
         {
+            // lets release that x from C++, this happens once
+            // but we must release it because python needs that.
+
+            releaseFile( // 1 item of a batch
+                "x.bin",
+                hostX,
+                actual_batch * seq_len
+            );
+
+            utils->printFlatArray2D(hostX, seq_len, batch_size);
+
             // release net embeddings to a binary file
             releaseFile(
                 "embedding.bin",

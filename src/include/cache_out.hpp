@@ -7,16 +7,17 @@
 using namespace std;
 namespace fs = std::filesystem;
 
+template <typename T>
 void releaseFile(
     const std::string &filename,
-    const float *data,
+    const T *data,
     size_t num_elements)
 {
-    const string path = "./src/cache/cpp_out/" + filename;
+    const std::string path = "./src/cache/cpp_out/" + filename;
 
     std::ofstream out(path, std::ios::binary);
 
-    out.write(reinterpret_cast<const char *>(data), num_elements * sizeof(float));
+    out.write(reinterpret_cast<const char *>(data), num_elements * sizeof(T));
 }
 
 string jsonEscape(const string &s)

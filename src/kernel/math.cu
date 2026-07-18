@@ -46,7 +46,7 @@ __global__ void addVec(const float *a, const float *b, float *c, int N)
 __global__ void LookUpKernel(
     int *x,            // Shape(seq_len, batch_size)
     float *embeddings, // Shape(vocab_size, d_mdoel)
-    float *C, // (seq_len, batch_size, d_model)
+    float *C,          // B, T, C
     int d_model,
     int seq_len,
     int batch_size,
@@ -54,7 +54,7 @@ __global__ void LookUpKernel(
 {
     // We want the loopup into embeddings table.
     int rows = blockIdx.x; // this is future me reading god you were a genious.
-    int cols = blockIdx.y; 
+    int cols = blockIdx.y;
     int e = threadIdx.x;
 
     if (rows >= seq_len || cols >= batch_size)
@@ -64,12 +64,12 @@ __global__ void LookUpKernel(
     // for each entry of x, you grab matching row,
     int valX = x[index]; // now this value will be used to search on lookup table.
 
-    // (row * size) + cols, remember 8-5 react dev the formula you used when debugging the kernel 
+    // (row * size) + cols, remember 8-5 react dev the formula you used when debugging the kernel
     int indexB = (valX * d_model) + e; // when the kenrnel launches its distrubuted acrosss the matrix B in our case in embeddins so we are accounting for threads.
     float valB = embeddings[indexB];
 
     // Final shape of the output we would want it to be Shape(seq_len, batch_size, d_model)
-    int out_idx = rows * (batch_size * d_model) + cols * d_model + e;
+    int out_idx = cols * (seq_len * d_model) + rows * d_model + e;
     C[out_idx] = valB;
     // if we were do another kenel launch then data gets transfered from PCIe express BUS that is costly lets so that here.
     // Lets think through here.
@@ -79,25 +79,25 @@ __global__ void LookUpKernel(
 }
 
 __global__ void FinalEmbeddingKernel(
-    float *lookedUpEmbeddings, // Shape (batch_size, seq_len, d_model)
+    float *lookedUpEmbeddings, // Shape BTC
     float *sinosudialEncoding, // Shape (seq_len, d_model)
-    float *C,                  // Shape(batch_size, seq_len, d_model)
+    float *C,                  // Shape (batch_size, seq_len, d_model)  BTC
     int d_model,
     int seq_len,
     int batch_size)
 {
-    int rows = blockIdx.x; // This gives the row and col of grid.
-    int cols = blockIdx.y;
+    int rows = blockIdx.x; // seq position (s)
+    int cols = blockIdx.y; // batch index (b)
     int e = threadIdx.x;
 
-    if (rows >= seq_len || cols >= batch_size)
+    if (rows >= seq_len || cols >= batch_size || e >= d_model)
         return;
 
-    int idxSinosudialEncoding = (rows * d_model) + e; // width = d_model of sinosudial encoding
+    int idxSinosudialEncoding = rows * d_model + e; // (seq_len, d_model) — unaffected
 
-    int idxLookedUpEmbeddings = rows * (batch_size * d_model) + cols * d_model + e; 
-
-    C[idxLookedUpEmbeddings] = lookedUpEmbeddings[idxLookedUpEmbeddings] + sinosudialEncoding[idxSinosudialEncoding];
+    // output (matches declared C shape)
+    int idx = cols * (seq_len * d_model) + rows * d_model + e;
+    C[idx] = lookedUpEmbeddings[idx] + sinosudialEncoding[idxSinosudialEncoding];
 }
 
 // For token embeddings we did it on CPU because its initliized once the consturcotr is loaded for this we will be using the GPU
@@ -829,7 +829,7 @@ __global__ void oneHotKernel(
 // SO: for our each B,T we will have a unique vocab as proballity.
 __global__ void crossEntropyLoss(
     float *x,   // (B, T, vocab_size)
-    int *y,   // (vocab_size)
+    int *y,     // (vocab_size)
     float *out, // N loss across all B,T basically.
     int seq_len,
     int vocab_size,
@@ -889,8 +889,6 @@ __global__ void transpose_last_two_kernel(float *input, float *output, int B, in
     }
 }
 
-
-
 extern "C"
 {
 
@@ -927,8 +925,8 @@ extern "C"
     }
 
     void CrossEntropy(
-        float *x, // (B, T, vocab_size)
-        int *y,   // actual y (B, T) dimension
+        float *x,         // (B, T, vocab_size)
+        int *y,           // actual y (B, T) dimension
         float *oneHotOut, // (B, T, vocab_size)
         float *lossOut,
         int batch_size,
@@ -1228,7 +1226,7 @@ extern "C"
         cudaDeviceSynchronize();
     }
     void lookup(
-        int *x, // something like seq x batch_size
+        int *x,            // something like seq x batch_size
         float *embeddings, // te (vocab_size * d_model)
         float *C,
         int d_model,
