@@ -114,7 +114,7 @@ public:
         {
             this->tokenEmbeddings = initilizer->HeInit(this->vocab_size, this->d_model); // token embeddings, Shape(vocab_size, d_model)
                                                                                          // initlize fixed memory here so that our program runs faster.
-            hostEmbeddings = utils->TwoDVectorToFlatMem(this->tokenEmbeddings); // this is from I am learning so I was too scared to touch kernel
+            hostEmbeddings = utils->TwoDVectorToFlatMem(this->tokenEmbeddings);          // this is from I am learning so I was too scared to touch kernel
         }
 
         int sizeFinalEmbeddings = seq_len * d_model * batch_size * sizeof(float);
@@ -179,8 +179,7 @@ public:
             releaseFile( // 1 item of a batch
                 "x.bin",
                 hostX,
-                actual_batch * seq_len
-            );
+                actual_batch * seq_len);
 
             utils->printFlatArray2D(hostX, seq_len, batch_size);
 
@@ -188,8 +187,7 @@ public:
             releaseFile(
                 "embedding.bin",
                 addedEmbeddingsOut,
-                actual_batch * seq_len * d_model
-            );
+                actual_batch * seq_len * d_model);
         }
 
         debug = false;
@@ -317,11 +315,14 @@ public:
         cudaFree(d_state_weight);
         cudaFree(d_state_bias);
 
-        // std::cout << "Weight" << std::endl;
-        // utils->printFlatArray2D(weight, fan_in, fan_out);
-        // std::cout << "Bias" << std::endl;
-        // utils->printFlatArray2D(this->bias, fan_out, 1);
-        // std::cout << "Fan in: " << fan_in << " Fan out: " << fan_out << std::endl;
+        if (!(debug))
+        {
+            std::cout << "Weight" << std::endl;
+            utils->printFlatArray2D(weight, fan_in, fan_out);
+            std::cout << "Bias" << std::endl;
+            utils->printFlatArray2D(this->bias, fan_out, 1);
+            std::cout << "Fan in: " << fan_in << " Fan out: " << fan_out << std::endl;
+        }
     }
 
     float *getBias()
@@ -1555,9 +1556,9 @@ int main()
     auto start = std::chrono::high_resolution_clock::now();
 
     bool debug = true;
-// #ifdef DEBUG
-//     debug = true;
-// #endif
+    // #ifdef DEBUG
+    //     debug = true;
+    // #endif
 
     int d_model = 32;
     int vocab_size; // that depends upon the data that you are passing.
@@ -1619,7 +1620,11 @@ int main()
     auto end = std::chrono::high_resolution_clock::now();
     cudaDeviceSynchronize(); // CPU is waiting for the GPU to finish
     std::chrono::duration<double, std::milli> duration = end - start;
-    std::cout << "Total time (with sync overhead): " << duration.count() << " ms\n";
+
+    if (!(debug))
+    {
+        std::cout << "Total time (with sync overhead): " << duration.count() << " ms\n";
+    }
 
     return 0;
 }

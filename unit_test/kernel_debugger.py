@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from ml_components.transformer import Transformer
 from ml_components.positional_encoding import sinusoidal_positional_encoding
 
 ''' Automated debugging script for CUDA kernel in attention.cpp
@@ -18,10 +19,12 @@ os.system("./src/bin/attention")
 import json
 import torch
 import warnings
+import torch.nn as nn
 
 warnings.filterwarnings("ignore", category=UserWarning, message="The given buffer is not writable")
 
 import sys
+print("Kernel debugger script")
 
 try:
     with open('./src/cache/config.json', 'r', encoding='utf-8') as file:
@@ -31,6 +34,10 @@ except (FileNotFoundError, json.JSONDecodeError) as e:
     print(f"Critical Error: {e}")
     print("Exiting program.")
     sys.exit(1)
+
+device = torch.device("cpu")
+if torch.cuda.is_available():
+    device = torch.device("cuda") 
 
 
 '''
@@ -50,7 +57,8 @@ class Predictability:
         std = (2.0 / fan_in) ** 0.5
         dist = torch.randn(fan_out, fan_in) * std
         return dist
-
+    
+    # releases token embeddings
     def token_embeddings(self, fan_in, fan_out):
         p = self.he_init(fan_in, fan_out)
         p.detach().cpu().numpy().tofile("./src/cache/pytorch_out/token_embeddings.bin")
@@ -62,6 +70,16 @@ vocab_size = data['vocab_size']
 batch_size = data['batch_size']
 seq_len = data['seq_len']
 num_heads = data['num_heads']
+
+torch.set_printoptions(precision=4)
+
+model = Transformer(
+    batch_size,
+    seq_len,
+    d_model,
+    vocab_size,
+    num_heads
+)
 
 predictability = Predictability(
     d_model=d_model,
@@ -127,36 +145,14 @@ debugger = Debugger(
     folder='./src/cache/cpp_out'
 )
 
-
-
-# standard nn.Embedding convention te[input_ids]  no more
-# te[:, input_ids] + permute dance.
-def total_emebddings(te, pe, input_ids):
-    # te: (vocab_size, d_model)
-    # pe: (seq_len, d_model)
-    # input_ids: (seq_len, batch_size)
-
-    token_embeddings = te[input_ids]            # (seq_len, batch_size, d_model)
-    token_embeddings = token_embeddings.permute(1, 0, 2)  # (batch_size, seq_len, d_model)
-
-    total = token_embeddings + pe.unsqueeze(0)  # (batch_size, seq_len, d_model)
-    return total
+print(f"d_model={d_model} batch_size={batch_size} seq_len={seq_len} vocab_size={vocab_size}")
 
 
 pe = sinusoidal_positional_encoding(seq_len=seq_len, d_model=d_model)
-
-torch.set_printoptions(precision=4)
-
-
-p_total_embeddings = total_emebddings(token_embeddings, pe, input_ids)
-
-# total emebddings output from the kernel
+# same embedding that c++ uses after being released from python.
 k_total_emebddings = debugger.readEmbeddings('embedding.bin', batch_size * seq_len * d_model)
 x = debugger.readX("x.bin", seq_len * batch_size)
 
-print(x)
+py_total_emebdding = model.total_embeddings(x=x, token_embedding_table=token_embeddings, positional_embedding_table=pe)
 
-# print("From C++ kernel")
-# print(k_total_emebddings)
-# print("From pytorch")
-# print(p_total_embeddings)
+print(f"Token embedding kernel status: {torch.allclose(k_total_emebddings, py_total_emebdding) if "Ok" else "Not ok"}")
