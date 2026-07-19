@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 from ml_components.transformer import Transformer
 from ml_components.positional_encoding import sinusoidal_positional_encoding
-
+from ml_components.grad import Grad
 ''' Automated debugging script for CUDA kernel in attention.cpp
     File based dump verification
  '''
@@ -156,3 +156,14 @@ x = debugger.readX("x.bin", seq_len * batch_size)
 py_total_emebdding = model.total_embeddings(x=x, token_embedding_table=token_embeddings, positional_embedding_table=pe)
 
 print(f"Token embedding kernel status: {torch.allclose(k_total_emebddings, py_total_emebdding) if "Ok" else "Not ok"}")
+
+
+# DEBUGGING FOR BACKPROPAGATION ITS SOMETING HARD FOR ME TO BACKTRACK
+# WE ARE DOING THIS HERE BECAUSE THIS IS LITTLE DIFFICULT FOR MY EYES TO ESTIMATE
+# COMPATED TO FORWARD PASS
+
+
+grad = Grad(d_model=d_model, seq_len=seq_len, batch_size=batch_size, num_heads=num_heads, vocab_size=vocab_size)
+
+
+
