@@ -1133,7 +1133,7 @@ private:
         free(h_arr);
     }
 
-    void dl_dz_upstream_gradient(
+    void dl_dz_upstream_gradient( // delta
         float *actual,    // (B, T, vocab_size) on device
         float *predicted, // (B, T, vocab_size) on device
         float *delta,     // (B, T, vocab_size) on device upstream gradient
@@ -1177,8 +1177,21 @@ private:
             seq_len,
             d_model);
 
-        // copy back to host
+        // copy back to host, just to check and debug, else we do not need to copy back and fourh between
+        // different memories that is costly, burnout is expected at this complexity and lines of code.
         cudaMemcpy(h_host, h_out, batch_size * d_model * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
+    }
+
+    void dl_dw_upstream_gradient(
+        float *delta_host, //  (B, T, d_model)
+        float *h_t_host, // device (B, C, T) shape for delta h^T
+        float *h_out,
+        int B,
+        int T,
+        int C
+    )
+    {
+
     }
 
 public:
@@ -1533,7 +1546,7 @@ public:
 
                 modelParamaters.dl_dz_out_device = dl_dz_out_device;
                 modelParamaters.dl_dz_out_host = dl_dz_out_host;
-                modelParamaters.h = x;                                   // Shape(B, T, vocab_size)
+                modelParamaters.h = x;   // this h is the output of lm head Shape(B, T, vocab_size)
                 modelParamaters.device_h = attention->BorrowBTCDevice(); // (B, T, d_model) on device
                 modelParamaters.device_out_h = out_h;
 

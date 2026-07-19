@@ -854,6 +854,8 @@ __global__ void crossEntropyLoss(
     // for each B,T shape you have 1 thats B,T
 }
 
+// ---------------------- Backpropagation kernel ------------------
+
 // Derivation interfaceback.md
 __global__ void upstream_dl_dz_kernel(
     float *actual,
@@ -889,10 +891,61 @@ __global__ void transpose_last_two_kernel(float *input, float *output, int B, in
     }
 }
 
+__global__ void dl_dw_upstream_kernel(
+    float *h_t,   // (B, C, T)          transposed h
+    float *delta, // (B, T, vocab_size)
+    float *out,   // (B, C, vocab_size)
+    int B,
+    int T,
+    int C,
+    int vocab_size)
+{
+    int batch_idx = blockIdx.z;
+    int row_idx = blockIdx.y * blockDim.y + threadIdx.y; // C
+    int col_idx = blockIdx.x * blockDim.x + threadIdx.x; // vocab_size
+
+    if (batch_idx >= B || row_idx >= C || col_idx >= vocab_size)
+        return;
+
+    float sum = 0.0f;
+    for (int k = 0; k < T; ++k)
+    {
+        int idx_ht = (C * T) * batch_idx + T * row_idx + k;
+        int idx_delta = (T * vocab_size) * batch_idx + vocab_size * k + col_idx;
+        sum += h_t[idx_ht] * delta[idx_delta];
+    }
+
+    int idx_out = (C * vocab_size) * batch_idx + vocab_size * row_idx + col_idx;
+    out[idx_out] = sum;
+}
+
 extern "C"
 {
 
     // -------------- Backpropagation kernel wrappers -----------------
+    void dl_dw_upstream(
+        float *h_t,
+        float *delta,
+        float *out,
+        int B,
+        int T,
+        int C,
+        int vocab_size)
+    {
+        // 1024 is the hardware limit and vocab_size can get large over time.
+        // 16x16 per block
+        dim3 block(16, 16, 1); // block.x handles part of vocab_size, block.y handles part of C
+
+        dim3 grid(
+            (vocab_size + block.x - 1) / block.x, // grid.x: enough blocks to cover all of vocab_size
+            (C + block.y - 1) / block.y,          // grid.y: enough blocks to cover all of C
+            B                                     // grid.z: one per batch element
+        );
+
+        dl_dw_upstream_kernel<<<grid, block>>>(h_t, delta, out, B, T, C, vocab_size);
+
+        cudaDeviceSynchronize();
+    }
 
     // Gradient flow in the LM head from (B, T, C) to (B, T, vocab_size) as a proballity score
     void lm_head_transpose_h(
