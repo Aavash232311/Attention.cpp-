@@ -181,8 +181,6 @@ public:
                 hostX,
                 actual_batch * seq_len);
 
-            utils->printFlatArray2D(hostX, seq_len, batch_size);
-
             // release net embeddings to a binary file
             releaseFile(
                 "embedding.bin",
@@ -1134,9 +1132,9 @@ private:
     }
 
     void dl_dz_upstream_gradient( // delta
-        float *actual,    // (B, T, vocab_size) on device
-        float *predicted, // (B, T, vocab_size) on device
-        float *delta,     // (B, T, vocab_size) on device upstream gradient
+        float *actual,            // (B, T, vocab_size) on device
+        float *predicted,         // (B, T, vocab_size) on device
+        float *delta,             // (B, T, vocab_size) on device upstream gradient
         float *delta_host,
         int B,
         int T,
@@ -1184,14 +1182,12 @@ private:
 
     void dl_dw_upstream_gradient(
         float *delta_host, //  (B, T, d_model)
-        float *h_t_host, // device (B, C, T) shape for delta h^T
+        float *h_t_host,   // device (B, C, T) shape for delta h^T
         float *h_out,
         int B,
         int T,
-        int C
-    )
+        int C)
     {
-
     }
 
 public:
@@ -1225,7 +1221,7 @@ public:
         dl_dz_upstream_gradient(
             paramaters.y_actual,
             paramaters.y_predicted,
-            paramaters.dl_dz_out_device,
+            paramaters.dl_dz_out_device, // delta
             paramaters.dl_dz_out_host,
             batch_size,
             seq_len,
@@ -1245,6 +1241,18 @@ public:
             seq_len,
             d_model,
             vocab_size);
+
+        if (debug)
+        {
+            // release those paramaters so that we can cross verify the kernel in python
+            // now I wnat to debug along rather than estimating by judging few rows and cols.
+            // pointers are manupluated and copied to the host.
+            int sizeY = batch_size * seq_len;
+            bulkRelease<float>({{paramaters.y_actual, sizeY, "y_actual.bin"},
+                                {paramaters.y_predicted, sizeY, "y_prediced.bin"},
+                                {paramaters.dl_dz_out_device, batch_size * seq_len * vocab_size, "delta.bin"},
+                                {paramaters.h, batch_size * seq_len * d_model, "d.bin"}});
+        }
 
         // if (debug)
         // {
@@ -1546,7 +1554,7 @@ public:
 
                 modelParamaters.dl_dz_out_device = dl_dz_out_device;
                 modelParamaters.dl_dz_out_host = dl_dz_out_host;
-                modelParamaters.h = x;   // this h is the output of lm head Shape(B, T, vocab_size)
+                modelParamaters.h = x;                                   // this h is the output of lm head Shape(B, T, vocab_size)
                 modelParamaters.device_h = attention->BorrowBTCDevice(); // (B, T, d_model) on device
                 modelParamaters.device_out_h = out_h;
 
@@ -1617,6 +1625,10 @@ int main()
 
         return 0;
     }
+
+    // we just need a simple shample.
+    epoch = debug == true ? 1 : epoch;
+
     const std::vector<int> &encodedData = helper->getEncodedList();
 
     std::unique_ptr<AttentionInterface> model = std::make_unique<AttentionInterface>(
@@ -1636,7 +1648,7 @@ int main()
 
     if (!(debug))
     {
-        std::cout << "Total time (with sync overhead): " << duration.count() << " ms\n";
+        std::cout << "Total time C++ execution (with sync overhead): " << duration.count() << " ms\n";
     }
 
     return 0;

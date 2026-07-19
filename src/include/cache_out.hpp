@@ -1,21 +1,23 @@
 #include <memory>
 #include <cstdio>
+#include <tuple>
 #include <fstream>
 #include <iostream>
 #include <filesystem>
+#include <unordered_map>
 
 using namespace std;
 namespace fs = std::filesystem;
 
 template <typename T>
 void releaseFile(
-    const std::string &filename,
+    const string &filename,
     const T *data,
     size_t num_elements)
 {
-    const std::string path = "./src/cache/cpp_out/" + filename;
+    const string path = "./src/cache/cpp_out/" + filename;
 
-    std::ofstream out(path, std::ios::binary);
+    ofstream out(path, ios::binary);
 
     out.write(reinterpret_cast<const char *>(data), num_elements * sizeof(T));
 }
@@ -101,4 +103,15 @@ void releaseHyperParamaters(
         num_heads};
 
     releaseConfig(key, value);
+}
+
+
+// For debugging the autograd engine we would need to release entire
+
+// only array from RAM
+template <typename T>
+void bulkRelease(const vector<std::tuple<T*, int, string>>& items) {
+    for (const auto& [arr, size, filename] : items) {
+        releaseFile<T>(filename, arr, size);
+    }
 }

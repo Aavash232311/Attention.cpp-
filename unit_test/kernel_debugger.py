@@ -145,8 +145,6 @@ debugger = Debugger(
     folder='./src/cache/cpp_out'
 )
 
-print(f"d_model={d_model} batch_size={batch_size} seq_len={seq_len} vocab_size={vocab_size}")
-
 
 pe = sinusoidal_positional_encoding(seq_len=seq_len, d_model=d_model)
 # same embedding that c++ uses after being released from python.
@@ -154,8 +152,6 @@ k_total_emebddings = debugger.readEmbeddings('embedding.bin', batch_size * seq_l
 x = debugger.readX("x.bin", seq_len * batch_size)
 
 py_total_emebdding = model.total_embeddings(x=x, token_embedding_table=token_embeddings, positional_embedding_table=pe)
-
-print(f"Token embedding kernel status: {torch.allclose(k_total_emebddings, py_total_emebdding) if "Ok" else "Not ok"}")
 
 
 # DEBUGGING FOR BACKPROPAGATION ITS SOMETING HARD FOR ME TO BACKTRACK
