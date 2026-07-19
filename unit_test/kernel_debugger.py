@@ -24,7 +24,7 @@ import torch.nn as nn
 warnings.filterwarnings("ignore", category=UserWarning, message="The given buffer is not writable")
 
 import sys
-print("Kernel debugger script")
+print("Kernel debugger script (python) ")
 
 try:
     with open('./src/cache/config.json', 'r', encoding='utf-8') as file:
