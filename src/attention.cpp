@@ -1247,9 +1247,9 @@ public:
             // release those paramaters so that we can cross verify the kernel in python
             // now I wnat to debug along rather than estimating by judging few rows and cols.
             // pointers are manupluated and copied to the host.
-            int sizeY = batch_size * seq_len;
-            bulkRelease<float>({{paramaters.y_actual, sizeY, "y_actual.bin"},
-                                {paramaters.y_predicted, sizeY, "y_prediced.bin"},
+
+            bulkRelease<float>({{paramaters.y_actual, batch_size * seq_len * vocab_size, "y_actual.bin"},
+                                {paramaters.y_predicted, batch_size * seq_len * vocab_size, "y_prediced.bin"},
                                 {paramaters.dl_dz_out_device, batch_size * seq_len * vocab_size, "delta.bin"},
                                 {paramaters.h, batch_size * seq_len * d_model, "d.bin"}});
         }
