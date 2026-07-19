@@ -1190,6 +1190,31 @@ private:
     {
     }
 
+    void pyDebuggerRelease()
+    {
+        // release those paramaters so that we can cross verify the kernel in python
+        // now I wnat to debug along rather than estimating by judging few rows and cols.
+        // pointers are manupluated and copied to the host.
+
+        // y_actual and y_predicted are in GDDR VRAM
+        // for debugging its fine to allocate here and free it
+
+        float *host_y_actual = (float *)malloc(batch_size * seq_len * vocab_size * sizeof(float));
+        float *host_y_prediced = (float *)malloc(batch_size * seq_len * vocab_size * sizeof(float));
+
+        // happens only one that that also for debugging so it should be fine.
+        cudaMemcpy(host_y_actual, model_paramaters.y_actual, batch_size * seq_len * vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(host_y_prediced, model_paramaters.y_predicted, batch_size * seq_len * vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
+
+        bulkRelease<float>({{host_y_actual, batch_size * seq_len * vocab_size, "y_actual.bin"},
+                            {host_y_prediced, batch_size * seq_len * vocab_size, "y_prediced.bin"},
+                            {model_paramaters.dl_dz_out_host, batch_size * seq_len * vocab_size, "delta.bin"},
+                            {model_paramaters.h, batch_size * seq_len * d_model, "d.bin"}});
+
+        free(host_y_actual);
+        free(host_y_prediced);
+    }
+
 public:
     AutoGradEngine(
         int d_model,
@@ -1242,17 +1267,8 @@ public:
             d_model,
             vocab_size);
 
-        if (debug)
-        {
-            // release those paramaters so that we can cross verify the kernel in python
-            // now I wnat to debug along rather than estimating by judging few rows and cols.
-            // pointers are manupluated and copied to the host.
-
-            bulkRelease<float>({{paramaters.y_actual, batch_size * seq_len * vocab_size, "y_actual.bin"},
-                                {paramaters.y_predicted, batch_size * seq_len * vocab_size, "y_prediced.bin"},
-                                {paramaters.dl_dz_out_device, batch_size * seq_len * vocab_size, "delta.bin"},
-                                {paramaters.h, batch_size * seq_len * d_model, "d.bin"}});
-        }
+        if (debug) // releases necessary kernel output for pytorch to verify and see.
+            pyDebuggerRelease();
 
         // if (debug)
         // {
