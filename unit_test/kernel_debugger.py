@@ -19,6 +19,7 @@ os.system("./src/bin/attention")
 import json
 import torch
 import warnings
+import numpy as np
 import torch.nn as nn
 
 warnings.filterwarnings("ignore", category=UserWarning, message="The given buffer is not writable")
@@ -121,6 +122,8 @@ class Debugger:
         self.batch_size = batch_size
         self.seq_len = seq_len
         self.num_heads = num_heads
+        self.vocab_size = vocab_size
+
 
     def readEmbeddings(self, file_name, N):
         path = os.path.join(self.folder, file_name)
@@ -135,6 +138,11 @@ class Debugger:
         return flat.reshape(self.seq_len, self.batch_size)
     
 
+    def read_predictions(self, file_name, np_dtype=np.float32):
+        path = os.path.join(self.folder, file_name)
+        data = np.fromfile(path, dtype=np_dtype)
+        tensor = torch.from_numpy(data)
+        return tensor.reshape(self.batch_size, self.seq_len, self.vocab_size)
 
 debugger = Debugger(
     d_model=d_model,
@@ -161,5 +169,6 @@ py_total_emebdding = model.total_embeddings(x=x, token_embedding_table=token_emb
 
 grad = Grad(d_model=d_model, seq_len=seq_len, batch_size=batch_size, num_heads=num_heads, vocab_size=vocab_size)
 
-
-
+print("Autograd engine C++ kenrel out")
+y_actual = debugger.read_predictions("y_prediced.bin")
+print(y_actual.shape)

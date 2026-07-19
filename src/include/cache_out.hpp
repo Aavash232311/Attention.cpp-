@@ -110,7 +110,7 @@ void releaseHyperParamaters(
 
 // only array from RAM
 template <typename T>
-void bulkRelease(const vector<std::tuple<T*, int, string>>& items) {
+void bulkRelease(const vector<tuple<T*, int, string>>& items) {
     for (const auto& [arr, size, filename] : items) {
         releaseFile<T>(filename, arr, size);
     }
