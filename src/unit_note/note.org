@@ -1,4 +1,4 @@
-
+OUT DATED
 * Understanding of the embeddings inside the Transformer
 
 ** Token embeddings:
