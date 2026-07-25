@@ -1209,7 +1209,7 @@ private:
         bulkRelease<float>({{host_y_actual, batch_size * seq_len * vocab_size, "y_actual.bin"},
                             {host_y_prediced, batch_size * seq_len * vocab_size, "y_prediced.bin"},
                             {model_paramaters.dl_dz_out_host, batch_size * seq_len * vocab_size, "delta.bin"},
-                            {model_paramaters.h, batch_size * seq_len * d_model, "d.bin"}});
+                            {model_paramaters.h, batch_size * seq_len * d_model, "h.bin"}});
 
         free(host_y_actual);
         free(host_y_prediced);
@@ -1586,6 +1586,10 @@ public:
         }
     }
 };
+
+
+// God how am I going to romantaseize this?
+// its no longer cool for me now.
 
 int main()
 {
