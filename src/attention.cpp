@@ -1183,9 +1183,9 @@ private:
 
     void dl_dw_upstream_gradient(
         float *delta_device, // (B, T, vocab_size)
-        float *h_device, // (B, C, T)   Here: h = h^T (transposed by the derivation)
-        float *out_device, // (B, C, vocab_size)
-        float *out_host, //  B, C, vocab_size)
+        float *h_device,     // (B, C, T)   Here: h = h^T (transposed by the derivation)
+        float *out_device,   // (B, C, vocab_size)
+        float *out_host,     //  B, C, vocab_size)
         int B,
         int T,
         int C,
@@ -1201,11 +1201,20 @@ private:
             C,
             vocab_size);
 
-        // write to host, we have a debugger release from which we can copy to just just for the sake of releasing 
+        // write to host, we have a debugger release from which we can copy to just just for the sake of releasing
         cudaMemcpy(out_host, out_device, batch_size * d_model * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
     }
 
-    void pyDebuggerRelease()
+    /**
+     * @class pyDebuggerReleaseStage1
+     * @brief Releases paramaters y, y predicted, delta, CE+softmax backpropagation, h (from lm head)
+     *
+     * Simply for stage one releases the above paramaters from the attention interface class
+     *
+     * @note Call this before the pointer writes to things with common shape because we are trying to save resources
+     * @warning Do not call this after calculations are done because this is stage 1
+     */
+    void pyDebuggerReleaseStage1()
     {
         // release those paramaters so that we can cross verify the kernel in python
         // now I wnat to debug along rather than estimating by judging few rows and cols.
@@ -1258,6 +1267,9 @@ public:
     {
         this->model_paramaters = paramaters;
 
+        if (debug)
+            pyDebuggerReleaseStage1();
+
         dl_dz_upstream_gradient(
             paramaters.y_actual,
             paramaters.y_predicted,
@@ -1273,7 +1285,7 @@ public:
         // }
 
         gradient_linear(
-            paramaters.h, // 
+            paramaters.h, //
             paramaters.device_h,
             paramaters.device_out_h,     // out h^T
             paramaters.dl_dz_out_device, // delta on device
@@ -1284,20 +1296,15 @@ public:
 
         // delta h^T for weights
 
-
         dl_dw_upstream_gradient(
             paramaters.dl_dz_out_device, // delta device
-            paramaters.device_h, // its going to be h^T after transpose kernel writes to this kernel
-            paramaters.dl_dw_device, // for out
+            paramaters.device_h,         // its going to be h^T after transpose kernel writes to this kernel
+            paramaters.dl_dw_device,     // for out
             paramaters.dl_dw_host,
             batch_size,
             seq_len,
             d_model,
-            vocab_size
-        );
-
-        if (debug) // releases necessary kernel output for pytorch to verify and see.
-            pyDebuggerRelease();
+            vocab_size);
 
         // if (debug)
         // {
