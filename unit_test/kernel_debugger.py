@@ -1,8 +1,9 @@
 import os
 from pathlib import Path
+from ml_components.grad import Autograd, load_tensor
 from ml_components.transformer import Transformer
 from ml_components.positional_encoding import sinusoidal_positional_encoding
-from ml_components.grad import Grad
+
 ''' Automated debugging script for CUDA kernel in attention.cpp
     File based dump verification
  '''
@@ -167,8 +168,15 @@ py_total_emebdding = model.total_embeddings(x=x, token_embedding_table=token_emb
 # COMPATED TO FORWARD PASS
 
 
-grad = Grad(d_model=d_model, seq_len=seq_len, batch_size=batch_size, num_heads=num_heads, vocab_size=vocab_size)
-
 print("Autograd engine C++ kenrel out")
 y_actual = debugger.read_predictions("y_prediced.bin")
-print(y_actual.shape)
+
+# C++ haunts me but I guess thats part of what I do
+# and I need to figure out how not to get burned out and finish
+# the most boring project ever.
+
+
+delta = load_tensor('./src/cache/cpp_out/delta.bin', shape=(batch_size, seq_len, vocab_size), dtype=np.float32)
+y_predicted = load_tensor('./src/cache/cpp_out/y_prediced.bin', shape=(batch_size, seq_len, vocab_size), dtype=np.float32)
+h = load_tensor('./src/cache/cpp_out/h.bin', shape=(batch_size, seq_len, d_model), dtype=np.float32)
+
