@@ -26,7 +26,6 @@ import torch.nn as nn
 warnings.filterwarnings("ignore", category=UserWarning, message="The given buffer is not writable")
 
 import sys
-print("Kernel debugger script (python) ")
 
 try:
     with open('./src/cache/config.json', 'r', encoding='utf-8') as file:
@@ -41,6 +40,7 @@ device = torch.device("cpu")
 if torch.cuda.is_available():
     device = torch.device("cuda") 
 
+print("Autograd engine C++ kenrel out")
 
 '''
 Randomness lies in the init of weight and bias.
@@ -167,8 +167,9 @@ py_total_emebdding = model.total_embeddings(x=x, token_embedding_table=token_emb
 # WE ARE DOING THIS HERE BECAUSE THIS IS LITTLE DIFFICULT FOR MY EYES TO ESTIMATE
 # COMPATED TO FORWARD PASS
 
+print(f"Checking net embedding C++ kernel, status: {torch.allclose(py_total_emebdding, k_total_emebddings)}")
 
-print("Autograd engine C++ kenrel out")
+
 y_actual = debugger.read_predictions("y_prediced.bin")
 
 # C++ haunts me but I guess thats part of what I do
@@ -180,3 +181,6 @@ delta = load_tensor('./src/cache/cpp_out/delta.bin', shape=(batch_size, seq_len,
 y_predicted = load_tensor('./src/cache/cpp_out/y_prediced.bin', shape=(batch_size, seq_len, vocab_size), dtype=np.float32)
 h = load_tensor('./src/cache/cpp_out/h.bin', shape=(batch_size, seq_len, d_model), dtype=np.float32)
 
+print(h.shape)
+
+print(h.transpose(1, 2).shape)

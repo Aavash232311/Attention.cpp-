@@ -1211,8 +1211,8 @@ private:
      *
      * Simply for stage one releases the above paramaters from the attention interface class
      *
-     * @note Call this before the pointer writes to things with common shape because we are trying to save resources
-     * @warning Do not call this after calculations are done because this is stage 1
+     * @note Call this only after dl_dz_upstream_gradient() and before gradient_linear <- tranposes h^T
+     * @warning Do not call this before the above methods are called as they tend to write garbage data.
      */
     void pyDebuggerReleaseStage1()
     {
@@ -1267,14 +1267,11 @@ public:
     {
         this->model_paramaters = paramaters;
 
-        if (debug)
-            pyDebuggerReleaseStage1();
-
         dl_dz_upstream_gradient(
             paramaters.y_actual,
             paramaters.y_predicted,
             paramaters.dl_dz_out_device, // delta
-            paramaters.dl_dz_out_host,
+            paramaters.dl_dz_out_host,   // writes DELTA HERE
             batch_size,
             seq_len,
             vocab_size);
@@ -1283,6 +1280,9 @@ public:
         //     // before transpose the shape if (B, T, C)
         //     utils->printFlatArray3D(paramaters.h, batch_size, seq_len, d_model);
         // }
+
+        if (debug)
+            pyDebuggerReleaseStage1();
 
         gradient_linear(
             paramaters.h, //
