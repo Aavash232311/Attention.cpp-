@@ -53,6 +53,7 @@ extern "C" void CrossEntropy(float *x, int *y, float *oneHotOut, float *lossOut,
 // ----------- Backpropgation ------------------------
 extern "C" void upstream_dl_dz(float *actual, float *predicted, float *delta, int B, int T, int C);
 extern "C" void lm_head_transpose_h(float *h, float *out, int B, int T, int C);
+extern "C" void dl_dw_upstream(float *h_t, float *delta, float *out, int B, int T, int C, int vocab_size);
 // ---- Paramaters for our custom backgrad engine -----
 
 class Embeddings
@@ -1181,13 +1182,27 @@ private:
     }
 
     void dl_dw_upstream_gradient(
-        float *delta_host, //  (B, T, d_model)
-        float *h_t_host,   // device (B, C, T) shape for delta h^T
-        float *h_out,
+        float *delta_device, // (B, T, vocab_size)
+        float *h_device, // (B, C, T)   Here: h = h^T (transposed by the derivation)
+        float *out_device, // (B, C, vocab_size)
+        float *out_host, //  B, C, vocab_size)
         int B,
         int T,
-        int C)
+        int C,
+        int vocab_size)
     {
+
+        dl_dw_upstream(
+            h_device,
+            delta_device,
+            out_device,
+            B,
+            T,
+            C,
+            vocab_size);
+
+        // write to host, we have a debugger release from which we can copy to just just for the sake of releasing 
+        cudaMemcpy(out_host, out_device, batch_size * d_model * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
     }
 
     void pyDebuggerRelease()
@@ -1258,14 +1273,28 @@ public:
         // }
 
         gradient_linear(
-            paramaters.h,
+            paramaters.h, // 
             paramaters.device_h,
-            paramaters.device_out_h,
+            paramaters.device_out_h,     // out h^T
             paramaters.dl_dz_out_device, // delta on device
             batch_size,
             seq_len,
             d_model,
             vocab_size);
+
+        // delta h^T for weights
+
+
+        dl_dw_upstream_gradient(
+            paramaters.dl_dz_out_device, // delta device
+            paramaters.device_h, // its going to be h^T after transpose kernel writes to this kernel
+            paramaters.dl_dw_device, // for out
+            paramaters.dl_dw_host,
+            batch_size,
+            seq_len,
+            d_model,
+            vocab_size
+        );
 
         if (debug) // releases necessary kernel output for pytorch to verify and see.
             pyDebuggerRelease();
@@ -1347,6 +1376,9 @@ class AttentionInterface
 
     float *dl_dz_out_device;
     float *dl_dz_out_host;
+
+    float *dl_dw_out_device;
+    float *dl_dw_out_host;
 
     // GPU buffer for the autograd engine in the attention interface.
     NetAttentionParamaters modelParamaters;
@@ -1436,6 +1468,9 @@ public:
         outHotEncodeOut = (float *)malloc(batch_size * seq_len * vocab_size * sizeof(float));
 
         cudaMalloc((void **)&out_h, batch_size * seq_len * vocab_size * sizeof(float));
+
+        cudaMalloc((void **)&dl_dw_out_device, batch_size * seq_len * vocab_size * sizeof(float));
+        dl_dw_out_host = (float *)malloc(batch_size * seq_len * vocab_size * sizeof(float));
     }
 
     ~AttentionInterface()
@@ -1456,6 +1491,9 @@ public:
         free(dl_dz_out_host);
 
         cudaFree(out_h);
+
+        cudaFree(dl_dw_out_device);
+        free(dl_dw_out_host);
     }
 
     LinearParams getLmHeadParams()
@@ -1574,6 +1612,11 @@ public:
                 modelParamaters.device_h = attention->BorrowBTCDevice(); // (B, T, d_model) on device
                 modelParamaters.device_out_h = out_h;
 
+                // for dl_dw = delta h^T derived in flashback.md
+
+                modelParamaters.dl_dw_device = dl_dw_out_device;
+                modelParamaters.dl_dw_host = dl_dw_out_host;
+
                 // because the backprops needs to be done for each epoch.
                 // we need to keep in mind that the things hurting performace like cuda malloc and everything declared
                 // inside of the constructor of autograd engine is costly.
@@ -1586,7 +1629,6 @@ public:
         }
     }
 };
-
 
 // God how am I going to romantaseize this?
 // its no longer cool for me now.
