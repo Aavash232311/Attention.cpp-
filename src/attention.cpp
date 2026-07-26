@@ -1253,6 +1253,7 @@ private:
         // After the gradient_linear() gets called model_paramaters.h gets written
         bulkRelease<float>({{model_paramaters.h, batch_size * seq_len * d_model, "h_t.bin"},
                             {model_paramaters.dl_dw_host, batch_size * seq_len * vocab_size, "dl_dw.bin"}}); // out delta h^T binary
+            // second stage release for the autograd engine.
     }
 
 public:
