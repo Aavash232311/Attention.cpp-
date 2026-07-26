@@ -1239,6 +1239,22 @@ private:
         free(host_y_prediced);
     }
 
+    /**
+     * @class pyDebuggerReleaseStage2
+     * @brief Releases paramaters h^T and dl/dw = del h^T
+     *
+     * Simply for stage one releases the above paramaters from the attention interface class
+     *
+     * @note Call this only after gradient_linear and dl_dw_upstream_gradient
+     * @warning Do not call this before the above methods are called as they tend to write garbage data.
+     */
+    void pyDebuggerReleaseStage2()
+    {
+        // After the gradient_linear() gets called model_paramaters.h gets written
+        bulkRelease<float>({{model_paramaters.h, batch_size * seq_len * d_model, "h_t.bin"},
+                            {model_paramaters.dl_dw_host, batch_size * seq_len * vocab_size, "dl_dw.bin"}}); // out delta h^T binary
+    }
+
 public:
     AutoGradEngine(
         int d_model,
@@ -1305,6 +1321,9 @@ public:
             seq_len,
             d_model,
             vocab_size);
+
+        if (debug)
+            pyDebuggerReleaseStage2();
 
         // if (debug)
         // {
