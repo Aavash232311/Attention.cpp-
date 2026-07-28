@@ -189,3 +189,12 @@ h = load_tensor('./src/cache/cpp_out/h.bin', shape=(batch_size, seq_len, d_model
 # nevermind, reading the stage2 deployment
 
 
+h_t = load_tensor('./src/cache/cpp_out/h_t.bin', shape=(batch_size, d_model, seq_len), dtype=np.float32)
+
+print("\n")
+print('*' * 60)
+print("Section AUTO GRAD (The Chain Rule of Derivative) ")
+print('*' * 60)
+# transpose h
+tranposing_h = h.transpose(1, 2)
+print(f"h^t transpose kernel: {torch.allclose(tranposing_h, h_t)}")
