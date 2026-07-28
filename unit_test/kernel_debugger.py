@@ -73,6 +73,11 @@ batch_size = data['batch_size']
 seq_len = data['seq_len']
 num_heads = data['num_heads']
 
+print("\n")
+print('*' * 60)
+print("Forward pass ")
+print('*' * 60)
+
 torch.set_printoptions(precision=4)
 
 model = Transformer(
@@ -181,6 +186,14 @@ delta = load_tensor('./src/cache/cpp_out/delta.bin', shape=(batch_size, seq_len,
 y_predicted = load_tensor('./src/cache/cpp_out/y_prediced.bin', shape=(batch_size, seq_len, vocab_size), dtype=np.float32)
 h = load_tensor('./src/cache/cpp_out/h.bin', shape=(batch_size, seq_len, d_model), dtype=np.float32)
 
-print(h.shape)
+# nevermind, reading the stage2 deployment
 
-print(h.transpose(1, 2).shape)
+h_t = load_tensor('./src/cache/cpp_out/h_t.bin', shape=(batch_size, d_model, seq_len), dtype=np.float32)
+
+print("\n")
+print('*' * 60)
+print("Section AUTO GRAD (The Chain Rule of Derivative) ")
+print('*' * 60)
+# transpose h
+tranposing_h = h.transpose(1, 2)
+print(f"h^t transpose kernel: {torch.allclose(tranposing_h, h_t)}")
