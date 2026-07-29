@@ -1132,6 +1132,9 @@ private:
         free(h_arr);
     }
 
+    // REMEMBER BESIDE ME NO ONE WILL EVEERRRRR READ THIS CODE
+    // IF ITS DIRTY THEN I WILL HANDLE ITTTT.
+
     void dl_dz_upstream_gradient( // delta
         float *actual,            // (B, T, vocab_size) on device
         float *predicted,         // (B, T, vocab_size) on device
@@ -1139,7 +1142,7 @@ private:
         float *delta_host,
         int B,
         int T,
-        int C)
+        int vocab_size)
     {
         // interfaceback.md derivation using the chain rule of derivative
         upstream_dl_dz( // dl_dz is partial derivative
@@ -1148,10 +1151,10 @@ private:
             delta,
             B,
             T,
-            C);
+            vocab_size);
 
         // upstream gradient to host, we can keep this in the device but we will fix this later, first goal is to get the result right
-        cudaMemcpy(delta_host, delta, B * T * C * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(delta_host, delta, B * T * vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
         // delta_host = partial L / partial z
     }
 
@@ -1285,7 +1288,7 @@ public:
         this->model_paramaters = paramaters;
 
         dl_dz_upstream_gradient(
-            paramaters.y_actual,
+            paramaters.y_actual, // Note:- these are on device
             paramaters.y_predicted,
             paramaters.dl_dz_out_device, // delta
             paramaters.dl_dz_out_host,   // writes DELTA HERE
