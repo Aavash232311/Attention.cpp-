@@ -858,16 +858,22 @@ __global__ void crossEntropyLoss(
 
 // Derivation interfaceback.md
 __global__ void upstream_dl_dz_kernel(
-    float *actual,
+    float *actual, // (B ,T, vocab_size)
     float *predicted,
     float *delta,
     int B,
     int T,
-    int C)
+    int vocab_size
+)
 {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx >= B * T * C)
+    int batch_idx = blockIdx.z;
+    int row_idx = blockIdx.y * blockDim.y + threadIdx.y;
+    int col_idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (batch_idx >= B || row_idx >= T || col_idx >= vocab_size)
         return;
+    // we take delta from the last two elements only
+    int idx = batch_idx * (T * vocab_size) + row_idx * vocab_size + col_idx;
 
     delta[idx] = predicted[idx] - actual[idx];
 }
@@ -910,6 +916,8 @@ __global__ void dl_dw_upstream_kernel(
     float sum = 0.0f;
     for (int k = 0; k < T; ++k)
     {
+        // transposne shape (B, C, T) escape C, T
+        // delta shape (B, T, vocab_size)
         int idx_ht = (C * T) * batch_idx + T * row_idx + k;
         int idx_delta = (T * vocab_size) * batch_idx + vocab_size * k + col_idx;
         sum += h_t[idx_ht] * delta[idx_delta];
@@ -921,7 +929,6 @@ __global__ void dl_dw_upstream_kernel(
 
 extern "C"
 {
-
     // -------------- Backpropagation kernel wrappers -----------------
     void dl_dw_upstream(
         float *h_t,
@@ -971,9 +978,13 @@ extern "C"
         int T,
         int C)
     {
-        int blocks = (B * T * C + 255) / 256;
-        upstream_dl_dz_kernel<<<blocks, 256>>>(actual, predicted, delta, B, T, C);
-
+        dim3 block(16, 16, 1); // tune as needed block.x*block.y should be <=1024
+        dim3 grid(
+            (C + block.x - 1) / block.x, // col_idx / vocab_size
+            (T + block.y - 1) / block.y, // row_idx / T
+            B                            // batch_idx / B
+        );
+        upstream_dl_dz_kernel<<<grid, block>>>(actual, predicted, delta, B, T, C);
         cudaDeviceSynchronize();
     }
 

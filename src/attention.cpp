@@ -1202,7 +1202,7 @@ private:
             vocab_size);
 
         // write to host, we have a debugger release from which we can copy to just just for the sake of releasing
-        cudaMemcpy(out_host, out_device, batch_size * d_model * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(out_host, out_device, batch_size * vocab_size * d_model * sizeof(float), cudaMemcpyDeviceToHost);
     }
 
     /**
@@ -1252,7 +1252,7 @@ private:
     {
         // After the gradient_linear() gets called model_paramaters.h gets written
         bulkRelease<float>({{model_paramaters.h, batch_size * seq_len * d_model, "h_t.bin"},
-                            {model_paramaters.dl_dw_host, batch_size * seq_len * vocab_size, "dl_dw.bin"}}); // out delta h^T binary
+                            {model_paramaters.dl_dw_host, batch_size * d_model * vocab_size, "dl_dw.bin"}}); // out delta h^T binary
             // second stage release for the autograd engine.
     }
 
@@ -1496,8 +1496,8 @@ public:
 
         cudaMalloc((void **)&out_h, batch_size * seq_len * vocab_size * sizeof(float));
 
-        cudaMalloc((void **)&dl_dw_out_device, batch_size * seq_len * vocab_size * sizeof(float));
-        dl_dw_out_host = (float *)malloc(batch_size * seq_len * vocab_size * sizeof(float));
+        cudaMalloc((void **)&dl_dw_out_device, batch_size * d_model * vocab_size * sizeof(float));
+        dl_dw_out_host = (float *)malloc(batch_size * d_model * vocab_size * sizeof(float));
     }
 
     ~AttentionInterface()
