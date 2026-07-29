@@ -185,6 +185,8 @@ y_actual = debugger.read_predictions("y_prediced.bin")
 delta = load_tensor('./src/cache/cpp_out/delta.bin', shape=(batch_size, seq_len, vocab_size), dtype=np.float32)
 y_predicted = load_tensor('./src/cache/cpp_out/y_prediced.bin', shape=(batch_size, seq_len, vocab_size), dtype=np.float32)
 h = load_tensor('./src/cache/cpp_out/h.bin', shape=(batch_size, seq_len, d_model), dtype=np.float32)
+# (B, C, vocab_size)
+dl_dw_kernel = load_tensor('./src/cache/cpp_out/dl_dw.bin', shape=(batch_size, d_model, vocab_size), dtype=np.float32)
 
 # nevermind, reading the stage2 deployment
 
@@ -198,3 +200,13 @@ print('*' * 60)
 # transpose h
 tranposing_h = h.transpose(1, 2)
 print(f"h^t transpose kernel: {torch.allclose(tranposing_h, h_t)}")
+# we need to verify delta h^t
+dl_dw_torch = tranposing_h @ delta
+print(dl_dw_kernel.shape)
+print(dl_dw_torch.shape)
+print(seq_len)
+
+
+print(f"delta h^t match: {torch.allclose(dl_dw_torch, dl_dw_kernel)}")
+print(dl_dw_kernel)
+print(dl_dw_torch)
