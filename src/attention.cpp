@@ -1316,9 +1316,23 @@ public:
 
         // delta h^T for weights
 
+        /*
+            void dl_dw_upstream_gradient(
+        float *delta_device, // (B, T, vocab_size)
+        float *h_device,     // (B, C, T)   Here: h = h^T (transposed by the derivation)
+        float *out_device,   // (B, C, vocab_size)
+        float *out_host,     //  B, C, vocab_size)
+        int B,
+        int T,
+        int C,
+        int vocab_size)
+    {
+        
+        */
+
         dl_dw_upstream_gradient(
             paramaters.dl_dz_out_device, // delta device
-            paramaters.device_h,         // its going to be h^T after transpose kernel writes to this kernel
+            paramaters.device_out_h,         // its going to be h^T after transpose kernel writes to this kernel
             paramaters.dl_dw_device,     // for out
             paramaters.dl_dw_host,
             batch_size,
