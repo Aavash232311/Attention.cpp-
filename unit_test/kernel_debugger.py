@@ -208,11 +208,3 @@ dl_dw_torch = tranposing_h @ delta
 delta_torch = y_predicted - y_actual
 
 print(f"Checking delta across kernels {torch.allclose(delta_torch, delta)}")
-# print(dl_dw_kernel.shape)
-# print(dl_dw_torch.shape)
-# print(seq_len)
-
-
-# print(f"delta h^t match: {torch.allclose(dl_dw_torch, dl_dw_kernel)}")
-# print(dl_dw_kernel)
-# print(dl_dw_torch)
