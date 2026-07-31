@@ -27,4 +27,11 @@ struct NetAttentionParamaters
     float *device_h;
     float *device_out_h; // (B, C, T) transpose head
 
+    float *w_host;
+    float *w_device;
+    float *w_out_d; // copy to CPU if the debugger is on and see.
+
+    float *dl_dh_host;
+    float *dl_dh_device;
+    float *dl_dh_out_d;
 };

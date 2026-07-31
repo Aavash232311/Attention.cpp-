@@ -1208,6 +1208,22 @@ private:
         cudaMemcpy(out_host, out_device, batch_size * vocab_size * d_model * sizeof(float), cudaMemcpyDeviceToHost);
     }
 
+    // this is something that you have written in Java already sometime many years ago
+    // just back propagation in output layer why because this is linear
+
+    // before lm_head -> (B, T, C) output is  (B, T, vocab_size)
+    // I may not be so smart, atleast now I understand the defination
+
+    void wt_upstream_gradient(
+        float *w_device,
+        float *w_host,
+        int B,
+        int T,
+        int C,
+        int vocab_size)
+    {
+    }
+
     /**
      * @class pyDebuggerReleaseStage1
      * @brief Releases paramaters y, y predicted, delta, CE+softmax backpropagation, h (from lm head)
@@ -1256,7 +1272,7 @@ private:
         // After the gradient_linear() gets called model_paramaters.h gets written
         bulkRelease<float>({{model_paramaters.h, batch_size * seq_len * d_model, "h_t.bin"},
                             {model_paramaters.dl_dw_host, batch_size * d_model * vocab_size, "dl_dw.bin"}}); // out delta h^T binary
-            // second stage release for the autograd engine.
+                                                                                                             // second stage release for the autograd engine.
     }
 
 public:
@@ -1327,12 +1343,14 @@ public:
         int C,
         int vocab_size)
     {
-        
-        */
 
+        */
+        // I am sorry for the confusing name
+        // remember no one EVERRR is reading this
+        // so on my lead only for me.
         dl_dw_upstream_gradient(
             paramaters.dl_dz_out_device, // delta device
-            paramaters.device_out_h,         // its going to be h^T after transpose kernel writes to this kernel
+            paramaters.device_out_h,     // its going to be h^T after transpose kernel writes to this kernel
             paramaters.dl_dw_device,     // for out
             paramaters.dl_dw_host,
             batch_size,
@@ -1430,6 +1448,15 @@ class AttentionInterface
     // ---------- Autograd engine declaration --------------------
     float *out_h;
 
+    // even for SWE after years of building things on my own
+    // now I realize how stupid I was, sure this is the dumbest possible thing
+    // goal is not perfection here, I just want to make it work
+
+    // ---------- Autograd engine weight lm head ---------------------
+    float *w_host;
+    float *w_device;
+    float *w_out_d;
+
 private:
     // ----------- TEMPORARY DEBUGGER SCRIPT ---------------------
 
@@ -1515,6 +1542,12 @@ public:
 
         cudaMalloc((void **)&dl_dw_out_device, batch_size * d_model * vocab_size * sizeof(float));
         dl_dw_out_host = (float *)malloc(batch_size * d_model * vocab_size * sizeof(float));
+
+        // ------------ for w in lm head --------------
+
+        w_host = (float *)malloc(d_model * vocab_size * sizeof(float));
+        cudaMalloc((void **)&w_device, d_model * vocab_size * sizeof(float));
+        cudaMalloc((void **)&w_out_d, d_model * vocab_size * sizeof(float));
     }
 
     ~AttentionInterface()
@@ -1538,6 +1571,10 @@ public:
 
         cudaFree(dl_dw_out_device);
         free(dl_dw_out_host);
+
+        cudaFree(w_out_d);
+        cudaFree(w_device);
+        free(w_host);
     }
 
     LinearParams getLmHeadParams()
@@ -1660,6 +1697,10 @@ public:
 
                 modelParamaters.dl_dw_device = dl_dw_out_device;
                 modelParamaters.dl_dw_host = dl_dw_out_host;
+
+                modelParamaters.w_host = w_host;
+                modelParamaters.w_device = w_device;
+                modelParamaters.w_out_d = w_out_d;
 
                 // because the backprops needs to be done for each epoch.
                 // we need to keep in mind that the things hurting performace like cuda malloc and everything declared
