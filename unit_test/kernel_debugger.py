@@ -162,7 +162,7 @@ debugger = Debugger(
     folder='./src/cache/cpp_out'
 )
 
-delta, y_predicted, y_actual, h, dl_dw_kernel, h_t = Reader(
+delta, y_predicted, y_actual, h, dl_dw_kernel, h_t, wt, w = Reader(
     batch_size=batch_size,
     seq_len=seq_len,
     vocab_size=vocab_size,
@@ -198,4 +198,8 @@ dl_dw_torch = tranposing_h @ delta
 # boradcasting for last-dimension
 delta_torch = y_predicted - y_actual
 
+
+# Note-: GIGO sometimes you might just be transposing the garbage who knows,
+# if you think that is the case then manually print and see from the C++ script.
 print(f"Checking delta across kernels {torch.allclose(delta_torch, delta)}")
+print(f"Checking wt kernel: {torch.allclose(w.T, wt)}")
