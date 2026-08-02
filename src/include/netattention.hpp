@@ -29,7 +29,7 @@ struct NetAttentionParamaters
 
     float *w_host;
     float *w_device;
-    float *w_out_d; // copy to CPU if the debugger is on and see.
+    float *wt_out_d; // copy to CPU if the debugger is on and see.
 
     float *dl_dh_host;
     float *dl_dh_device;

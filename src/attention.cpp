@@ -54,7 +54,7 @@ extern "C" void CrossEntropy(float *x, int *y, float *oneHotOut, float *lossOut,
 extern "C" void upstream_dl_dz(float *actual, float *predicted, float *delta, int B, int T, int C);
 extern "C" void lm_head_transpose_h(float *h, float *out, int B, int T, int C);
 extern "C" void dl_dw_upstream(float *h_t, float *delta, float *out, int B, int T, int C, int vocab_size);
-extern "C" void wt_upstream_gradient_kernel(float *w, float *wt, int d_model, int vocab_size);
+extern "C" void wt_upstream(float *w, float *wt, int d_model, int vocab_size);
 // ---- Paramaters for our custom backgrad engine -----
 
 class Embeddings
@@ -1218,16 +1218,18 @@ private:
     void wt_upstream_gradient(
         float *w_device,
         float *w_host, // (d_model, vocab_size)
-        int B,
-        int T,
-        int C,
+        float *w_out_d,
+        int d_model,
         int vocab_size)
     {
         // copy form host w
         cudaMemcpy(w_device, w_host, d_model * vocab_size * sizeof(float), cudaMemcpyHostToDevice);
 
-
-
+        wt_upstream(
+            w_device,
+            w_out_d,
+            d_model,
+            vocab_size);
     }
 
     /**
@@ -1280,6 +1282,29 @@ private:
                             {model_paramaters.dl_dw_host, batch_size * d_model * vocab_size, "dl_dw.bin"}}); // out delta h^T binary
                                                                                                              // second stage release for the autograd engine.
     }
+
+    /**
+     * @class pyDebuggerReleaseStage3
+     * @brief Releases paramaters w^t
+     *
+     * Simply for stage one releases the above paramaters from the attention interface class
+     *
+     * @note Can call this in any order because w is independent of the result from pervious things like h.
+     */
+
+     void pyDebuggerReleaseStage3()
+     {
+        // copy w^T to host for the python script to read the binary
+
+        float *wt_host = (float *)malloc(d_model * vocab_size * sizeof(float));
+
+        cudaMemcpy(wt_host, model_paramaters.wt_out_d, d_model * vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
+        bulkRelease<float>(
+            {{wt_host, d_model * vocab_size, "wt.bin"}}
+        );
+
+        free(wt_host);
+     }
 
 public:
     AutoGradEngine(
@@ -1366,6 +1391,16 @@ public:
 
         if (debug)
             pyDebuggerReleaseStage2();
+
+        wt_upstream_gradient(
+            paramaters.w_host,
+            paramaters.w_device,
+            paramaters.wt_out_d,
+            d_model,
+            vocab_size);
+
+        if (debug)
+            pyDebuggerReleaseStage3();
 
         // if (debug)
         // {
@@ -1706,7 +1741,7 @@ public:
 
                 modelParamaters.w_host = w_host;
                 modelParamaters.w_device = w_device;
-                modelParamaters.w_out_d = w_out_d;
+                modelParamaters.wt_out_d = w_out_d;
 
                 // because the backprops needs to be done for each epoch.
                 // we need to keep in mind that the things hurting performace like cuda malloc and everything declared
