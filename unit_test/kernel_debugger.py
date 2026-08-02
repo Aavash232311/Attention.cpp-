@@ -23,6 +23,9 @@ import warnings
 import numpy as np
 import torch.nn as nn
 
+
+from binary_reader.autograd_binary_reader import Reader
+
 warnings.filterwarnings("ignore", category=UserWarning, message="The given buffer is not writable")
 
 import sys
@@ -159,6 +162,13 @@ debugger = Debugger(
     folder='./src/cache/cpp_out'
 )
 
+delta, y_predicted, y_actual, h, dl_dw_kernel, h_t = Reader(
+    batch_size=batch_size,
+    seq_len=seq_len,
+    vocab_size=vocab_size,
+    d_model=d_model
+)
+
 
 pe = sinusoidal_positional_encoding(seq_len=seq_len, d_model=d_model)
 # same embedding that c++ uses after being released from python.
@@ -174,25 +184,6 @@ py_total_emebdding = model.total_embeddings(x=x, token_embedding_table=token_emb
 
 print(f"Checking net embedding C++ kernel, status: {torch.allclose(py_total_emebdding, k_total_emebddings)}")
 
-
-
-
-# C++ haunts me but I guess thats part of what I do
-# and I need to figure out how not to get burned out and finish
-# the most boring project ever.
-
-
-delta = load_tensor('./src/cache/cpp_out/delta.bin', shape=(batch_size, seq_len, vocab_size), dtype=np.float32)
-y_predicted = load_tensor('./src/cache/cpp_out/y_prediced.bin', shape=(batch_size, seq_len, vocab_size), dtype=np.float32)
-y_actual = load_tensor('./src/cache/cpp_out/y_actual.bin', shape=(batch_size, seq_len, vocab_size), dtype=np.float32)
-h = load_tensor('./src/cache/cpp_out/h.bin', shape=(batch_size, seq_len, d_model), dtype=np.float32)
-# (B, C, vocab_size)
-dl_dw_kernel = load_tensor('./src/cache/cpp_out/dl_dw.bin', shape=(batch_size, d_model, vocab_size), dtype=np.float32)
-
-# nevermind, reading the stage2 deployment
-
-
-h_t = load_tensor('./src/cache/cpp_out/h_t.bin', shape=(batch_size, d_model, seq_len), dtype=np.float32)
 
 print("\n")
 print('*' * 60)
