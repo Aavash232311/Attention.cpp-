@@ -947,7 +947,7 @@ __global__ void wt_upstream_gradient_kernel(
 extern "C"
 {
     // -------------- Backpropagation kernel wrappers -----------------
-    void wt_upstream_gradient(
+    void wt_upstream(
         float *w,
         float *wt,
         int d_model,
