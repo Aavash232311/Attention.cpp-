@@ -863,8 +863,7 @@ __global__ void upstream_dl_dz_kernel(
     float *delta,
     int B,
     int T,
-    int vocab_size
-)
+    int vocab_size)
 {
     int batch_idx = blockIdx.z;
     int row_idx = blockIdx.y * blockDim.y + threadIdx.y;
@@ -927,9 +926,49 @@ __global__ void dl_dw_upstream_kernel(
     out[idx_out] = sum;
 }
 
+__global__ void wt_upstream_gradient_kernel(
+    float *w,  // (d_model, vocab_size)
+    float *wt, // (vocab_size, d_model)
+    int d_model,
+    int vocab_size)
+{
+    int row_idx = blockIdx.y * blockDim.y + threadIdx.y;
+    int col_idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+     if (row_idx >= vocab_size || col_idx >= d_model)
+        return;
+
+    int out_idx = (vocab_size) * col_idx + row_idx;
+    int idx_wt = row_idx * (d_model)  + col_idx;
+
+    wt[idx_wt] = w[out_idx];
+}
+
 extern "C"
 {
     // -------------- Backpropagation kernel wrappers -----------------
+    void wt_upstream_gradient(
+        float *w,
+        float *wt,
+        int d_model,
+        int vocab_size)
+    {
+        dim3 block(16, 16);
+        dim3 grid(
+            (d_model + block.x - 1) / block.x,
+            (vocab_size + block.y - 1) / block.y                                 
+        );
+
+        wt_upstream_gradient_kernel<<<grid, block>>>(
+            w,
+            wt,
+            d_model,
+            vocab_size
+        );
+
+        cudaDeviceSynchronize(); // wait :)
+    }
+
     void dl_dw_upstream(
         float *h_t,
         float *delta,
