@@ -1216,8 +1216,8 @@ private:
     // I may not be so smart, atleast now I understand the defination
 
     void wt_upstream_gradient(
-        float *w_device,
-        float *w_host, // (d_model, vocab_size)
+        float *w_host,
+        float *w_device, // (d_model, vocab_size)
         float *w_out_d,
         int d_model,
         int vocab_size)
@@ -1292,19 +1292,21 @@ private:
      * @note Can call this in any order because w is independent of the result from pervious things like h.
      */
 
-     void pyDebuggerReleaseStage3()
-     {
+    void pyDebuggerReleaseStage3()
+    {
         // copy w^T to host for the python script to read the binary
 
         float *wt_host = (float *)malloc(d_model * vocab_size * sizeof(float));
 
         cudaMemcpy(wt_host, model_paramaters.wt_out_d, d_model * vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
+
+
         bulkRelease<float>(
-            {{wt_host, d_model * vocab_size, "wt.bin"}}
-        );
+            {{wt_host, d_model * vocab_size, "wt.bin"},
+             {model_paramaters.w_host, d_model * vocab_size, "w.bin"}});
 
         free(wt_host);
-     }
+    }
 
 public:
     AutoGradEngine(
@@ -1333,6 +1335,14 @@ public:
         const NetAttentionParamaters &paramaters)
     {
         this->model_paramaters = paramaters;
+
+        // if (debug)
+        // {
+        //     utils->printFlatArray2D(
+        //         model_paramaters.w_host,
+        //         d_model,
+        //         vocab_size);
+        // }
 
         dl_dz_upstream_gradient(
             paramaters.y_actual, // Note:- these are on device
@@ -1494,7 +1504,6 @@ class AttentionInterface
     // goal is not perfection here, I just want to make it work
 
     // ---------- Autograd engine weight lm head ---------------------
-    float *w_host;
     float *w_device;
     float *w_out_d;
 
@@ -1586,7 +1595,6 @@ public:
 
         // ------------ for w in lm head --------------
 
-        w_host = (float *)malloc(d_model * vocab_size * sizeof(float));
         cudaMalloc((void **)&w_device, d_model * vocab_size * sizeof(float));
         cudaMalloc((void **)&w_out_d, d_model * vocab_size * sizeof(float));
     }
@@ -1615,7 +1623,6 @@ public:
 
         cudaFree(w_out_d);
         cudaFree(w_device);
-        free(w_host);
     }
 
     LinearParams getLmHeadParams()
@@ -1707,6 +1714,8 @@ public:
 
                 float *prob = lm_head->forward(x); // Shape (B, T, vocab_size) x is not changed here.
 
+                modelParamaters.w_host = lm_head->getWeight();
+
                 // if (debug)
                 // {
                 //     std::cout << " After LM head " << std::endl;
@@ -1739,7 +1748,7 @@ public:
                 modelParamaters.dl_dw_device = dl_dw_out_device;
                 modelParamaters.dl_dw_host = dl_dw_out_host;
 
-                modelParamaters.w_host = w_host;
+                // these are just borrowed pointers
                 modelParamaters.w_device = w_device;
                 modelParamaters.wt_out_d = w_out_d;
 
