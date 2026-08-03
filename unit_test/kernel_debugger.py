@@ -202,4 +202,4 @@ delta_torch = y_predicted - y_actual
 # Note-: GIGO sometimes you might just be transposing the garbage who knows,
 # if you think that is the case then manually print and see from the C++ script.
 print(f"Checking delta across kernels {torch.allclose(delta_torch, delta)}")
-print(f"Checking wt kernel: {torch.allclose(w.T, wt)}")
+print(f"Checking wt transpose kernel: {torch.allclose(w.T, wt)}")
