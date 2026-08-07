@@ -9,7 +9,7 @@
 #include <cstring>
 #include <iostream>
 #include <unordered_map>
-
+#pragma once
 // I will be really honest it takes time for me to think deeply, but I will figure it out
 // till this day AI hallucination is common on task that requires deep thinking.
 // whatever even if this market is brutal I am investing my effort into thinking.
@@ -591,13 +591,15 @@ public:
     }
 };
 
-struct posDataPtr
+inline struct posDataPtr
 {
     int s1;
     int s2;
 } dataPointerTrack;
 
-struct IO // this x, and y are stored for one batch.
+
+
+inline struct IO // this x, and y are stored for one batch.
 {
     std::vector<std::vector<int>> x;
     std::vector<std::vector<int>> y;

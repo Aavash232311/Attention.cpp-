@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <nlohmann/json.hpp>
 
+#pragma once
 using namespace std;
 
 using json = nlohmann::json;
@@ -25,7 +26,7 @@ struct Hyperparamaters
 // why would we want to do something like this?
 // to load hyperparamaters in the seed that we are trying to initlize
 
-Hyperparamaters readHyperparameters()
+inline Hyperparamaters readHyperparameters()
 {
     std::string path = "./src/cache/config.json";
     std::ifstream file(path);
