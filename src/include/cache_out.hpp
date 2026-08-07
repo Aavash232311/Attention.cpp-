@@ -5,7 +5,7 @@
 #include <iostream>
 #include <filesystem>
 #include <unordered_map>
-
+#pragma once
 using namespace std;
 namespace fs = std::filesystem;
 
@@ -22,7 +22,7 @@ void releaseFile(
     out.write(reinterpret_cast<const char *>(data), num_elements * sizeof(T));
 }
 
-string jsonEscape(const string &s)
+inline string jsonEscape(const string &s)
 {
     string out;
     out.reserve(s.size());
@@ -53,7 +53,7 @@ string jsonEscape(const string &s)
     return out;
 }
 
-void releaseConfig(
+inline void releaseConfig(
     const vector<string> key,
     const vector<int> value)
 {
@@ -80,7 +80,7 @@ void releaseConfig(
 
 // Realeses json for hyperparamaters config
 
-void releaseHyperParamaters(
+inline void releaseHyperParamaters(
     int d_model,
     int vocab_size,
     int batch_size,

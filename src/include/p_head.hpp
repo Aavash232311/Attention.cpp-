@@ -1,11 +1,11 @@
 #include <vector>
 #include <fstream>
 #include <stdexcept>
-
+#pragma once
 
 using namespace std;
 
-float* load_bin(const std::string& path, size_t num_elements) {
+inline float* load_bin(const std::string& path, size_t num_elements) {
     std::ifstream file(path, std::ios::binary);
     if (!file) {
         throw std::runtime_error("Could not open file: " + path);

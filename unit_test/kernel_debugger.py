@@ -12,7 +12,7 @@ from ml_components.positional_encoding import sinusoidal_positional_encoding
 Reaseases hyperparamaters from C++ in a json file
 '''
 os.system(
-    "nvcc -DDEBUG -DPARAMS src/attention.cpp src/kernel/math.cu -o src/bin/attention"
+    "nvcc -DDEBUG -DPARAMS src/attention.cpp src/kernel/math.cu src/backpropagation/Kernel/interface_back.cu -o src/bin/attention"
 )
 os.system("./src/bin/attention")
 
@@ -111,8 +111,9 @@ input_ids.to(torch.int32).numpy().tofile("./src/cache/pytorch_out/input_ids.bin"
     Loads C++ with python generated paramaters to avoid randomness
 '''
 os.system(
-    "nvcc -DDEBUG -DDRUN src/attention.cpp src/kernel/math.cu -o src/bin/attention"
+    "nvcc -DDEBUG -DDRUN src/attention.cpp src/kernel/math.cu src/backpropagation/Kernel/interface_back.cu -o src/bin/attention"
 )
+
 os.system("./src/bin/attention")
 
 '''
