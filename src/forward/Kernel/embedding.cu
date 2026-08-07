@@ -69,6 +69,30 @@ __global__ void positional_embedding_kernel(float *out, int seq_len, int d_model
     out[pos * d_model + k] = (k % 2 == 0) ? sin_val : cos_val;
 }
 
+
+__global__ void FinalEmbeddingKernel(
+    float *lookedUpEmbeddings, // Shape BTC
+    float *sinosudialEncoding, // Shape (seq_len, d_model)
+    float *C,                  // Shape (batch_size, seq_len, d_model)  BTC
+    int d_model,
+    int seq_len,
+    int batch_size)
+{
+    int rows = blockIdx.x; // seq position (s)
+    int cols = blockIdx.y; // batch index (b)
+    int e = threadIdx.x;
+
+    if (rows >= seq_len || cols >= batch_size || e >= d_model)
+        return;
+
+    int idxSinosudialEncoding = rows * d_model + e; // (seq_len, d_model) — unaffected
+
+    // output (matches declared C shape)
+    int idx = cols * (seq_len * d_model) + rows * d_model + e;
+    C[idx] = lookedUpEmbeddings[idx] + sinosudialEncoding[idxSinosudialEncoding];
+}
+
+
 extern "C"
 {
     void positionalEmbeddings(float *out, int seq_len, int d_model)
@@ -112,5 +136,23 @@ extern "C"
             printf("Kernel launch failed: %s\n", cudaGetErrorString(err));
             return;
         }
+    }
+
+
+    void addEmbeddings(
+        float *lookedUpEmbeddings,
+        float *sinosudialEncoding,
+        float *C,
+        int d_model,
+        int seq_len,
+        int batch_size)
+    {
+        dim3 gird(seq_len, batch_size);
+        int threads = min(d_model, 1024);
+        dim3 block(threads);
+
+        FinalEmbeddingKernel<<<gird, block>>>(lookedUpEmbeddings, sinosudialEncoding, C, d_model, seq_len, batch_size);
+
+        cudaDeviceSynchronize();
     }
 }

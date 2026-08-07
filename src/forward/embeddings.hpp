@@ -12,8 +12,6 @@
 extern "C" void positionalEmbeddings(float *out, int seq_len, int d_model);
 extern "C" void lookup(int *x, float *embeddings, float *C, int d_model, int seq_len, int batch_size, int vocab_size);
 extern "C" void addEmbeddings(float *lookedUpEmbeddings, float *sinosudialEncoding, float *C, int d_model, int seq_len, int batch_size);
-extern "C" void KaimingInit(float *arr, curandState *state, int x, int y, unsigned long seed);
-
 
 class Embeddings
 {
