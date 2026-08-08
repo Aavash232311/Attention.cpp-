@@ -15,6 +15,7 @@
 #include "../include/attention_params.hpp"
 #include "../include/single_embeddings.hpp"
 
+#pragma once
 
 
 // ----------- Backpropgation ------------------------

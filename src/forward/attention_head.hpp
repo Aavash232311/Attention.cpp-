@@ -14,7 +14,7 @@
 #include "../forward/layer_norm.hpp"
 #include "../include/attention_params.hpp"
 
-
+#pragma once
 
 extern "C" void vectorKernel(float *A, float *B, float *C, int N);
 extern "C" void ScalerDvisionElem(float *arr, int batch, int n_head, int seq_len, int head_dim);
