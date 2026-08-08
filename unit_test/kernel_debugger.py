@@ -109,7 +109,7 @@ input_ids = torch.randint(0, vocab_size, (seq_len, batch_size))
 input_ids.to(torch.int32).numpy().tofile("./src/cache/pytorch_out/input_ids.bin")
 
 '''
-    Loads C++ with python generated paramaters to avoid randomness
+    Loads C++ with python generated parameters to avoid randomness
 '''
 os.system(
     "nvcc -DDEBUG -DDRUN src/main.cpp src/kernel/utils.cu src/forward/Kernel/layer_norm.cu src/forward/Kernel/embedding.cu src/forward/Kernel/linear.cu src/forward/Kernel/attention_head.cu src/forward/Kernel/interface.cu src/backpropagation/Kernel/interface_back.cu -o src/bin/attention"
@@ -175,17 +175,17 @@ delta, y_predicted, y_actual, h, dl_dw_kernel, h_t, wt, w = Reader(
 
 pe = sinusoidal_positional_encoding(seq_len=seq_len, d_model=d_model)
 # same embedding that c++ uses after being released from python.
-k_total_emebddings = debugger.readEmbeddings('embedding.bin', batch_size * seq_len * d_model)
+k_total_embeddings = debugger.readEmbeddings('embedding.bin', batch_size * seq_len * d_model)
 x = debugger.readX("x.bin", seq_len * batch_size)
 
-py_total_emebdding = model.total_embeddings(x=x, token_embedding_table=token_embeddings, positional_embedding_table=pe)
+py_total_embedding = model.total_embeddings(x=x, token_embedding_table=token_embeddings, positional_embedding_table=pe)
 
 
-# DEBUGGING FOR BACKPROPAGATION ITS SOMETING HARD FOR ME TO BACKTRACK
+# DEBUGGING FOR BACKPROPAGATION ITS SOMETHING HARD FOR ME TO BACKTRACK
 # WE ARE DOING THIS HERE BECAUSE THIS IS LITTLE DIFFICULT FOR MY EYES TO ESTIMATE
 # COMPATED TO FORWARD PASS
 
-print(f"Checking net embedding C++ kernel, status: {torch.allclose(py_total_emebdding, k_total_emebddings)}")
+print(f"Checking net embedding C++ kernel, status: {torch.allclose(py_total_embedding, k_total_embeddings)}")
 
 
 print("\n")
@@ -193,16 +193,16 @@ print('*' * 60)
 print("Section AUTO GRAD (The Chain Rule of Derivative) ")
 print('*' * 60)
 # transpose h
-tranposing_h = h.transpose(1, 2)
-print(f"h^t transpose kernel: {torch.allclose(tranposing_h, h_t)}")
+transposing_h = h.transpose(1, 2)
+print(f"h^t transpose kernel: {torch.allclose(transposing_h, h_t)}")
 # we need to verify delta h^t
-dl_dw_torch = tranposing_h @ delta
+dl_dw_torch = transposing_h @ delta
 
-# boradcasting for last-dimension
+# broadcasting for last-dimension
 delta_torch = y_predicted - y_actual
 
 
-# Note-: GIGO sometimes you might just be transposing the garbage who knows,
+# Note-: GIGO sometimes you might just be transposing the garbage who knows
 # if you think that is the case then manually print and see from the C++ script.
 print(f"Checking delta across kernels {torch.allclose(delta_torch, delta)}")
 print(f"Checking wt transpose kernel: {torch.allclose(w.T, wt)}")

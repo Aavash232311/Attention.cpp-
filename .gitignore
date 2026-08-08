@@ -1,20 +1,29 @@
-# Ignore compiled executable
+# Ignore compiled executables and binaries
 main
 vector_add
-bin
-data
+bin/
+data/
 pg
 
-venv
+# Virtual environment
+venv/
+.venv/
 
+# LaTeX build artifacts
 flashback.aux
 flashback.fdb_latexmk
 flashback.fls
 flashback.log
 
-# Ignore Visual Studio / VS Code settings
+# IDE & Editor settings
 .vs/
 .vscode/
+.idea/
 
-
-cache
+# Caches and Python bytecode
+.cache/
+cache/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
