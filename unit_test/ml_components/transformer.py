@@ -17,7 +17,8 @@ class Transformer(nn.Module):
 
         self.device = torch.device("cpu")
         if torch.cuda.is_available():
-            self.device = torch.device("cuda") 
+            self.device = torch.device("cuda")
+
 
     def total_embeddings(self, x, token_embedding_table, positional_embedding_table):
         T, B = x.shape
