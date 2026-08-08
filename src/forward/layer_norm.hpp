@@ -10,6 +10,7 @@
 #pragma once
 
 extern "C" void layerNormalization(float *x, float *gamma, float *beta, int batch_size, int seq_len, int d_model);
+
 class LayerNorm
 {
     // we can loose the symmantic meaning in the norm procress so gamma and beta as learnable parms adjusts accordingly.

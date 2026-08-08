@@ -9,13 +9,11 @@ from ml_components.positional_encoding import sinusoidal_positional_encoding
  '''
 
 '''
-Reaseases hyperparamaters from C++ in a json file
+Reaseases hyperparamaters from C++ in a json file, this approach is slow after splitting the GOD file but its okay now.
 '''
 os.system(
-    "nvcc -DDEBUG -DPARAMS src/attention.cpp src/kernel/math.cu src/forward/Kernel/layer_norm.cu src/forward/Kernel/embedding.cu src/forward/Kernel/linear.cu src/forward/Kernel/attention_head.cu src/backpropagation/Kernel/interface_back.cu -o src/bin/attention"
+    "nvcc -DDEBUG -DPARAMS src/main.cpp src/kernel/utils.cu src/forward/Kernel/layer_norm.cu src/forward/Kernel/embedding.cu src/forward/Kernel/linear.cu src/forward/Kernel/attention_head.cu src/forward/Kernel/interface.cu src/backpropagation/Kernel/interface_back.cu -o src/bin/attention"
 )
-
-
 
 os.system("./src/bin/attention")
 
@@ -114,7 +112,7 @@ input_ids.to(torch.int32).numpy().tofile("./src/cache/pytorch_out/input_ids.bin"
     Loads C++ with python generated paramaters to avoid randomness
 '''
 os.system(
-    "nvcc -DDEBUG -DDRUN src/attention.cpp src/kernel/math.cu src/forward/Kernel/layer_norm.cu src/forward/Kernel/embedding.cu src/forward/Kernel/linear.cu src/forward/Kernel/attention_head.cu src/backpropagation/Kernel/interface_back.cu -o src/bin/attention"
+    "nvcc -DDEBUG -DDRUN src/main.cpp src/kernel/utils.cu src/forward/Kernel/layer_norm.cu src/forward/Kernel/embedding.cu src/forward/Kernel/linear.cu src/forward/Kernel/attention_head.cu src/forward/Kernel/interface.cu src/backpropagation/Kernel/interface_back.cu -o src/bin/attention"
 )
 
 
