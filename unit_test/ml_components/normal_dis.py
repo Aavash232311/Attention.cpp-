@@ -1,7 +1,7 @@
 import torch
 
 '''
-Randomness lies in the init of weight and bias.
+uncertainty lies in the init of weight and bias.
 So we are going to generate that in python and load in C++
 and then run the debugger.
 '''
