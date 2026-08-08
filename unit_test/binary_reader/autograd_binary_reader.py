@@ -1,5 +1,5 @@
 import numpy as np
-from ml_components.grad import Autograd, load_tensor
+from ml_components.grad import load_tensor
 
 
 

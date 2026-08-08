@@ -1,6 +1,6 @@
-import os
 import torch
 
+from debug.static import RED, GREEN, RESET
 from binary_reader.autograd_binary_reader import Reader
 
 def debug_autograd(
@@ -10,10 +10,6 @@ def debug_autograd(
         vocab_size: int,
         num_heads: int
 ):
-    # Loads C++ with python generated parameters to avoid randomness
-    os.system(
-        "nvcc -DDEBUG -DDRUN src/main.cpp src/kernel/utils.cu src/forward/Kernel/layer_norm.cu src/forward/Kernel/embedding.cu src/forward/Kernel/linear.cu src/forward/Kernel/attention_head.cu src/forward/Kernel/interface.cu src/backpropagation/Kernel/interface_back.cu -o src/bin/attention")
-    os.system("./src/bin/attention")
 
     delta, y_predicted, y_actual, h, dl_dw_kernel, h_t, wt, w = Reader(
         batch_size=batch_size,
@@ -37,5 +33,16 @@ def debug_autograd(
 
     # Note-: GIGO sometimes you might just be transposing the garbage who knows
     # if you think that is the case then manually print and see from the C++ script.
-    print(f"Checking delta across kernels {torch.allclose(delta_torch, delta)}")
-    print(f"Checking wt transpose kernel: {torch.allclose(w.T, wt)}")
+
+    check_delta_across_kernels = torch.allclose(delta_torch, delta)
+    if not check_delta_across_kernels:
+        print(f"Checking delta across kernels: {RED} {check_delta_across_kernels} {RESET}")
+    else:
+        print(f"Checking delta across kernels: {GREEN} {check_delta_across_kernels} {RESET}")
+
+    check_wt = torch.allclose(w.T, wt)
+
+    if not check_wt:
+        print(f"Checking wt transpose kernel: {RED} {torch.allclose(w.T, wt)} {RESET}")
+    else:
+        print(f"Checking wt transpose kernel: {GREEN} {check_wt} {RESET}")
