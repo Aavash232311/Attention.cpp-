@@ -13,8 +13,6 @@
 // autograd in attention head, only 1 block transformer now
 // I cannot play around much when complexity grows here.
 class FLashAttention: AutoGradEngine {
-    // Note:- Here the upstream grad is from the Linear Layer
-    // i.e lm head.
 
 
 };
