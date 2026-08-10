@@ -1,4 +1,5 @@
 #include "linear.hpp"
+#include "../include/utils.hpp"
 #include "single_embeddings.hpp"
 
 #pragma once

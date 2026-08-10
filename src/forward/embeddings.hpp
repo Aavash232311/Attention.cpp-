@@ -6,6 +6,7 @@
 #include <cstdio>
 #include <chrono>
 
+#include "../include/utils.hpp"
 #include "../include/p_head.hpp"
 #include "../include/norm_dis.hpp"
 #include "../include/cache_out.hpp"
