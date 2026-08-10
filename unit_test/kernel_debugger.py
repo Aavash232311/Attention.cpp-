@@ -8,7 +8,9 @@ from debug.debug_embeddings import verify_embeddings
 from binary_reader.hyperparamaters import read_hyperparamaters
 
 ''' Automated debugging script for CUDA kernel in attention.cpp
-    File based dump verification
+    File based dump verification.
+    Never trust the debugger too much, this is for basic mathematical verification (for specific operations) only.
+    Use local print and this combined :)
  '''
 # Make sure we are able to read C++ project directory from here
 os.chdir(Path.cwd().parent)

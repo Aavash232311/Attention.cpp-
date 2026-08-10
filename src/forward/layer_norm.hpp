@@ -1,4 +1,4 @@
-
+#pragma once
 #include "../include/utils.hpp"
 #include "../include/helper.hpp"
 #include <curand_kernel.h>
@@ -8,7 +8,6 @@
 #include <cstdio>
 #include <chrono>
 
-#pragma once
 
 extern "C" void layerNormalization(float *x, float *gamma, float *beta, int batch_size, int seq_len, int d_model);
 

@@ -1,3 +1,4 @@
+#pragma once
 #include <memory>
 #include <cstdio>
 #include <tuple>
@@ -5,7 +6,7 @@
 #include <iostream>
 #include <filesystem>
 #include <unordered_map>
-#pragma once
+
 using namespace std;
 namespace fs = std::filesystem;
 

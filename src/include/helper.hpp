@@ -1,3 +1,4 @@
+#pragma once
 #include <vector>
 #include <memory>
 #include <random>
@@ -9,7 +10,7 @@
 #include <cstring>
 #include <iostream>
 #include <unordered_map>
-#pragma once
+
 // I will be really honest it takes time for me to think deeply, but I will figure it out
 // till this day AI hallucination is common on task that requires deep thinking.
 // whatever even if this market is brutal I am investing my effort into thinking.

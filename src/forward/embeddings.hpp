@@ -1,3 +1,4 @@
+#pragma once
 #include "../include/helper.hpp"
 #include <curand_kernel.h>
 #include <cuda_runtime.h>
@@ -13,7 +14,6 @@
 #include "../include/data_loader.hpp"
 
 
-#pragma once
 extern "C" void positionalEmbeddings(float *out, int seq_len, int d_model);
 extern "C" void lookup(int *x, float *embeddings, float *C, int d_model, int seq_len, int batch_size, int vocab_size);
 extern "C" void addEmbeddings(float *lookedUpEmbeddings, float *sinosudialEncoding, float *C, int d_model, int seq_len, int batch_size);

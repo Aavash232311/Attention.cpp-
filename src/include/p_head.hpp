@@ -1,7 +1,8 @@
+#pragma once
+
 #include <vector>
 #include <fstream>
 #include <stdexcept>
-#pragma once
 
 using namespace std;
 
