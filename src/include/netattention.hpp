@@ -1,6 +1,6 @@
+#pragma once
 #include "attention_params.hpp"
 #include "linear.hpp"
-#pragma once
 
 struct NetAttentionParamaters
 {

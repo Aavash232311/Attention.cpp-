@@ -1,3 +1,4 @@
+#pragma once
 #include "../include/helper.hpp"
 #include "../include/utils.hpp"
 #include <curand_kernel.h>
@@ -7,7 +8,7 @@
 #include <cstdio>
 #include <chrono>
 
-#pragma once
+
 
 extern "C" void KaimingInit(float *arr, curandState *state, int x, int y, unsigned long seed);
 extern "C" void WeightedSum(float *x, float *w, float *b, float *c, int M, int K, int N);

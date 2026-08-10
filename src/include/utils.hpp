@@ -1,3 +1,4 @@
+#pragma once
 #include <vector>
 #include <memory>
 #include <random>
@@ -9,7 +10,6 @@
 #include <cstring>
 #include <iostream>
 #include <unordered_map>
-#pragma once
 
 
 

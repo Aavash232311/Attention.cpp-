@@ -30,10 +30,8 @@
 // I handtyped this again why not
 // I created a monolith here never mind.
 
-// nvcc src/attention.cpp src/kernel/math.cu -o src/bin/attention
-// ./src/bin/attention
-
 // nvcc src/main.cpp src/kernel/utils.cu src/forward/Kernel/layer_norm.cu src/forward/Kernel/embedding.cu src/forward/Kernel/linear.cu src/forward/Kernel/attention_head.cu src/forward/Kernel/interface.cu src/backpropagation/Kernel/interface_back.cu -o src/bin/attention
+// ./src/bin/attention
 
 // backprop https://arxiv.org/pdf/2307.08691
 

@@ -1,8 +1,8 @@
+#pragma once
 #include "linear.hpp"
 #include "../include/utils.hpp"
 #include "single_embeddings.hpp"
 
-#pragma once
 struct AttentionParamaters
 {
     LinearParams Q_params;

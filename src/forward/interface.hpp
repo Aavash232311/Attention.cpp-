@@ -1,3 +1,4 @@
+#pragma once
 #include "../include/helper.hpp"
 #include <curand_kernel.h>
 #include <cuda_runtime.h>
@@ -19,8 +20,7 @@
 #include "../forward/attention_head.hpp"
 #include "../include/single_embeddings.hpp"
 #include "../backpropagation/interface_back.hpp"
-
-#pragma once
+#include "../backpropagation/flash_attention.hpp"
 
 extern "C" void softmax2D(float *arr, float *out, int batch_size, int seq_len, int vocab_size);
 extern "C" void CrossEntropy(float *x, int *y, float *oneHotOut, float *lossOut, int batch_size, int seq_len, int vocab_size);
@@ -63,7 +63,7 @@ class AttentionInterface
     // ------ For testing one hot encode kernel --------- //
     float *outHotEncodeOut = nullptr;
 
-    std::unique_ptr<AutoGradEngine> autograd;
+    std::unique_ptr<FlashAttention> autograd;
 
     // LOW LEVEL BY DESIGN IS LITTLE BIT MESSY COMES WITH A TRADE OFFS ANYWAY
 
@@ -134,7 +134,7 @@ public:
             batch_size,
             debug);
 
-        autograd = std::make_unique<AutoGradEngine>(
+        autograd = std::make_unique<FlashAttention>(
             d_model,
             vocab_size,
             num_heads,

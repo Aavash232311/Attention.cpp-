@@ -1,3 +1,4 @@
+#pragma once
 #include "../include/helper.hpp"
 #include <curand_kernel.h>
 #include <cuda_runtime.h>
@@ -5,6 +6,7 @@
 #include <memory>
 #include <cstdio>
 #include <chrono>
+
 
 #include "../include/utils.hpp"
 #include "../include/linear.hpp"
@@ -15,7 +17,6 @@
 #include "../include/attention_params.hpp"
 #include "../include/single_embeddings.hpp"
 
-#pragma once
 
 
 // ----------- Backpropgation ------------------------
@@ -49,6 +50,7 @@ class AutoGradEngine
 {
     // welcome to my calculas class
 
+protected:
     NetAttentionParamaters model_paramaters;
 
     bool debug = true;
@@ -251,23 +253,12 @@ private:
 
         cudaMemcpy(wt_host, model_paramaters.wt_out_d, d_model * vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
 
-
         bulkRelease<float>(
             {{wt_host, d_model * vocab_size, "wt.bin"},
              {model_paramaters.w_host, d_model * vocab_size, "w.bin"}});
 
         free(wt_host);
     }
-
-
-    /*
-    --------------------- delta w^t = upstream gardient for the attention head -------------------------------------
-                                backpropagation through attention head
-    */
-
-    // Note:- out = x + attn(x) is just adding two pices together we will first do the backpropagation in the attention mechanism
-    // Lets go for S P O backpropagation here, its a mess but it is what it is.
-
 
 public:
     AutoGradEngine(
@@ -290,6 +281,11 @@ public:
         // NOTE- Memory allocation in RAM or VRAM is done per epoch if done here
         // huritng the performace, allocate and re-use ones from the attention
         // consturcotr and pass as a buffer.
+    }
+
+    virtual void opv_upstream_gradient() 
+    {
+
     }
 
     void backprop(
@@ -372,6 +368,9 @@ public:
 
         if (debug)
             pyDebuggerReleaseStage3();
+
+        opv_upstream_gradient();
+        // Ignoring the FFN for now we will call the flash attention layer.
 
         // if (debug)
         // {

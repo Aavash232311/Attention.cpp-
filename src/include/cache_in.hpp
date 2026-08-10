@@ -1,10 +1,11 @@
+#pragma once
 #include <iostream>
 #include <vector>
 #include <fstream>
 #include <stdexcept>
 #include <nlohmann/json.hpp>
 
-#pragma once
+
 using namespace std;
 
 using json = nlohmann::json;
