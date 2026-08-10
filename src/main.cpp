@@ -15,6 +15,7 @@
 #include "forward/interface.hpp"
 #include "forward/layer_norm.hpp"
 #include "forward/embeddings.hpp"
+#include "include/data_loader.hpp"
 #include "include/netattention.hpp"
 #include "forward/attention_head.hpp"
 #include "include/single_embeddings.hpp"

@@ -7,8 +7,9 @@
 #include <chrono>
 
 #include "../include/p_head.hpp"
-#include "../include/cache_out.hpp"
 #include "../include/norm_dis.hpp"
+#include "../include/cache_out.hpp"
+#include "../include/data_loader.hpp"
 
 
 #pragma once
