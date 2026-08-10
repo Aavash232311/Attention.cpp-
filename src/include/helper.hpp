@@ -558,35 +558,3 @@ public:
         std::cout << "], shape=[" << N << "])\n";
     }
 };
-
-class EncoderText
-{
-    std::vector<char> fileAsChar;
-
-public:
-    void loadTextChunk(std::string &path)
-    {
-        std::ifstream file(path);
-
-        if (!file.is_open())
-        {
-            std::runtime_error("Failed to open the file");
-        }
-
-        std::vector<char> charArray;
-        char ch;
-
-        while (file.get(ch))
-        {
-            charArray.push_back(ch);
-        }
-
-        file.close();
-        this->fileAsChar = charArray;
-    }
-
-    const std::vector<char> &getFileAsChar() const
-    {
-        return fileAsChar;
-    }
-};
