@@ -8,6 +8,7 @@
 
 #include "../include/p_head.hpp"
 #include "../include/cache_out.hpp"
+#include "../include/norm_dis.hpp"
 
 
 #pragma once

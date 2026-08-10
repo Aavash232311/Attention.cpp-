@@ -885,30 +885,3 @@ public:
     }
 };
 
-// in the phase of learning I did it myway shouldn't be like this,
-// make it contangeous even though not initllized in the GPU
-class Initializer
-{
-public:
-    std::vector<std::vector<float>> HeInit(int vocabSize, int dModel)
-    {
-        float stdDev = std::sqrt(2.0f / dModel);
-
-        std::vector<std::vector<float>> tokenEmbeddings(
-            vocabSize,
-            std::vector<float>(dModel));
-
-        std::random_device rd;
-        std::mt19937 gen(rd());
-        std::normal_distribution<float> gaussian(0.0f, 1.0f); // mean 0 std dev
-
-        for (int i = 0; i < vocabSize; ++i)
-        {
-            for (int j = 0; j < dModel; ++j)
-            {
-                tokenEmbeddings[i][j] = gaussian(gen);
-            }
-        }
-        return tokenEmbeddings;
-    }
-};
