@@ -10,6 +10,7 @@
 #include "forward/linear.hpp"
 #include "include/linear.hpp"
 #include "include/p_head.hpp"
+#include "include/utils.hpp"
 #include "include/cache_in.hpp"
 #include "include/cache_out.hpp"
 #include "forward/interface.hpp"

@@ -6,7 +6,7 @@
 #include <cstdio>
 #include <chrono>
 
-
+#include "../include/utils.hpp"
 #include "../include/linear.hpp"
 #include "../include/p_head.hpp"
 #include "../include/cache_in.hpp"

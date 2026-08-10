@@ -1,4 +1,5 @@
 
+#include "../include/utils.hpp"
 #include "../include/helper.hpp"
 #include <curand_kernel.h>
 #include <cuda_runtime.h>
