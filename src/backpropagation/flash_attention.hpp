@@ -42,13 +42,8 @@ public:
     void opv_upstream_gradient(
         float *G_device,
         float *G_host,
-        Tensor3 shape) override
+        Tensor4 shape) override
     {
-        if (debug)
-        {
-            float* PV = model_paramaters.attention_head.O;
-            utils->print2DMatrixLastTwo(PV, batch_size, num_heads, seq_len, head_dim);
-            
-        }
+        
     }
 };

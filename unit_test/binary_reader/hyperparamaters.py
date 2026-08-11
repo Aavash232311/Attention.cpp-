@@ -10,8 +10,7 @@ warnings.filterwarnings("ignore", category=UserWarning, message="The given buffe
 
 def read_hyperparamaters(path="./src/cache/config.json"):
     # Releases hyperparamaters from C++ in a JSON file. Compile and execute, this approach is known to be slow, but it's okay.
-    os.system(
-        "nvcc -DDEBUG -DPARAMS src/main.cpp src/kernel/utils.cu src/forward/Kernel/layer_norm.cu src/forward/Kernel/embedding.cu src/forward/Kernel/linear.cu src/forward/Kernel/attention_head.cu src/forward/Kernel/interface.cu src/backpropagation/Kernel/interface_back.cu -o src/bin/attention")
+    os.system("nvcc -DDEBUG -DPARAMS src/main.cpp src/kernel/utils.cu src/forward/Kernel/layer_norm.cu src/forward/Kernel/embedding.cu src/forward/Kernel/linear.cu src/forward/Kernel/attention_head.cu src/forward/Kernel/interface.cu src/backpropagation/Kernel/interface_back.cu src/backpropagation/Kernel/flash_attention.cu -o src/bin/attention")
     os.system("./src/bin/attention")
 
 
