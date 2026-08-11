@@ -13,10 +13,11 @@
 
 
 
-struct Tensor3 {
+struct Tensor4 {
     int x;
     int y;
     int z;
+    int z1; // shapes can have muliple heads
 };
 
 

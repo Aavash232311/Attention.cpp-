@@ -285,7 +285,7 @@ public:
     virtual void opv_upstream_gradient(
         float *G_device,
         float *G_host,
-        Tensor3 shape)
+        Tensor4 shape)
     {
     }
 
