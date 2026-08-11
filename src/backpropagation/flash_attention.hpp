@@ -13,6 +13,8 @@
 
 using namespace std;
 
+
+
 /*
 --------------------- delta w^t = upstream gardient for the attention head -------------------------------------
                             backpropagation through attention head
@@ -28,6 +30,8 @@ using namespace std;
 
 */
 
+
+
 class FlashAttention : public AutoGradEngine
 {
 
@@ -38,8 +42,12 @@ public:
     {}
 
 
-    void opv_upstream_gradient () override
+    void opv_upstream_gradient (
+        float *G_device,
+        float *G_host,
+        Tensor3 shape
+    ) override
     {
-     
+        
     }
 };

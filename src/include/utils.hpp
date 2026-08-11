@@ -13,6 +13,12 @@
 
 
 
+struct Tensor3 {
+    int x;
+    int y;
+    int z;
+};
+
 
 class Utility
 {
