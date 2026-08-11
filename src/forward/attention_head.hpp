@@ -15,7 +15,6 @@
 #include "../forward/layer_norm.hpp"
 #include "../include/attention_params.hpp"
 
-
 extern "C" void vectorKernel(float *A, float *B, float *C, int N);
 extern "C" void ScalerDvisionElem(float *arr, int batch, int n_head, int seq_len, int head_dim);
 extern "C" void softmax(float *arr, float *out, int N, int seq_len, int n_head, int batch_size);
@@ -275,6 +274,9 @@ public:
         QKVMatmulFinal(deviceQKTSqrtD, deviceValue, BATCH_NEAD_TIME_HEADDIM_DEVICE, seq_len, head_dim, num_heads, batch_size);
 
         cudaMemcpy(out, BATCH_NEAD_TIME_HEADDIM_DEVICE, batch_size * num_heads * seq_len * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
+
+        // host thing whatever the resultant is B_NUMHEAD_SEQLEN_HEADDIM, for O = PV flash attention 
+        std::memcpy(O, B_NUMHEAD_SEQLEN_HEADDIM, batch_size * num_heads * seq_len * head_dim * sizeof(float));
     }
 
     // This method swaps the first and second dimension
