@@ -137,7 +137,7 @@ public:
         bulkRelease<float>(
             {
                 {model_paramaters.attention_head.P, batch_size * num_heads * seq_len * seq_len, "pt.bin"},
-                {model_paramaters.attention_head.V, batch_size * num_heads * seq_len * head_dim, "vt.bin"},
+                {model_paramaters.attention_head.V, batch_size * num_heads * head_dim * seq_len, "vt.bin"}, // keep in mind of the transposed shape here
             });
     }
 };

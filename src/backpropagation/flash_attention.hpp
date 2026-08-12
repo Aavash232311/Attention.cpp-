@@ -117,6 +117,7 @@ public:
         if (debug)
             pyDebuggerReleaseStage5();
 
+
         // if (debug == true)
         // {
         //     std::cout << "After softmax " << sizeof(model_paramaters.attention_head.P) << std::endl;
