@@ -27,16 +27,16 @@ using namespace std;
 */
 
 // Re-use this from linear.hpp
-extern "C" void TransposeKey(int num_heads, int head_dim, float *arr, float *out, int M, int N, int K, bool reverse);
+extern "C" void TransposeKey(float *arr, float *out, int num_heads, int head_dim, int batch_size, int seq_len, bool reverse);
 
 class FlashAttention : public AutoGradEngine
 {
 public:
     /**
      * @class FlashAttention: AutoGradEngine
-     * @brief Transposes last two dimension of 4D tensor. 
+     * @brief Transposes last two dimension of 4D tensor.
      *
-     * ransposes last two dimension of 4D tensor. 
+     * ransposes last two dimension of 4D tensor.
      *
      * @note Re-used Kernel logic from linear.hpp
      */
@@ -49,12 +49,11 @@ public:
         cudaMemcpy(arr_d, arr_h, N * sizeof(float), cudaMemcpyHostToDevice);
 
         TransposeKey(
-            num_heads,
-            head_dim,
             arr_d, // it will replace that same variable variable
             arr_h,
-            batch_size,
+            num_heads,
             head_dim,
+            batch_size,
             seq_len,
             false);
 
@@ -88,9 +87,16 @@ public:
     void opv_upstream_gradient(
         Tensor4 shape) override
     {
-        // if (debug == true)
-        // {
-        //     utils->print2DMatrixLastTwo(model_paramaters.attention_head.P, batch_size, num_heads, seq_len, seq_len);
-        // }
+        // Transposing P^T and V^T because they share common kernel logic.
+        float *PT = model_paramaters.P_T_device;
+
+        // For P^T
+        // transpose4DLastTwo(
+        //     model_paramaters.attention_head.P,
+        //     model_paramaters.P_T_device,
+        //     batch_size * num_heads * seq_len * seq_len
+        // );
+
+        // now model_paramaters.attention_head.P this pointer is transposed here.
     }
 };

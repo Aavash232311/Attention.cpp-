@@ -74,7 +74,7 @@ class AttentionInterface
     float *dl_dw_out_host;
 
     // GPU buffer for the autograd engine in the attention interface.
-    NetAttentionParamaters modelParamaters;
+    FlashAttentionPointers modelParamaters;
 
     // ---------- Autograd engine declaration --------------------
     float *out_h;
@@ -92,6 +92,10 @@ class AttentionInterface
     float *S_device;
     float *P_device;
     float *O_device;
+
+    // P^T and V^T device alloication
+    float *P_T_device;
+    float *V_T_device;
 
 private:
     // ----------- TEMPORARY DEBUGGER SCRIPT ---------------------
@@ -192,6 +196,11 @@ public:
         cudaMalloc((void **)&P_device, batch_size * num_heads * seq_len * seq_len * sizeof(float));
         cudaMalloc((void **)&O_device, batch_size * num_heads * seq_len * head_dim * sizeof(float));
 
+        // same size as P just re-arranged row and cols by the def.
+        cudaMalloc((void **)&P_T_device, batch_size * num_heads * seq_len * seq_len * sizeof(float));
+
+        // Shape of value matrix  (B, n_head, T, head_dim)
+        cudaMalloc((void **)&V_T_device, batch_size * num_heads * seq_len * head_dim * sizeof(float));
     }
 
     ~AttentionInterface()
@@ -223,6 +232,9 @@ public:
         cudaFree(S_device);
         cudaFree(P_device);
         cudaFree(O_device);
+
+        cudaFree(P_T_device);
+        cudaFree(V_T_device);
     }
 
     LinearParams getLmHeadParams()
@@ -351,6 +363,9 @@ public:
                 // these are just borrowed pointers
                 modelParamaters.w_device = w_device;
                 modelParamaters.wt_out_d = w_out_d;
+
+                modelParamaters.P_T_device = P_T_device;
+                modelParamaters.V_T_device = V_T_device;
 
                 // because the backprops needs to be done for each epoch.
                 // we need to keep in mind that the things hurting performace like cuda malloc and everything declared

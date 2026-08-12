@@ -50,7 +50,7 @@ class AutoGradEngine
     // welcome to my calculas class
 
 protected:
-    NetAttentionParamaters model_paramaters;
+    FlashAttentionPointers model_paramaters;
 
     bool debug = true;
 
@@ -219,7 +219,7 @@ public:
 
 
     void backprop(
-        const NetAttentionParamaters &paramaters)
+        const FlashAttentionPointers &paramaters)
     {
         this->model_paramaters = paramaters;
 

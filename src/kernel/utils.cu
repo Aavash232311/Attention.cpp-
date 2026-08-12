@@ -76,9 +76,8 @@ __global__ void TransposeKeyKernel(
     int head_dim,
     float *arr, // Shape (B, H, T, head_dim)
     float *out, // Shape (B, H, head_dim, T)
-    int M,      // batch_size,
-    int N,      // d_head
-    int K,      // seq_len
+    int batch_size,      // batch_size, or whatever the least dim is
+    int seq_len,      // seq_len
     bool reverse = false)
 {
     int b = blockIdx.z;
@@ -86,9 +85,9 @@ __global__ void TransposeKeyKernel(
     int s = blockIdx.x;
     int d = threadIdx.x;
 
-    int currentIdx = b * (num_heads * K * head_dim) + h * (K * head_dim) + s * (head_dim) + d;
+    int currentIdx = b * (num_heads * seq_len * head_dim) + h * (seq_len * head_dim) + s * (head_dim) + d;
 
-    int idxOut = b * (num_heads * head_dim * K) + h * (head_dim * K) + d * (K) + s;
+    int idxOut = b * (num_heads * head_dim * seq_len) + h * (head_dim * seq_len) + d * (seq_len) + s;
     if (!(reverse))
         out[idxOut] = arr[currentIdx];
     else
@@ -99,19 +98,18 @@ extern "C"
 {
 
     void TransposeKey(
-        int num_heads,
-        int head_dim,
         float *arr, //  Shape(batch_size, n_head, seq_len, d_head)
         float *out, // Shape (batch_size, n_head, head_dim, seq_len)
-        int M,      // batch_size
-        int N,      // d_head
-        int K,      // seq_len
+        int num_heads,
+        int head_dim,
+        int batch_size, // batch_size
+        int seq_len, // seq_len
         bool reverse)
     {
         dim3 block(head_dim);
-        dim3 grid(K, num_heads, M);
+        dim3 grid(seq_len, num_heads, batch_size);
 
-        TransposeKeyKernel<<<grid, block>>>(num_heads, head_dim, arr, out, M, N, K, reverse);
+        TransposeKeyKernel<<<grid, block>>>(num_heads, head_dim, arr, out, batch_size, seq_len, reverse);
 
         cudaDeviceSynchronize();
     }
