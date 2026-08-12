@@ -275,7 +275,7 @@ public:
 
         cudaMemcpy(out, BATCH_NEAD_TIME_HEADDIM_DEVICE, batch_size * num_heads * seq_len * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
 
-        // host thing whatever the resultant is B_NUMHEAD_SEQLEN_HEADDIM, for O = PV flash attention 
+        // host thing whatever the resultant is B_NUMHEAD_SEQLEN_HEADDIM, for O = PV flash attention
         std::memcpy(O, B_NUMHEAD_SEQLEN_HEADDIM, batch_size * num_heads * seq_len * head_dim * sizeof(float));
     }
 
@@ -473,9 +473,8 @@ public:
 
         // if (debug == true)
         // {
-
-        //     std::cout << "After softmax " << std::endl;
-        //     utils->print2DMatrixLastTwo(B_NUMHEAD_T_T, batch_size, num_heads, seq_len, seq_len);
+        //     std::cout << "After softmax " << sizeof(P) << std::endl;
+        //     utils->print2DMatrixLastTwo(P, batch_size, num_heads, seq_len, seq_len);
         // }
 
         // value Shape(batch_size, n_head, seq_len, d_head)

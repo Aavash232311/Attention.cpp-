@@ -23,27 +23,33 @@ using namespace std;
 
 /*
     Shapes: dl_dw (B, C, vocab_size)
-
+    P = softmax(x) shape (batch_size * num_heads * seq_len * seq_len )
 */
 
 class FlashAttention : public AutoGradEngine
 {
 private:
+
 public:
     FlashAttention(int d_model, int vocab_size, int num_heads,
                    int seq_len, int batch_size, bool debug)
         : AutoGradEngine(d_model, vocab_size, num_heads, seq_len, batch_size, debug)
     {
     }
+    // G = gradient from the interface (that's what I like to call even though it may not be std)
+    // O = PV is there.
+    // p = softmax(x)
 
     // dV = P^T G
     // dP = GV^T
 
     void opv_upstream_gradient(
-        float *G_device,
-        float *G_host,
         Tensor4 shape) override
     {
-        
+        if (debug == true)
+        {
+            std::cout << "After softmax from autograd eignine " << sizeof(P) << std::endl;
+            utils->print2DMatrixLastTwo(model_paramaters.attention_head.P, batch_size, num_heads, seq_len, seq_len);
+        }
     }
 };
