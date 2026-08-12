@@ -83,6 +83,7 @@ public:
     float *S = nullptr;
     float *P = nullptr;
     float *O = nullptr;
+    float *value_mat = nullptr;
 
     Attention(
         int d_model,
@@ -167,6 +168,8 @@ public:
         S = (float *)malloc(seq_len * batch_size * num_heads * head_dim * sizeof(float));
         P = (float *)malloc(batch_size * num_heads * seq_len * seq_len * sizeof(float));
         O = (float *)malloc(batch_size * num_heads * seq_len * head_dim * sizeof(float));
+        // (B, n_head, T, head_dim) s
+        value_mat = (float *)malloc(batch_size * num_heads * seq_len * head_dim * sizeof(float));
     };
 
     ~Attention()
@@ -201,6 +204,7 @@ public:
         free(S);
         free(P);
         free(O);
+        free(value_mat);
     }
 
 public:
@@ -387,6 +391,10 @@ public:
         Q = query->reshapeHead();
         K = key->reshapeHead();
         V = value->reshapeHead(); // (B, n_head, T, head_dim) so no tranpose needed or adjustment needed
+
+        // we need value for our autograd engine so we are storing the value mat as v here
+        // not using V because it is already used.
+        std::memcpy(value_mat, V, batch_size * num_heads * seq_len * head_dim * sizeof(float));
 
         // for a valid matrix mul (..., T, head_dim) @ (..., head_dim, T) = (..., T, T) so we need to swap the last two dims
 
@@ -579,6 +587,7 @@ public:
             S, // actual value copied from QKV
             P,
             O,
+            value_mat,
 
             BTCdevice,
             BATCH_NEAD_TIME_HEADDIM_DEVICE};

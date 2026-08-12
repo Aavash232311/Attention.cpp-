@@ -18,6 +18,7 @@ struct AttentionParamaters
     float *S;
     float *P;
     float *O;
+    float *V;
 
     // We are re-using the buffer for BTC and Batch Seq Number of head and head dim to save reources
     float *DEVCIE_BUFFER_BTC;
