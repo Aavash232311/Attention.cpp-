@@ -283,8 +283,6 @@ public:
     }
 
     virtual void opv_upstream_gradient(
-        float *G_device,
-        float *G_host,
         Tensor4 shape)
     {
     }
@@ -370,7 +368,7 @@ public:
         if (debug)
             pyDebuggerReleaseStage3();
 
-        opv_upstream_gradient(paramaters.dl_dw_device, paramaters.dl_dw_host, {batch_size, seq_len, vocab_size});
+        opv_upstream_gradient({batch_size, seq_len, vocab_size});
         // Ignoring the FFN for now we will call the flash attention layer.
 
         // if (debug)
