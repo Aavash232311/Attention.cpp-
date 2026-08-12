@@ -8,6 +8,7 @@
 #include <chrono>
 
 #include "./interface_back.hpp"
+#include "./flash_attention.hpp"
 
 #include "../include/utils.hpp"
 #include "../include/linear.hpp"
@@ -21,9 +22,15 @@
 // Releases debugger script for python project to check
 // Autograd class and its child classes are getting messy
 
-class AutogradEngineDebuggerRelease : public AutoGradEngine
+class AutogradEngineDebuggerRelease : public FlashAttention
 {
 public:
+    AutogradEngineDebuggerRelease(int d_model, int vocab_size, int num_heads,
+                                  int seq_len, int batch_size, bool debug)
+        : FlashAttention(d_model, vocab_size, num_heads, seq_len, batch_size, debug)
+    {
+    }
+
     /**
      * @class pyDebuggerReleaseStage1
      * @brief Releases paramaters y, y predicted, delta, CE+softmax backpropagation, h (from lm head)
@@ -99,6 +106,18 @@ public:
         free(wt_host);
     }
 
-
-    
+    /**
+     * @class pyDebuggerReleaseStage4
+     * @brief Releases paramaters P^T and V^T for back most layer of the flash attention
+     *
+     * These methods are in sequential order, so this releases the P^T and V^T for a python debugger to verify and check
+     *
+     * @note Call this after all the 3, 2, 1 stage are released
+     */
+    void pyDebuggerReleaseStage4()
+    {
+        bulkRelease<float>(
+            {{model_paramaters.attention_head.P, batch_size * num_heads * seq_len * seq_len, "pt.bin"},
+             {model_paramaters.attention_head.V, batch_size * num_heads * seq_len * head_dim, "vt.bin"}});
+    }
 };

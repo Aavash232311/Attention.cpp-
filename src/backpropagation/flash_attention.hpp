@@ -104,12 +104,17 @@ public:
 
         // For V^T
         transpose4DLastTwo(
-            model_paramaters.attention_head.V, // (B, n_head, T, head_dim) s
+            model_paramaters.attention_head.V, // (B, n_head, T, head_dim)
             model_paramaters.V_T_device,
             batch_size, // according to the shape of P
             num_heads,
             seq_len,
             seq_len);
+
+        if (debug)
+        {
+            pyDebuggerReleaseStage4();
+        }
 
         // if (debug == true)
         // {
