@@ -2,9 +2,12 @@ import os
 import torch
 from pathlib import Path
 
+
 from rnd.release_embeddings import release_token_embeddings
 from debug.debug_autograd import debug_autograd
 from debug.debug_embeddings import verify_embeddings
+from debug.debug_flash_attention import DebugFlashAttention
+
 from binary_reader.hyperparamaters import read_hyperparamaters
 
 ''' Automated debugging script for CUDA kernel in attention.cpp
@@ -39,4 +42,7 @@ input_ids.to(torch.int32).numpy().tofile("./src/cache/pytorch_out/input_ids.bin"
 
 debug_autograd(d_model=d_model, seq_len=seq_len, batch_size=batch_size, vocab_size=vocab_size, num_heads=num_heads)
 
+
+flash_attention_debugger = DebugFlashAttention(d_model=d_model, seq_len=seq_len, batch_size=batch_size, vocab_size=vocab_size, num_heads=num_heads, head_dim=d_model // num_heads)
+flash_attention_debugger.victor_tango()
 
