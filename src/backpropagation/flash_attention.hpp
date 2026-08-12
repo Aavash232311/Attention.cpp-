@@ -93,6 +93,9 @@ public:
         // Transposing P^T and V^T because they share common kernel logic.
         float *PT = model_paramaters.P_T_device;
 
+        if (debug) // release the default pointer.
+            pyDebuggerReleaseStage4();
+
         // For P^T
         transpose4DLastTwo(
             model_paramaters.attention_head.P, // (batch_size * num_heads * seq_len * seq_len )
@@ -112,9 +115,7 @@ public:
             seq_len);
 
         if (debug)
-        {
-            pyDebuggerReleaseStage4();
-        }
+            pyDebuggerReleaseStage5();
 
         // if (debug == true)
         // {

@@ -108,16 +108,36 @@ public:
 
     /**
      * @class pyDebuggerReleaseStage4
+     * @brief Releases paramaters P, V for now, reason this is a seperate method is because we might have something else to release in future.
+     *
+     * Simply for stage one releases the above paramaters from the attention interface class
+     *
+     * @note Can call this in any order because w is independent of the result from pervious things like h.
+     */
+
+    void pyDebuggerReleaseStage4()
+    {
+        bulkRelease<float>(
+            {
+                {model_paramaters.attention_head.P, batch_size * num_heads * seq_len * seq_len, "P.bin"},
+                {model_paramaters.attention_head.V, batch_size * num_heads * seq_len * head_dim, "V.bin"},
+            });
+    }
+
+    /**
+     * @class pyDebuggerReleaseStage5
      * @brief Releases paramaters P^T and V^T for back most layer of the flash attention
      *
      * These methods are in sequential order, so this releases the P^T and V^T for a python debugger to verify and check
      *
      * @note Call this after all the 3, 2, 1 stage are released
      */
-    void pyDebuggerReleaseStage4()
+    void pyDebuggerReleaseStage5()
     {
         bulkRelease<float>(
-            {{model_paramaters.attention_head.P, batch_size * num_heads * seq_len * seq_len, "pt.bin"},
-             {model_paramaters.attention_head.V, batch_size * num_heads * seq_len * head_dim, "vt.bin"}});
+            {
+                {model_paramaters.attention_head.P, batch_size * num_heads * seq_len * seq_len, "pt.bin"},
+                {model_paramaters.attention_head.V, batch_size * num_heads * seq_len * head_dim, "vt.bin"},
+            });
     }
 };
