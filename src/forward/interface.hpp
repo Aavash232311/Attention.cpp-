@@ -7,6 +7,7 @@
 #include <cstdio>
 #include <chrono>
 
+
 #include "../include/utils.hpp"
 #include "../forward/linear.hpp"
 #include "../include/linear.hpp"
@@ -21,6 +22,7 @@
 #include "../include/single_embeddings.hpp"
 #include "../backpropagation/interface_back.hpp"
 #include "../backpropagation/flash_attention.hpp"
+#include "../backpropagation/debugger_release.hpp"
 
 extern "C" void softmax2D(float *arr, float *out, int batch_size, int seq_len, int vocab_size);
 extern "C" void CrossEntropy(float *x, int *y, float *oneHotOut, float *lossOut, int batch_size, int seq_len, int vocab_size);
@@ -63,7 +65,7 @@ class AttentionInterface
     // ------ For testing one hot encode kernel --------- //
     float *outHotEncodeOut = nullptr;
 
-    std::unique_ptr<FlashAttention> autograd;
+    std::unique_ptr<AutogradEngineDebuggerRelease> autograd;
 
     // LOW LEVEL BY DESIGN IS LITTLE BIT MESSY COMES WITH A TRADE OFFS ANYWAY
 
@@ -146,7 +148,8 @@ public:
             batch_size,
             debug);
 
-        autograd = std::make_unique<FlashAttention>(
+        // pass in the derived class for proper inheritance
+        autograd = std::make_unique<AutogradEngineDebuggerRelease>(
             d_model,
             vocab_size,
             num_heads,

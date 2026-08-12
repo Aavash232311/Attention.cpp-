@@ -215,6 +215,7 @@ public:
     virtual void pyDebuggerReleaseStage1() {}
     virtual void pyDebuggerReleaseStage2() {}
     virtual void pyDebuggerReleaseStage3() {}
+    virtual void pyDebuggerReleaseStage4() {}
 
 
 
