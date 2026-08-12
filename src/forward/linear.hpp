@@ -8,15 +8,13 @@
 #include <cstdio>
 #include <chrono>
 
-
-
 extern "C" void KaimingInit(float *arr, curandState *state, int x, int y, unsigned long seed);
 extern "C" void WeightedSum(float *x, float *w, float *b, float *c, int M, int K, int N);
 
 // in math.cu kenrel -Reused logic
 extern "C" void multiHeadedAttention(int num_head, int head_dimension, float *ws, float *out, int batch_size, int d_model, int seq_len);
 extern "C" void SwapNS(int num_head, int head_dimension, float *ws, float *out, int batch_size, int seq_len, bool reverse);
-extern "C" void TransposeKey(int num_heads, int head_dim, float *arr, float *out, int M, int N, int K, bool reverse);
+extern "C" void TransposeKey(float *arr, float *out, int num_heads, int head_dim,  int batch_size, int seq_len, bool reverse);
 
 class Linear
 {
@@ -238,12 +236,11 @@ public:
         cudaMemcpy(deviceArrInTranspose, mhead_out_host, batch_size * seq_len * n_head * head_dim * sizeof(float), cudaMemcpyHostToDevice);
 
         TransposeKey(
-            n_head,
-            head_dim,
             deviceArrInTranspose, // it will replace that same variable variable
             mhead_out_device,
-            batch_size,
+            n_head,
             head_dim,
+            batch_size,
             seq_len,
             false);
 

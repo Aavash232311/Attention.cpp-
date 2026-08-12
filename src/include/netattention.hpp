@@ -35,3 +35,11 @@ struct NetAttentionParamaters
     float *dl_dh_device;
     float *dl_dh_out_d;
 };
+
+struct FlashAttentionPointers : NetAttentionParamaters 
+{
+    // normal opreation like transpose is checked by the python debugger.
+    // we will create a temporary variable when we want to release these.
+    float *P_T_device;
+    float *V_T_device;
+};
