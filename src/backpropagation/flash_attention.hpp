@@ -44,20 +44,23 @@ public:
     void transpose4DLastTwo(
         float *arr_h,
         float *arr_d,
-        int N)
+        int x,
+        int y,
+        int z,
+        int z1)
     {
-        cudaMemcpy(arr_d, arr_h, N * sizeof(float), cudaMemcpyHostToDevice);
+        cudaMemcpy(arr_d, arr_h, x * y * z * z1 * sizeof(float), cudaMemcpyHostToDevice);
 
         TransposeKey(
             arr_d, // it will replace that same variable variable
             arr_h,
-            num_heads,
-            head_dim,
-            batch_size,
-            seq_len,
+            x,
+            y,
+            z,
+            z1,
             false);
 
-        cudaMemcpy(arr_h, arr_d, N * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(arr_h, arr_d, x * y * z * z1 * sizeof(float), cudaMemcpyDeviceToHost);
     }
 
 private: // Note-: very limied kernel opreations here so for readability I am passing args and params.
@@ -91,11 +94,28 @@ public:
         float *PT = model_paramaters.P_T_device;
 
         // For P^T
-        // transpose4DLastTwo(
-        //     model_paramaters.attention_head.P,
-        //     model_paramaters.P_T_device,
-        //     batch_size * num_heads * seq_len * seq_len
-        // );
+        transpose4DLastTwo(
+            model_paramaters.attention_head.P, // (batch_size * num_heads * seq_len * seq_len )
+            model_paramaters.P_T_device,
+            batch_size, // according to the shape of P
+            num_heads,
+            seq_len,
+            seq_len);
+
+        // For V^T
+        transpose4DLastTwo(
+            model_paramaters.attention_head.V, // (B, n_head, T, head_dim) s
+            model_paramaters.V_T_device,
+            batch_size, // according to the shape of P
+            num_heads,
+            seq_len,
+            seq_len);
+
+        // if (debug == true)
+        // {
+        //     std::cout << "After softmax " << sizeof(model_paramaters.attention_head.P) << std::endl;
+        //     utils->print2DMatrixLastTwo(model_paramaters.attention_head.P, batch_size, num_heads, seq_len, seq_len);
+        // }
 
         // now model_paramaters.attention_head.P this pointer is transposed here.
     }

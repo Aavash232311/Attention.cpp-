@@ -96,7 +96,8 @@ __global__ void TransposeKeyKernel(
 
 extern "C"
 {
-
+    // We are re-using this kernel so that last dimension can be anything 
+    // does not have to seq_len batch_size whatever just whatever.
     void TransposeKey(
         float *arr, //  Shape(batch_size, n_head, seq_len, d_head)
         float *out, // Shape (batch_size, n_head, head_dim, seq_len)
