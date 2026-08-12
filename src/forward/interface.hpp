@@ -25,7 +25,6 @@
 extern "C" void softmax2D(float *arr, float *out, int batch_size, int seq_len, int vocab_size);
 extern "C" void CrossEntropy(float *x, int *y, float *oneHotOut, float *lossOut, int batch_size, int seq_len, int vocab_size);
 
-
 class AttentionInterface
 {
 
@@ -34,6 +33,7 @@ class AttentionInterface
     int vocab_size;
     int batch_size;
     int seq_len;
+    int head_dim;
     bool runDebugger = false;
     bool drop_last = true;
 
@@ -87,6 +87,12 @@ class AttentionInterface
     float *w_device;
     float *w_out_d;
 
+    // ------------ Allocation fhas attention class ---------------------
+
+    float *S_device;
+    float *P_device;
+    float *O_device;
+
 private:
     // ----------- TEMPORARY DEBUGGER SCRIPT ---------------------
 
@@ -123,6 +129,8 @@ public:
         this->drop_last = drop_last;
         this->num_heads = num_heads;
         this->debug = debug;
+
+        this->head_dim = d_model / num_heads;
 
         utils = std::make_unique<Utility>();
 
@@ -177,6 +185,13 @@ public:
 
         cudaMalloc((void **)&w_device, d_model * vocab_size * sizeof(float));
         cudaMalloc((void **)&w_out_d, d_model * vocab_size * sizeof(float));
+
+
+        // ----- For flash attention kernel -------------------
+        cudaMalloc((void **)&S_device, seq_len * batch_size * num_heads * head_dim * sizeof(float));
+        cudaMalloc((void **)&P_device, batch_size * num_heads * seq_len * seq_len * sizeof(float));
+        cudaMalloc((void **)&O_device, batch_size * num_heads * seq_len * head_dim * sizeof(float));
+
     }
 
     ~AttentionInterface()
@@ -203,6 +218,11 @@ public:
 
         cudaFree(w_out_d);
         cudaFree(w_device);
+
+        // free flash-attention device allocations
+        cudaFree(S_device);
+        cudaFree(P_device);
+        cudaFree(O_device);
     }
 
     LinearParams getLmHeadParams()

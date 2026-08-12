@@ -26,9 +26,51 @@ using namespace std;
     P = softmax(x) shape (batch_size * num_heads * seq_len * seq_len )
 */
 
+// Re-use this from linear.hpp
+extern "C" void TransposeKey(int num_heads, int head_dim, float *arr, float *out, int M, int N, int K, bool reverse);
+
 class FlashAttention : public AutoGradEngine
 {
-private:
+public:
+    /**
+     * @class FlashAttention: AutoGradEngine
+     * @brief Transposes last two dimension of 4D tensor. 
+     *
+     * ransposes last two dimension of 4D tensor. 
+     *
+     * @note Re-used Kernel logic from linear.hpp
+     */
+
+    void transpose4DLastTwo(
+        float *arr_h,
+        float *arr_d,
+        int N)
+    {
+        cudaMemcpy(arr_d, arr_h, N * sizeof(float), cudaMemcpyHostToDevice);
+
+        TransposeKey(
+            num_heads,
+            head_dim,
+            arr_d, // it will replace that same variable variable
+            arr_h,
+            batch_size,
+            head_dim,
+            seq_len,
+            false);
+
+        cudaMemcpy(arr_h, arr_d, N * sizeof(float), cudaMemcpyDeviceToHost);
+    }
+
+private: // Note-: very limied kernel opreations here so for readability I am passing args and params.
+    void dl_dv_gradient(
+
+    )
+    {
+    }
+
+    void dl_dp_gradient()
+    {
+    }
 
 public:
     FlashAttention(int d_model, int vocab_size, int num_heads,
@@ -46,10 +88,9 @@ public:
     void opv_upstream_gradient(
         Tensor4 shape) override
     {
-        if (debug == true)
-        {
-            std::cout << "After softmax from autograd eignine " << sizeof(P) << std::endl;
-            utils->print2DMatrixLastTwo(model_paramaters.attention_head.P, batch_size, num_heads, seq_len, seq_len);
-        }
+        // if (debug == true)
+        // {
+        //     utils->print2DMatrixLastTwo(model_paramaters.attention_head.P, batch_size, num_heads, seq_len, seq_len);
+        // }
     }
 };
