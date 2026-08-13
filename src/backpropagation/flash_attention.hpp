@@ -29,6 +29,7 @@ using namespace std;
 
 // Re-use this from linear.hpp
 extern "C" void TransposeKey(float *arr, float *out, int num_heads, int head_dim, int batch_size, int seq_len, bool reverse);
+extern "C" void ReformShapeWapper(float *arr, float *out, int batch_size, int seq_len, int d_model, int num_head, int head_dim);
 
 class FlashAttention : public AutoGradEngine
 {
@@ -59,7 +60,7 @@ public:
             y,  // num_heads
             z1, // head_dim  (last dim, the one being moved)
             x,  // batch_size
-            z,  // seq_len  
+            z,  // seq_len
             false);
 
         cudaMemcpy(arr_h, arr_d_out, x * y * z * z1 * sizeof(float), cudaMemcpyDeviceToHost);
@@ -97,10 +98,39 @@ public:
         cudaMemcpy(arr_h, arr_d_out, x * y * z * z1 * sizeof(float), cudaMemcpyDeviceToHost);
     }
 
-private: // Note-: very limied kernel opreations here so for readability I am passing args and params.
-    void dl_dv_gradient(
+    void uncontactG(
+        float *G_device,
+        float *G_out_device)
+    {
+        ReformShapeWapper(
+            G_device,
+            G_out_device,
+            batch_size,
+            seq_len,
+            d_model,
+            num_heads,
+            head_dim);
+    }
 
-    )
+private: // Note-: very limied kernel opreations here so for readability I am passing args and params.
+    /*
+        Note:- Upstream gradient G, ignoring the FFN for now, even if not ignored this step would be still the same
+        if I am not wrong ofcourse because FFN are linears.
+
+        Shape of G : (B, C, vocab_size)
+        Shaoe of PT: (batch_size * num_heads * seq_len * seq_len )
+
+        Uncontact G for matrix multiplication. Remember uncontact does not changes the value,
+        just re-arranges the tensor for us to be able to do the matrix multiplication easily.
+
+    */
+    void dl_dv_gradient(
+        float *PT,       // (batch_size * num_heads * seq_len * seq_len )
+        float *G_device, // (B, C, vocab_size) from LM head
+        int B,
+        int T,
+        int C,
+        int vocab_size)
     {
     }
 
@@ -125,7 +155,6 @@ public:
         Tensor4 shape) override
     {
         // Transposing P^T and V^T because they share common kernel logic.
-        float *PT = model_paramaters.P_T_device;
 
         if (debug) // release the default pointer.
             pyDebuggerReleaseStage4();
@@ -140,12 +169,6 @@ public:
             seq_len,
             seq_len);
 
-        // if (debug == true)
-        // {
-        //     std::cout << "After softmax transpose: " << std::endl;
-        //     utils->print2DMatrixLastTwo(model_paramaters.attention_head.P, batch_size, num_heads, seq_len, seq_len);
-        // }
-
         // For V^T
         transpose4DLastTwoVT(
             model_paramaters.attention_head.V, // (B, n_head, T, head_dim)
@@ -153,12 +176,25 @@ public:
             model_paramaters.V_T_device_out,
             num_heads, // according to the shape of P
             head_dim,
-            batch_size, 
+            batch_size,
             seq_len);
+
+        // now model_paramaters.attention_head.P this pointer is transposed here.
+        uncontactG(
+            model_paramaters.dl_dw_device,
+            model_paramaters.Uncontact_G_Upstream
+        );
+
 
         if (debug)
             pyDebuggerReleaseStage5();
 
-        // now model_paramaters.attention_head.P this pointer is transposed here.
+        dl_dv_gradient(
+            model_paramaters.V_T_device, // Still in GDDR RAM
+            model_paramaters.dl_dw_device,
+            batch_size,
+            seq_len,
+            d_model,
+            vocab_size);
     }
 };
