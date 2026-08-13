@@ -101,6 +101,8 @@ class AttentionInterface
     float *P_T_device_out;
     float *V_T_device_out;
 
+    float *Uncontact_G_Upstream;
+
 private:
     // ----------- TEMPORARY DEBUGGER SCRIPT ---------------------
 
@@ -208,6 +210,8 @@ public:
         // output, I know not the most efficient kernel or way but lets get to the end-result here first.
         cudaMalloc((void **)&P_T_device_out, batch_size * num_heads * seq_len * seq_len * sizeof(float));
         cudaMalloc((void **)&V_T_device_out, batch_size * num_heads * seq_len * head_dim * sizeof(float));
+
+        cudaMalloc((void **)&Uncontact_G_Upstream, batch_size * seq_len * num_heads * head_dim * sizeof(float));
     }
 
     ~AttentionInterface()
@@ -245,6 +249,8 @@ public:
 
         cudaFree(V_T_device_out);
         cudaFree(P_T_device_out);
+
+        cudaFree(Uncontact_G_Upstream);
     }
 
     LinearParams getLmHeadParams()
@@ -379,6 +385,9 @@ public:
 
                 modelParamaters.P_T_device_out = P_T_device_out;
                 modelParamaters.V_T_device_out = V_T_device_out;
+
+                // GDDR RAM
+                modelParamaters.Uncontact_G_Upstream = Uncontact_G_Upstream;
 
                 // because the backprops needs to be done for each epoch.
                 // we need to keep in mind that the things hurting performace like cuda malloc and everything declared

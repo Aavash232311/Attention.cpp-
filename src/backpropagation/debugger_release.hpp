@@ -126,7 +126,7 @@ public:
 
     /**
      * @class pyDebuggerReleaseStage5
-     * @brief Releases paramaters P^T and V^T for back most layer of the flash attention
+     * @brief Releases paramaters P^T and V^T for back most layer of the flash attention, also un-contact G of 3D tensor
      *
      * These methods are in sequential order, so this releases the P^T and V^T for a python debugger to verify and check
      * model_paramaters.attention_head.P and model_paramaters.attention_head.V should be consumed by the transpose Kernel.
@@ -134,10 +134,17 @@ public:
      */
     void pyDebuggerReleaseStage5()
     {
+        int N = batch_size * seq_len * num_heads * head_dim * sizeof(float);
+        float *contactG = (float *)malloc(N);
+        cudaMemcpy(contactG, model_paramaters.Uncontact_G_Upstream, N, cudaMemcpyDeviceToHost);
+
         bulkRelease<float>(
             {
                 {model_paramaters.attention_head.P, batch_size * num_heads * seq_len * seq_len, "pt.bin"},
                 {model_paramaters.attention_head.V, batch_size * num_heads * head_dim * seq_len, "vt.bin"}, // keep in mind of the transposed shape here
+                {contactG, batch_size * seq_len * num_heads * head_dim, "uncontact_g.bin"},
             });
+
+        free(contactG);
     }
 };

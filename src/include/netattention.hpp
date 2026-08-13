@@ -46,4 +46,6 @@ struct FlashAttentionPointers : NetAttentionParamaters
     // wewe P_T and V_T to be output such that we can consume the passed arr 
     float *P_T_device_out;
     float *V_T_device_out;
+
+    float *Uncontact_G_Upstream;
 };
