@@ -24,7 +24,12 @@ def debug_autograd(
     print('*' * 60)
     # transpose h
     transposing_h = h.transpose(1, 2)
-    print(f"h^t transpose kernel: {torch.allclose(transposing_h, h_t)}")
+    check_ht_transpose = torch.allclose(transposing_h, h_t)
+
+    if check_ht_transpose:
+        print(f"h^t transpose kernel: {GREEN} {torch.allclose(transposing_h, h_t)} {RESET}")
+    else:
+        print(f"h^t transpose kernel: {RED} {check_ht_transpose} {RESET}")
     # we need to verify delta h^t
     dl_dw_torch = transposing_h @ delta
 

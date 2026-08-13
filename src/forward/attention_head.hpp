@@ -404,7 +404,9 @@ public:
         //     utils->print2DMatrixLastTwo(Q, batch_size, num_heads, seq_len, head_dim);
         // }
 
-        float *s = key->teansposeKeyForAttnScore(); // Shape (batch_size, n_head, head_dim, seq_len)
+        float *s = key->teansposeKeyForAttnScore(
+            DeviceKt // (batch_size, n_head, head_dim, seq_len) same shape this buffer should work here.
+        ); // Shape (batch_size, n_head, head_dim, seq_len)
 
         // if (debug)
         // {

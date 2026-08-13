@@ -20,6 +20,7 @@ using namespace std;
 // Note:- out = x + attn(x) is just adding two pices together we will first do the backpropagation in the attention mechanism
 // Lets go for S P O backpropagation here, its a mess but it is what it is.
 // Note:- FFN is ignored for the time being.
+// Note:- Python sanity check has helped me spot different kernel bugs
 
 /*
     Shapes: dl_dw (B, C, vocab_size)
@@ -34,16 +35,17 @@ class FlashAttention : public AutoGradEngine
 public:
     /**
      * @class FlashAttention: AutoGradEngine
-     * @brief Transposes last two dimension of 4D tensor.
-     *
+     * @brief Transposes last two dimension of 4D tensor PT
+     * @note You are unwrapping the tensor in the kernel in a different sense so this x, y, z, z1 generic passing wont work here.
      * ransposes last two dimension of 4D tensor.
      *
      * @note Re-used Kernel logic from linear.hpp
      */
 
-    void transpose4DLastTwo(
+    void transpose4DLastTwoPT(
         float *arr_h,
         float *arr_d,
+        float *arr_d_out,
         int x,
         int y,
         int z,
@@ -52,15 +54,47 @@ public:
         cudaMemcpy(arr_d, arr_h, x * y * z * z1 * sizeof(float), cudaMemcpyHostToDevice);
 
         TransposeKey(
-            arr_d, // it will replace that same variable variable
-            arr_h,
+            arr_d,
+            arr_d_out,
+            y,  // num_heads
+            z1, // head_dim  (last dim, the one being moved)
+            x,  // batch_size
+            z,  // seq_len  
+            false);
+
+        cudaMemcpy(arr_h, arr_d_out, x * y * z * z1 * sizeof(float), cudaMemcpyDeviceToHost);
+    }
+
+    /**
+     * @class FlashAttention: AutoGradEngine
+     * @brief Transposes last two dimension of 4D tensor VT
+     *
+     * ransposes last two dimension of 4D tensor.
+     * @note You are unwrapping the tensor in the kernel in a different sense so this x, y, z, z1 generic passing wont work here.
+     * @note Re-used Kernel logic from linear.hpp
+     */
+
+    void transpose4DLastTwoVT(
+        float *arr_h,
+        float *arr_d,
+        float *arr_d_out,
+        int x,
+        int y,
+        int z,
+        int z1)
+    {
+        cudaMemcpy(arr_d, arr_h, x * y * z * z1 * sizeof(float), cudaMemcpyHostToDevice);
+
+        TransposeKey(
+            arr_d,
+            arr_d_out,
             x,
             y,
             z,
             z1,
             false);
 
-        cudaMemcpy(arr_h, arr_d, x * y * z * z1 * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(arr_h, arr_d_out, x * y * z * z1 * sizeof(float), cudaMemcpyDeviceToHost);
     }
 
 private: // Note-: very limied kernel opreations here so for readability I am passing args and params.
@@ -97,32 +131,33 @@ public:
             pyDebuggerReleaseStage4();
 
         // For P^T
-        transpose4DLastTwo(
+        transpose4DLastTwoPT(
             model_paramaters.attention_head.P, // (batch_size * num_heads * seq_len * seq_len )
             model_paramaters.P_T_device,
+            model_paramaters.P_T_device_out,
             batch_size, // according to the shape of P
             num_heads,
             seq_len,
             seq_len);
 
+        // if (debug == true)
+        // {
+        //     std::cout << "After softmax transpose: " << std::endl;
+        //     utils->print2DMatrixLastTwo(model_paramaters.attention_head.P, batch_size, num_heads, seq_len, seq_len);
+        // }
+
         // For V^T
-        transpose4DLastTwo(
+        transpose4DLastTwoVT(
             model_paramaters.attention_head.V, // (B, n_head, T, head_dim)
             model_paramaters.V_T_device,
-            batch_size, // according to the shape of P
-            num_heads,
-            seq_len,
+            model_paramaters.V_T_device_out,
+            num_heads, // according to the shape of P
+            head_dim,
+            batch_size, 
             seq_len);
 
         if (debug)
             pyDebuggerReleaseStage5();
-
-
-        // if (debug == true)
-        // {
-        //     std::cout << "After softmax " << sizeof(model_paramaters.attention_head.P) << std::endl;
-        //     utils->print2DMatrixLastTwo(model_paramaters.attention_head.P, batch_size, num_heads, seq_len, seq_len);
-        // }
 
         // now model_paramaters.attention_head.P this pointer is transposed here.
     }

@@ -129,7 +129,7 @@ public:
      * @brief Releases paramaters P^T and V^T for back most layer of the flash attention
      *
      * These methods are in sequential order, so this releases the P^T and V^T for a python debugger to verify and check
-     *
+     * model_paramaters.attention_head.P and model_paramaters.attention_head.V should be consumed by the transpose Kernel.
      * @note Call this after all the 3, 2, 1 stage are released
      */
     void pyDebuggerReleaseStage5()

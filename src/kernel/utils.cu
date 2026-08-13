@@ -74,16 +74,23 @@ __global__ void multiHeadedAttentionKernel(
 __global__ void TransposeKeyKernel(
     int num_heads,
     int head_dim,
-    float *arr, // Shape (B, H, T, head_dim)
-    float *out, // Shape (B, H, head_dim, T)
-    int batch_size,      // batch_size, or whatever the least dim is
-    int seq_len,      // seq_len
+    float *arr,     // Shape (B, H, T, head_dim)
+    float *out,     // Shape (B, H, head_dim, T)
+    int batch_size, // batch_size, or whatever the least dim is
+    int seq_len,    // seq_len
     bool reverse = false)
 {
-    int b = blockIdx.z;
-    int h = blockIdx.y;
-    int s = blockIdx.x;
-    int d = threadIdx.x;
+
+    // Just the formula, according to the launch ofc.
+    int token_idx = blockIdx.x; 
+    int h = blockIdx.y; 
+    int d = threadIdx.x;      
+
+    int b = token_idx / seq_len;
+    int s = token_idx % seq_len;
+
+    if (d >= head_dim || s >= seq_len)
+        return;
 
     int currentIdx = b * (num_heads * seq_len * head_dim) + h * (seq_len * head_dim) + s * (head_dim) + d;
 
@@ -96,7 +103,7 @@ __global__ void TransposeKeyKernel(
 
 extern "C"
 {
-    // We are re-using this kernel so that last dimension can be anything 
+    // We are re-using this kernel so that last dimension can be anything
     // does not have to seq_len batch_size whatever just whatever.
     void TransposeKey(
         float *arr, //  Shape(batch_size, n_head, seq_len, d_head)
@@ -104,11 +111,12 @@ extern "C"
         int num_heads,
         int head_dim,
         int batch_size, // batch_size
-        int seq_len, // seq_len
+        int seq_len,    // seq_len
         bool reverse)
     {
-        dim3 block(head_dim);
-        dim3 grid(seq_len, num_heads, batch_size);
+        // Models are of billions of paramaters these days who knows.
+        dim3 grid(batch_size * seq_len, num_heads);
+        dim3 block(head_dim <= 1024 ? head_dim : 256);
 
         TransposeKeyKernel<<<grid, block>>>(num_heads, head_dim, arr, out, batch_size, seq_len, reverse);
 
