@@ -42,4 +42,8 @@ struct FlashAttentionPointers : NetAttentionParamaters
     // we will create a temporary variable when we want to release these.
     float *P_T_device;
     float *V_T_device;
+
+    // wewe P_T and V_T to be output such that we can consume the passed arr 
+    float *P_T_device_out;
+    float *V_T_device_out;
 };

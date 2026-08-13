@@ -1,4 +1,5 @@
 import torch
+from debug.static import RESET, RED, GREEN
 from binary_reader.autograd_binary_reader import ReaderFlashAttention
 
 
@@ -20,7 +21,19 @@ class DebugFlashAttention(torch.nn.Module):
     # dV = P^T G
     # dP = GV^T
     def victor_tango(self):
-        print('P:', self.P)
+        torch.set_printoptions(precision=3, sci_mode=False, threshold=float('inf'))
+        check_transpose_p = torch.allclose(self.P.transpose(2, 3), self.PT)
+        check_transpose_v = torch.allclose(self.V.transpose(2, 3), self.VT)
+
+        if not check_transpose_p:
+            print(f"Checking PT C++ kernel, status:{RED} {check_transpose_p} {RESET}")
+        else:
+            print(f"Checking PT C++ kernel, status:{GREEN} {check_transpose_p} {RESET}")
+
+        if not check_transpose_v:
+            print(f"Checking VT C++ kernel, status:{RED} {check_transpose_v} {RESET}")
+        else:
+            print(f"Checking VT C++ kernel, status:{GREEN} {check_transpose_v} {RESET}")
 
 
     def debug_pv(self):

@@ -230,21 +230,23 @@ public:
         // Now our final resule shape would be Shape(batch_size, n_head, seq_len, d_head)
     }
 
-    float *teansposeKeyForAttnScore()
-    {
+    float *teansposeKeyForAttnScore(
+        float *buffer_out_d
+    )
+    { // We have a problem here. 
 
         cudaMemcpy(deviceArrInTranspose, mhead_out_host, batch_size * seq_len * n_head * head_dim * sizeof(float), cudaMemcpyHostToDevice);
 
         TransposeKey(
             deviceArrInTranspose, // it will replace that same variable variable
-            mhead_out_device,
+            buffer_out_d,
             n_head,
             head_dim,
             batch_size,
             seq_len,
             false);
 
-        cudaMemcpy(mhead_out_host, mhead_out_device, seq_len * batch_size * n_head * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(mhead_out_host, buffer_out_d, seq_len * batch_size * n_head * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
 
         return mhead_out_host;
     }

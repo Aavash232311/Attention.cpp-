@@ -7,7 +7,6 @@
 #include <cstdio>
 #include <chrono>
 
-
 #include "../include/utils.hpp"
 #include "../forward/linear.hpp"
 #include "../include/linear.hpp"
@@ -98,6 +97,9 @@ class AttentionInterface
     // P^T and V^T device alloication
     float *P_T_device;
     float *V_T_device;
+
+    float *P_T_device_out;
+    float *V_T_device_out;
 
 private:
     // ----------- TEMPORARY DEBUGGER SCRIPT ---------------------
@@ -193,7 +195,6 @@ public:
         cudaMalloc((void **)&w_device, d_model * vocab_size * sizeof(float));
         cudaMalloc((void **)&w_out_d, d_model * vocab_size * sizeof(float));
 
-
         // ----- For flash attention kernel -------------------
         cudaMalloc((void **)&S_device, seq_len * batch_size * num_heads * head_dim * sizeof(float));
         cudaMalloc((void **)&P_device, batch_size * num_heads * seq_len * seq_len * sizeof(float));
@@ -201,9 +202,12 @@ public:
 
         // same size as P just re-arranged row and cols by the def.
         cudaMalloc((void **)&P_T_device, batch_size * num_heads * seq_len * seq_len * sizeof(float));
-
         // Shape of value matrix  (B, n_head, T, head_dim)
         cudaMalloc((void **)&V_T_device, batch_size * num_heads * seq_len * head_dim * sizeof(float));
+
+        // output, I know not the most efficient kernel or way but lets get to the end-result here first.
+        cudaMalloc((void **)&P_T_device_out, batch_size * num_heads * seq_len * seq_len * sizeof(float));
+        cudaMalloc((void **)&V_T_device_out, batch_size * num_heads * seq_len * head_dim * sizeof(float));
     }
 
     ~AttentionInterface()
@@ -238,6 +242,9 @@ public:
 
         cudaFree(P_T_device);
         cudaFree(V_T_device);
+
+        cudaFree(V_T_device_out);
+        cudaFree(P_T_device_out);
     }
 
     LinearParams getLmHeadParams()
@@ -369,6 +376,9 @@ public:
 
                 modelParamaters.P_T_device = P_T_device;
                 modelParamaters.V_T_device = V_T_device;
+
+                modelParamaters.P_T_device_out = P_T_device_out;
+                modelParamaters.V_T_device_out = V_T_device_out;
 
                 // because the backprops needs to be done for each epoch.
                 // we need to keep in mind that the things hurting performace like cuda malloc and everything declared
