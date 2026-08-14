@@ -11,7 +11,6 @@
 
 #include "../interface_back.hpp"
 
-
 // Derivation interfaceback.md
 __global__ void upstream_dl_dz_kernel(
     float *actual, // (B ,T, vocab_size)
@@ -91,18 +90,74 @@ __global__ void wt_upstream_gradient_kernel(
     int row_idx = blockIdx.y * blockDim.y + threadIdx.y;
     int col_idx = blockIdx.x * blockDim.x + threadIdx.x;
 
-     if (row_idx >= vocab_size || col_idx >= d_model)
+    if (row_idx >= vocab_size || col_idx >= d_model)
         return;
 
-    int out_idx = (vocab_size) * col_idx + row_idx;
-    int idx_wt = row_idx * (d_model)  + col_idx;
+    int out_idx = (vocab_size)*col_idx + row_idx;
+    int idx_wt = row_idx * (d_model) + col_idx;
 
     wt[idx_wt] = w[out_idx];
 }
 
+__global__ void dl_dh_kernel(
+    float *delta, // (B, T, vocab_size)
+    float *wt,    // (vocab_size, C)
+    float *out,   // (B, T, C)
+    int B,
+    int T,
+    int C,
+    int vocab_size)
+{
+    int batch_idx = blockIdx.z;
+    int row_idx = blockIdx.y * blockDim.y + threadIdx.y; // T
+    int col_idx = blockIdx.x * blockDim.x + threadIdx.x; // C
+
+    if (batch_idx >= B || row_idx >= T || col_idx >= C)
+        return;
+
+    float sum = 0.0f;
+    for (int k = 0; k < vocab_size; ++k)
+    {
+        int idx_delta = (T * vocab_size) * batch_idx + vocab_size * row_idx + k;
+        int idx_wt = C * k + col_idx;
+        sum += delta[idx_delta] * wt[idx_wt];
+    }
+
+    // write in shape B,T,C because thats the mathematical output matrix
+    int idx_out = (T * C) * batch_idx + C * row_idx + col_idx;
+    out[idx_out] = sum;
+}
+
 extern "C"
 {
-    // -------------- Backpropagation kernel wrappers -----------------
+    void dl_dh_upstream(
+        float *delta,
+        float *wt,
+        float *out,
+        int B,
+        int T,
+        int C,
+        int vocab_size)
+    {
+        dim3 blockDim(16, 16, 1);
+        dim3 gridDim(
+            (C + blockDim.x - 1) / blockDim.x,
+            (T + blockDim.y - 1) / blockDim.y,
+            B // one z-slice per batch item
+        );
+
+        dl_dh_kernel<<<gridDim, blockDim>>>(
+            delta,
+            wt,
+            out,
+            B,
+            T,
+            C,
+            vocab_size);
+
+        cudaDeviceSynchronize();
+    }
+
     void wt_upstream(
         float *w,
         float *wt,
@@ -112,15 +167,13 @@ extern "C"
         dim3 block(16, 16);
         dim3 grid(
             (d_model + block.x - 1) / block.x,
-            (vocab_size + block.y - 1) / block.y                                 
-        );
+            (vocab_size + block.y - 1) / block.y);
 
         wt_upstream_gradient_kernel<<<grid, block>>>(
             w,
             wt,
             d_model,
-            vocab_size
-        );
+            vocab_size);
 
         cudaDeviceSynchronize(); // wait :)
     }

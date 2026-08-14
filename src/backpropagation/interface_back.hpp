@@ -23,6 +23,7 @@ extern "C" void upstream_dl_dz(float *actual, float *predicted, float *delta, in
 extern "C" void lm_head_transpose_h(float *h, float *out, int B, int T, int C);
 extern "C" void dl_dw_upstream(float *h_t, float *delta, float *out, int B, int T, int C, int vocab_size);
 extern "C" void wt_upstream(float *w, float *wt, int d_model, int vocab_size);
+extern "C" void dl_dh_upstream(float *detla, float *wt, float *out, int B, int T, int C, int vocab_size);
 // ---- Paramaters for our custom backgrad engine -----
 
 /*
@@ -111,6 +112,7 @@ private:
         // delta_host = partial L / partial z
     }
 
+    // h^T
     void gradient_linear(
         float *h_host, // input (B, T, d_model) and after the lm head (B, T, vocab_size)
         float *h_device,
@@ -170,7 +172,7 @@ private:
     void wt_upstream_gradient(
         float *w_host,
         float *w_device, // (d_model, vocab_size)
-        float *w_out_d,
+        float *w_out_d, // (vocab_size, d_model)
         int d_model,
         int vocab_size)
     {
@@ -182,6 +184,28 @@ private:
             w_out_d,
             d_model,
             vocab_size);
+    }
+
+    void dl_dh_upstream_gradient(
+        float *wt, //  (vocab_size, d_model)
+        float *delta, //  (B, T, vocab_size) 
+        float *out_dl_dh, // the real upstream gradient G, I accidently thought its dl_dw
+        int batch_size,
+        int seq_len,
+        int d_model,
+        int vocab_size
+    )
+    {
+        // same matrix multiplication thing
+        dl_dh_upstream(
+            delta,
+            wt,
+            out_dl_dh,
+            batch_size,
+            seq_len,
+            d_model,
+            vocab_size
+        );
     }
 
 
@@ -298,9 +322,21 @@ public:
             d_model,
             vocab_size);
 
+        dl_dh_upstream_gradient(
+            paramaters.dl_dz_out_device, // delta
+            paramaters.device_out_h, // h^t
+            model_paramaters.Contact_G_Upstream, // (B, T, C)
+            batch_size,
+            seq_len,
+            d_model,
+            vocab_size
+        );
+
         if (debug)
             pyDebuggerReleaseStage3();
 
+        
+            
         opv_upstream_gradient({batch_size, seq_len, vocab_size});
         // Ignoring the FFN for now we will call the flash attention layer.
 
