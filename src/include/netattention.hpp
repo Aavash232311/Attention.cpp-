@@ -48,4 +48,5 @@ struct FlashAttentionPointers : NetAttentionParamaters
     float *V_T_device_out;
 
     float *Uncontact_G_Upstream;
+    float *Contact_G_Upstream;
 };

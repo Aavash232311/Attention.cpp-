@@ -40,9 +40,9 @@ input_ids = torch.randint(0, vocab_size, (seq_len, batch_size))
 input_ids.to(torch.int32).numpy().tofile("./src/cache/pytorch_out/input_ids.bin")
 
 
-debug_autograd(d_model=d_model, seq_len=seq_len, batch_size=batch_size, vocab_size=vocab_size, num_heads=num_heads)
+G = debug_autograd(d_model=d_model, seq_len=seq_len, batch_size=batch_size, vocab_size=vocab_size, num_heads=num_heads)
 
 
-flash_attention_debugger = DebugFlashAttention(d_model=d_model, seq_len=seq_len, batch_size=batch_size, vocab_size=vocab_size, num_heads=num_heads, head_dim=d_model // num_heads)
+flash_attention_debugger = DebugFlashAttention(d_model=d_model, seq_len=seq_len, batch_size=batch_size, vocab_size=vocab_size, num_heads=num_heads, head_dim=d_model // num_heads, dl_dw=G)
 flash_attention_debugger.victor_tango()
 

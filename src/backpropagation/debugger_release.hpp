@@ -84,7 +84,7 @@ public:
 
     /**
      * @class pyDebuggerReleaseStage3
-     * @brief Releases paramaters w^t
+     * @brief Releases paramaters w^t, w and dl_dh (Which is the upstream gradient G)
      *
      * Simply for stage one releases the above paramaters from the attention interface class
      *
@@ -96,13 +96,20 @@ public:
         // copy w^T to host for the python script to read the binary
 
         float *wt_host = (float *)malloc(d_model * vocab_size * sizeof(float));
+        float *dl_dh_host = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
 
         cudaMemcpy(wt_host, model_paramaters.wt_out_d, d_model * vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(dl_dh_host, model_paramaters.Contact_G_Upstream, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
 
         bulkRelease<float>(
-            {{wt_host, d_model * vocab_size, "wt.bin"},
-             {model_paramaters.w_host, d_model * vocab_size, "w.bin"}});
+            {
+                {wt_host, d_model * vocab_size, "wt.bin"},
+                {model_paramaters.w_host, d_model * vocab_size, "w.bin"},
+                // for now this is the G shape (B, T, C)
+                {dl_dh_host, batch_size * seq_len * d_model, "dl_dh.bin"},
+            });
 
+        free(dl_dh_host);
         free(wt_host);
     }
 

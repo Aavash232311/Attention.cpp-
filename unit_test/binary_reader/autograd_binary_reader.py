@@ -23,7 +23,8 @@ def ReaderFlashAttention(
     PT = load_tensor('./src/cache/cpp_out/pt.bin', shape=(batch_size, num_heads, seq_len, seq_len), dtype=np.float32).to(device)
     VT = load_tensor('./src/cache/cpp_out/vt.bin', shape=(batch_size, num_heads, head_dim, seq_len), dtype=np.float32).to(device)
 
-    return P, V, PT, VT
+    G_unc = load_tensor('./src/cache/cpp_out/uncontact_g.bin', shape=(batch_size, seq_len, num_heads, head_dim), dtype=np.float32).to(device)
+    return P, V, PT, VT, G_unc
 
 def Reader(
         batch_size: int,

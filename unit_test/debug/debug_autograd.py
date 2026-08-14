@@ -10,6 +10,7 @@ def debug_autograd(
         vocab_size: int,
         num_heads: int
 ):
+    torch.set_printoptions(precision=8, sci_mode=False, threshold=float('inf'))
 
     delta, y_predicted, y_actual, h, dl_dw_kernel, h_t, wt, w = Reader(
         batch_size=batch_size,
@@ -51,3 +52,5 @@ def debug_autograd(
         print(f"Checking wt transpose kernel: {RED} {torch.allclose(w.T, wt)} {RESET}")
     else:
         print(f"Checking wt transpose kernel: {GREEN} {check_wt} {RESET}")
+
+    return dl_dw_kernel
