@@ -11,8 +11,9 @@ def debug_autograd(
         num_heads: int
 ):
     torch.set_printoptions(precision=8, sci_mode=False, threshold=float('inf'))
+    head_dim = d_model // num_heads
 
-    delta, y_predicted, y_actual, h, dl_dw_kernel, h_t, wt, w, G_cnt = Reader(
+    delta, y_predicted, y_actual, h, dl_dw_kernel, h_t, wt, w, dl_dh_kernel = Reader(
         batch_size=batch_size,
         seq_len=seq_len,
         vocab_size=vocab_size,
@@ -31,8 +32,7 @@ def debug_autograd(
         print(f"h^t transpose kernel: {GREEN} {torch.allclose(transposing_h, h_t)} {RESET}")
     else:
         print(f"h^t transpose kernel: {RED} {check_ht_transpose} {RESET}")
-    # we need to verify delta h^t
-    dl_dw_torch = transposing_h @ delta
+
 
     # broadcasting for last-dimension
     delta_torch = y_predicted - y_actual
@@ -52,5 +52,16 @@ def debug_autograd(
         print(f"Checking wt transpose kernel: {RED} {torch.allclose(w.T, wt)} {RESET}")
     else:
         print(f"Checking wt transpose kernel: {GREEN} {check_wt} {RESET}")
+
+
+    # here we contact g
+    multi_headed_g = dl_dh_kernel.view(batch_size, seq_len, num_heads, head_dim)
+
+    # todo: check if contact g works
+
+
+    dl_dh_torch = delta @ wt
+    print(torch.allclose(dl_dh_torch, dl_dw_kernel))
+
 
     return dl_dw_kernel

@@ -118,7 +118,9 @@ __global__ void dl_dh_kernel(
     float sum = 0.0f;
     for (int k = 0; k < vocab_size; ++k)
     {
+        // // (B, T, vocab_size) should be fine on itself here
         int idx_delta = (T * vocab_size) * batch_idx + vocab_size * row_idx + k;
+        //  (vocab_size, C) looks good
         int idx_wt = C * k + col_idx;
         sum += delta[idx_delta] * wt[idx_wt];
     }

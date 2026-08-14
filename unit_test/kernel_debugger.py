@@ -14,6 +14,9 @@ from binary_reader.hyperparamaters import read_hyperparamaters
     File based dump verification.
     Never trust the debugger too much, this is for basic mathematical verification (for specific operations) only.
     Use local print and this combined :)
+    
+    Wont notice things like infinitely large values in a kernel sometimes,
+    just focuses on mathematical operations. 
  '''
 # Make sure we are able to read C++ project directory from here
 os.chdir(Path.cwd().parent)

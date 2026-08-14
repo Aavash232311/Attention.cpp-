@@ -7,7 +7,6 @@
 #include <cstdio>
 #include <chrono>
 
-
 #include "../include/utils.hpp"
 #include "../include/linear.hpp"
 #include "../include/p_head.hpp"
@@ -16,7 +15,6 @@
 #include "../include/netattention.hpp"
 #include "../include/attention_params.hpp"
 #include "../include/single_embeddings.hpp"
-
 
 // ----------- Backpropgation ------------------------
 extern "C" void upstream_dl_dz(float *actual, float *predicted, float *delta, int B, int T, int C);
@@ -172,7 +170,7 @@ private:
     void wt_upstream_gradient(
         float *w_host,
         float *w_device, // (d_model, vocab_size)
-        float *w_out_d, // (vocab_size, d_model)
+        float *w_out_d,  // (vocab_size, d_model)
         int d_model,
         int vocab_size)
     {
@@ -187,16 +185,14 @@ private:
     }
 
     void dl_dh_upstream_gradient(
-        float *wt, //  (vocab_size, d_model)
-        float *delta, //  (B, T, vocab_size) 
+        float *delta,        //  (vocab_size, d_model)
+        float *wt,     //  (B, T, vocab_size)
         float *out_dl_dh, // the real upstream gradient G, I accidently thought its dl_dw
         int batch_size,
         int seq_len,
         int d_model,
-        int vocab_size
-    )
+        int vocab_size)
     {
-        // same matrix multiplication thing
         dl_dh_upstream(
             delta,
             wt,
@@ -204,10 +200,8 @@ private:
             batch_size,
             seq_len,
             d_model,
-            vocab_size
-        );
+            vocab_size);
     }
-
 
 public:
     AutoGradEngine(
@@ -234,15 +228,13 @@ public:
 
     // ---------- child methods -----------------
 
-    virtual void opv_upstream_gradient(Tensor4 shape){}
+    virtual void opv_upstream_gradient(Tensor4 shape) {}
 
     virtual void pyDebuggerReleaseStage1() {}
     virtual void pyDebuggerReleaseStage2() {}
     virtual void pyDebuggerReleaseStage3() {}
     virtual void pyDebuggerReleaseStage4() {}
     virtual void pyDebuggerReleaseStage5() {}
-
-
 
     void backprop(
         const FlashAttentionPointers &paramaters)
@@ -323,20 +315,17 @@ public:
             vocab_size);
 
         dl_dh_upstream_gradient(
-            paramaters.dl_dz_out_device, // delta
-            paramaters.device_out_h, // h^t
+            paramaters.dl_dz_out_device,         // delta
+            paramaters.wt_out_d,                 // w^t
             model_paramaters.Contact_G_Upstream, // (B, T, C)
             batch_size,
             seq_len,
             d_model,
-            vocab_size
-        );
+            vocab_size);
 
         if (debug)
             pyDebuggerReleaseStage3();
 
-        
-            
         opv_upstream_gradient({batch_size, seq_len, vocab_size});
         // Ignoring the FFN for now we will call the flash attention layer.
 
