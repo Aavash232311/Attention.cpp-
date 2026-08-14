@@ -12,9 +12,9 @@ extern "C" void KaimingInit(float *arr, curandState *state, int x, int y, unsign
 extern "C" void WeightedSum(float *x, float *w, float *b, float *c, int M, int K, int N);
 
 // in math.cu kenrel -Reused logic
-extern "C" void multiHeadedAttention(int num_head, int head_dimension, float *ws, float *out, int batch_size, int d_model, int seq_len);
+extern "C" void multiHeadedAttention(float *ws, float *out, int num_head, int head_dimension, int batch_size, int d_model, int seq_len);
 extern "C" void SwapNS(int num_head, int head_dimension, float *ws, float *out, int batch_size, int seq_len, bool reverse);
-extern "C" void TransposeKey(float *arr, float *out, int num_heads, int head_dim,  int batch_size, int seq_len, bool reverse);
+extern "C" void TransposeKey(float *arr, float *out, int num_heads, int head_dim, int batch_size, int seq_len, bool reverse);
 
 class Linear
 {
@@ -182,7 +182,7 @@ public:
         // copy that weighted sum into device so we can split it down.
         cudaMemcpy(device_hhead_in, ws, seq_len * batch_size * f_out * sizeof(float), cudaMemcpyHostToDevice);
 
-        multiHeadedAttention(n_head, head_dim, device_hhead_in, mhead_out_device, batch_size, f_out, seq_len);
+        multiHeadedAttention(device_hhead_in, mhead_out_device, n_head, head_dim, batch_size, f_out, seq_len);
 
         cudaMemcpy(mhead_out_host, mhead_out_device, seq_len * batch_size * n_head * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
 
@@ -231,9 +231,8 @@ public:
     }
 
     float *teansposeKeyForAttnScore(
-        float *buffer_out_d
-    )
-    { // We have a problem here. 
+        float *buffer_out_d)
+    { // We have a problem here.
 
         cudaMemcpy(deviceArrInTranspose, mhead_out_host, batch_size * seq_len * n_head * head_dim * sizeof(float), cudaMemcpyHostToDevice);
 

@@ -29,7 +29,7 @@ using namespace std;
 
 // Re-use this from linear.hpp
 extern "C" void TransposeKey(float *arr, float *out, int num_heads, int head_dim, int batch_size, int seq_len, bool reverse);
-extern "C" void ReformShapeWapper(float *arr, float *out, int batch_size, int seq_len, int d_model, int num_head, int head_dim);
+
 
 class FlashAttention : public AutoGradEngine
 {
@@ -98,19 +98,6 @@ public:
         cudaMemcpy(arr_h, arr_d_out, x * y * z * z1 * sizeof(float), cudaMemcpyDeviceToHost);
     }
 
-    void uncontactG(
-        float *G_device,
-        float *G_out_device)
-    {
-        ReformShapeWapper(
-            G_device,
-            G_out_device,
-            batch_size,
-            seq_len,
-            d_model,
-            num_heads,
-            head_dim);
-    }
 
 private: // Note-: very limied kernel opreations here so for readability I am passing args and params.
     /*
@@ -178,13 +165,6 @@ public:
             head_dim,
             batch_size,
             seq_len);
-
-        // now model_paramaters.attention_head.P this pointer is transposed here.
-        uncontactG(
-            model_paramaters.dl_dw_device,
-            model_paramaters.Uncontact_G_Upstream
-        );
-
 
         if (debug)
             pyDebuggerReleaseStage5();

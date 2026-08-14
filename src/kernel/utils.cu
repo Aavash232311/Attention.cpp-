@@ -82,9 +82,9 @@ __global__ void TransposeKeyKernel(
 {
 
     // Just the formula, according to the launch ofc.
-    int token_idx = blockIdx.x; 
-    int h = blockIdx.y; 
-    int d = threadIdx.x;      
+    int token_idx = blockIdx.x;
+    int h = blockIdx.y;
+    int d = threadIdx.x;
 
     int b = token_idx / seq_len;
     int s = token_idx % seq_len;
@@ -123,11 +123,12 @@ extern "C"
         cudaDeviceSynchronize();
     }
 
+    // I hate myself for this weird method signatures
     void multiHeadedAttention(
+        float *ws,  // B, T, C
+        float *out, //  B, T, n_head, head_dim
         int num_head,
         int head_dimension,
-        float *ws,      // B, T, C
-        float *out,     //  B, T, n_head, head_dim
         int batch_size, // batch_size
         int d_model,    // d_model
         int seq_len)    // seq_len, say we have n_head=8, head_dim=64, d_model=512
