@@ -141,17 +141,11 @@ public:
      */
     void pyDebuggerReleaseStage5()
     {
-        int N = batch_size * seq_len * num_heads * head_dim * sizeof(float);
-        float *contactG = (float *)malloc(N);
-        cudaMemcpy(contactG, model_paramaters.Uncontact_G_Upstream, N, cudaMemcpyDeviceToHost);
-
         bulkRelease<float>(
             {
                 {model_paramaters.attention_head.P, batch_size * num_heads * seq_len * seq_len, "pt.bin"},
                 {model_paramaters.attention_head.V, batch_size * num_heads * head_dim * seq_len, "vt.bin"}, // keep in mind of the transposed shape here
-                {contactG, batch_size * seq_len * num_heads * head_dim, "uncontact_g.bin"},
             });
 
-        free(contactG);
     }
 };

@@ -45,5 +45,8 @@ def Reader(
     wt = load_tensor('./src/cache/cpp_out/wt.bin', shape=(vocab_size, d_model), dtype=np.float32).to(device)
     w = load_tensor('./src/cache/cpp_out/w.bin', shape=(d_model, vocab_size), dtype=np.float32).to(device)
 
-    return delta, y_predicted, y_actual, h, dl_dw_kernel, h_t, wt, w
+    G_cnt = load_tensor('./src/cache/cpp_out/dl_dh.bin', shape=(batch_size, seq_len, d_model), dtype=np.float32).to(device)
+
+
+    return delta, y_predicted, y_actual, h, dl_dw_kernel, h_t, wt, w, G_cnt
 

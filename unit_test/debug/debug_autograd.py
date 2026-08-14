@@ -12,7 +12,7 @@ def debug_autograd(
 ):
     torch.set_printoptions(precision=8, sci_mode=False, threshold=float('inf'))
 
-    delta, y_predicted, y_actual, h, dl_dw_kernel, h_t, wt, w = Reader(
+    delta, y_predicted, y_actual, h, dl_dw_kernel, h_t, wt, w, G_cnt = Reader(
         batch_size=batch_size,
         seq_len=seq_len,
         vocab_size=vocab_size,
