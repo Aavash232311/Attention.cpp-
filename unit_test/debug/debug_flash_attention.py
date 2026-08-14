@@ -24,8 +24,6 @@ class DebugFlashAttention(torch.nn.Module):
         check_transpose_p = torch.allclose(self.P.transpose(2, 3), self.PT)
         check_transpose_v = torch.allclose(self.V.transpose(2, 3), self.VT)
 
-
-
         if not check_transpose_p:
             print(f"Checking PT C++ kernel, status:{RED} {check_transpose_p} {RESET}")
         else:

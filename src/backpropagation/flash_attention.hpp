@@ -126,7 +126,7 @@ private: // Note-: very limied kernel opreations here so for readability I am pa
     */
     void dl_dv_gradient(
         float *PT,       // (batch_size * num_heads * seq_len * seq_len )
-        float *G_device, // (B, C, vocab_size) from LM head
+        float *G_device, //  (B,T, C) from the dl_dh LM head
         int B,
         int T,
         int C,
@@ -191,7 +191,7 @@ public:
 
         dl_dv_gradient(
             model_paramaters.V_T_device, // Still in GDDR RAM
-            model_paramaters.dl_dw_device,
+            model_paramaters.dl_dh_device,
             batch_size,
             seq_len,
             d_model,

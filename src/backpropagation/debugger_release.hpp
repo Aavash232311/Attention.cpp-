@@ -19,6 +19,8 @@
 #include "../include/attention_params.hpp"
 #include "../include/single_embeddings.hpp"
 
+using namespace std;
+
 // Releases debugger script for python project to check
 // Autograd class and its child classes are getting messy
 
@@ -60,6 +62,13 @@ public:
                             {host_y_prediced, batch_size * seq_len * vocab_size, "y_prediced.bin"},
                             {model_paramaters.dl_dz_out_host, batch_size * seq_len * vocab_size, "delta.bin"},
                             {model_paramaters.h, batch_size * seq_len * d_model, "h.bin"}});
+
+        // if (debug)
+        // {
+        //     cout << "delta" << endl;
+        //     utils->printFlatArray3D(model_paramaters.dl_dz_out_host, batch_size,
+        //     seq_len, vocab_size);
+        // }
 
         free(host_y_actual);
         free(host_y_prediced);
@@ -109,6 +118,11 @@ public:
                 {dl_dh_host, batch_size * seq_len * d_model, "dl_dh.bin"},
             });
 
+        // if (debug) 
+        // {
+        //     cout << "W^T from C++" << endl;
+        //     utils->printFlatArray2D(wt_host, vocab_size, d_model);
+        // }
         free(dl_dh_host);
         free(wt_host);
     }
