@@ -49,7 +49,7 @@ def debug_autograd(
     check_wt = torch.allclose(w.T, wt)
 
     if not check_wt:
-        print(f"Checking wt transpose kernel: {RED} {torch.allclose(w.T, wt)} {RESET}")
+        print(f"Checking wt transpose kernel: {RED} {check_wt} {RESET}")
     else:
         print(f"Checking wt transpose kernel: {GREEN} {check_wt} {RESET}")
 
@@ -61,7 +61,12 @@ def debug_autograd(
 
 
     dl_dh_torch = delta @ wt
-    print(torch.allclose(dl_dh_torch, dl_dw_kernel))
 
+    # we need to account for small rounding errors
+    check_dl_dh = torch.allclose(dl_dh_torch, dl_dh_kernel, atol=1e-4, rtol=1e-4)
 
+    if not check_dl_dh:
+        print(f"Checking dl_dh matmul kernel: {RED} {check_dl_dh} {RESET}")
+    else:
+        print(f"Checking dl_dh matmul kernel: {GREEN} {check_dl_dh} {RESET}")
     return dl_dw_kernel
