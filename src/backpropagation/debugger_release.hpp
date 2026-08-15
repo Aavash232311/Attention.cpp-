@@ -148,7 +148,7 @@ public:
 
     /**
      * @class pyDebuggerReleaseStage5
-     * @brief Releases paramaters P^T and V^T for back most layer of the flash attention, also un-contact G of 3D tensor
+     * @brief Releases paramaters P^T and V^T for back most layer of the flash attention, also un-contact G of 3D tensor, also dP, dV matmul
      * Also UNCONTACTS UPSTREAM GRADIENT G, from (B, T, C) to (batch_size, seq_len, num_head, head_dim)
      *
      * These methods are in sequential order, so this releases the P^T and V^T for a python debugger to verify and check
@@ -159,14 +159,23 @@ public:
     {
         // Uncontact_G_Upstream is in Global mem
         float *UncG_host = (float *)malloc(batch_size * seq_len * num_heads * head_dim * sizeof(float));
-        cudaMemcpy(UncG_host, model_paramaters.Uncontact_G_Upstream,  batch_size * seq_len * num_heads * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
+        float *dP = (float *)malloc(batch_size * num_heads * seq_len * seq_len * sizeof(float));
+        float *dV = (float *)malloc(batch_size * num_heads * seq_len * head_dim * sizeof(float));
+
+        cudaMemcpy(UncG_host, model_paramaters.Uncontact_G_Upstream, batch_size * seq_len * num_heads * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(dP, model_paramaters.dP, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(dV, model_paramaters.dV, batch_size * num_heads * seq_len * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
 
         bulkRelease<float>(
-            {
-                {model_paramaters.attention_head.P, batch_size * num_heads * seq_len * seq_len, "pt.bin"},
-                {model_paramaters.attention_head.V, batch_size * num_heads * head_dim * seq_len, "vt.bin"}, // keep in mind of the transposed shape here
-                {UncG_host, batch_size * seq_len * num_heads * head_dim, "G_uncontact.bin"},
+            {{model_paramaters.attention_head.P, batch_size * num_heads * seq_len * seq_len, "pt.bin"},
+             {model_paramaters.attention_head.V, batch_size * num_heads * head_dim * seq_len, "vt.bin"}, // keep in mind of the transposed shape here
+             {UncG_host, batch_size * seq_len * num_heads * head_dim, "G_uncontact.bin"},
+             {dP, batch_size * num_heads * seq_len * seq_len, "dp.bin"},
+             {dV, batch_size * num_heads * seq_len * head_dim, "dv.bin"}
+
             });
         free(UncG_host);
+        free(dP);
+        free(dV);
     }
 };

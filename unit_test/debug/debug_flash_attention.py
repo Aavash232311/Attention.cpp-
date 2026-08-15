@@ -15,7 +15,7 @@ class DebugFlashAttention(torch.nn.Module):
         self.dl_dw = dl_dw # Upstream gradient G
 
         # looks like ideal gas equation, but it's not
-        self.P, self.V, self.PT, self.VT, self.G_unc, self.G = ReaderFlashAttention(batch_size, seq_len, vocab_size, d_model, num_heads, head_dim)
+        self.P, self.V, self.PT, self.VT, self.G_unc, self.G, self.dp, self.dv = ReaderFlashAttention(batch_size, seq_len, vocab_size, d_model, num_heads, head_dim)
 
     # dV = P^T G
     # dP = GV^T
@@ -43,18 +43,37 @@ class DebugFlashAttention(torch.nn.Module):
         )
 
         # G_unc = Shape (B, n_head, seq_len, head_dim)
-        self.G_unc = self.G_unc.transpose(1, 2)
+        g_unc_t = self.G_unc.transpose(1, 2)
         check_un_contact_G = torch.allclose(
             dis_g_torch,
-            self.G_unc,
+            g_unc_t, # just to check, confusion glued together here.
             atol=1e-4,
             rtol=1e-4
         )
+
+        # check for dp and dv, backmost layer of flash attention logic
+        dv_torch = self.PT @ self.G_unc
+        dp_torch = self.G_unc @ self.VT
+
+        check_dv = torch.allclose(dv_torch, self.dv, atol=1e-4, rtol=1e-4)
+        check_dp = torch.allclose(dp_torch, self.dp, atol=1e-4, rtol=1e-4)
+
+
+        if not check_dp:
+            print(f"Checking dp kernel, status:{RED} {check_dp} {RESET}")
+        else:
+            print(f"Checking dp kernel, status:{GREEN} {check_dp} {RESET}")
+
+        if not check_dv:
+            print(f"Checking dv kernel, status:{RED} {check_dv} {RESET}")
+        else:
+            print(f"Checking dv kernel, status:{GREEN} {check_dv} {RESET}")
 
         if not check_un_contact_G:
             print(f"Checking contact/uncontact dl_dh kernel, status:{RED} {check_un_contact_G} {RESET}")
         else:
             print(f"Checking contact/uncontact dl_dh kernel, status:{GREEN} {check_un_contact_G} {RESET}")
+
 
 
     def debug_pv(self):
