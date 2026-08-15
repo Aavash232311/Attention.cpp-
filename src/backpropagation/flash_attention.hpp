@@ -162,15 +162,15 @@ private: // Note-: very limied kernel opreations here so for readability I am pa
         int seq_len,
         int head_dim)
     {
-        MatMul4D(
-            VT,
+        MatMul4D( // rememeber the order.
             G,
+            VT,
             dp,
             batch_size,
             num_heads,
-            head_dim,
-            seq_len,
-            head_dim);
+            seq_len,  // c
+            head_dim, // d
+            seq_len); // e
     }
 
 public:
@@ -183,7 +183,7 @@ public:
     // O = PV is there.
     // p = softmax(x)
 
-    // dV = P^T G
+    // dV = P^T G, order must match here.
     // dP = GV^T
 
     void opv_upstream_gradient(
@@ -226,9 +226,6 @@ public:
             d_model,
             seq_len);
 
-        if (debug)
-            pyDebuggerReleaseStage5();
-
         // now we are doing to multiuply P^T G and G V^T
 
         dv(
@@ -250,5 +247,8 @@ public:
             seq_len,                               // seq_len
             head_dim                               // head_dim
         );
+
+        if (debug)
+            pyDebuggerReleaseStage5();
     }
 };
