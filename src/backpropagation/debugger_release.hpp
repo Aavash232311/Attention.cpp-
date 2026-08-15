@@ -167,12 +167,12 @@ public:
         cudaMemcpy(dV, model_paramaters.dV, batch_size * num_heads * seq_len * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
 
         bulkRelease<float>(
-            {{model_paramaters.attention_head.P, batch_size * num_heads * seq_len * seq_len, "pt.bin"},
-             {model_paramaters.attention_head.V, batch_size * num_heads * head_dim * seq_len, "vt.bin"}, // keep in mind of the transposed shape here
-             {UncG_host, batch_size * seq_len * num_heads * head_dim, "G_uncontact.bin"},
-             {dP, batch_size * num_heads * seq_len * seq_len, "dp.bin"},
-             {dV, batch_size * num_heads * seq_len * head_dim, "dv.bin"}
-
+            {
+                {model_paramaters.attention_head.P, batch_size * num_heads * seq_len * seq_len, "pt.bin"},
+                {model_paramaters.attention_head.V, batch_size * num_heads * head_dim * seq_len, "vt.bin"}, // keep in mind of the transposed shape here
+                {UncG_host, batch_size * seq_len * num_heads * head_dim, "G_uncontact.bin"},
+                {dP, batch_size * num_heads * seq_len * seq_len, "dp.bin"},
+                {dV, batch_size * num_heads * seq_len * head_dim, "dv.bin"}
             });
         free(UncG_host);
         free(dP);
