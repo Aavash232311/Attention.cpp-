@@ -153,7 +153,25 @@ private: // Note-: very limied kernel opreations here so for readability I am pa
             head_dim);
     }
 
-
+    void dp(
+        float *VT, // (B, n_head, head_dim, T)
+        float *G,  // (B, n_head, T, head_dim)
+        float *dp, //  (B, n_head, T, T)
+        int batch_size,
+        int num_heads,
+        int seq_len,
+        int head_dim)
+    {
+        MatMul4D(
+            VT,
+            G,
+            dp,
+            batch_size,
+            num_heads,
+            head_dim,
+            seq_len,
+            head_dim);
+    }
 
 public:
     FlashAttention(int d_model, int vocab_size, int num_heads,
@@ -190,8 +208,8 @@ public:
         transpose4DLastTwoVT(
             model_paramaters.attention_head.V, // (B, n_head, T, head_dim)
             model_paramaters.V_T_device,
-            model_paramaters.V_T_device_out,
-            num_heads, // according to the shape of P
+            model_paramaters.V_T_device_out, // (B, n_head, head_dim, T)
+            num_heads,                       // according to the shape of P
             head_dim,
             batch_size,
             seq_len);
@@ -214,13 +232,23 @@ public:
         // now we are doing to multiuply P^T G and G V^T
 
         dv(
-            model_paramaters.P_T_device_out, // PT
-            model_paramaters.Uncontact_G_Upstream,   // G uncontacted G (B, n_head, seq_len, head_dim)
-            model_paramaters.dV,             // dv
-            batch_size,                      // batch_size
-            num_heads,                       // num_heads
-            seq_len,                         // seq_len
-            head_dim                         // head_dim
+            model_paramaters.P_T_device_out,       // PT
+            model_paramaters.Uncontact_G_Upstream, // G uncontacted G (B, n_head, seq_len, head_dim)
+            model_paramaters.dV,                   // dv
+            batch_size,                            // batch_size
+            num_heads,                             // num_heads
+            seq_len,                               // seq_len
+            head_dim                               // head_dim
+        );
+
+        dp(
+            model_paramaters.V_T_device_out,       // PT
+            model_paramaters.Uncontact_G_Upstream, // G uncontacted G (B, n_head, seq_len, head_dim)
+            model_paramaters.dP,                   // dv
+            batch_size,                            // batch_size
+            num_heads,                             // num_heads
+            seq_len,                               // seq_len
+            head_dim                               // head_dim
         );
     }
 };
