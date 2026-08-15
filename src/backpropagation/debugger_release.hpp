@@ -118,7 +118,7 @@ public:
                 {dl_dh_host, batch_size * seq_len * d_model, "dl_dh.bin"},
             });
 
-        // if (debug) 
+        // if (debug)
         // {
         //     cout << "W^T from C++" << endl;
         //     utils->printFlatArray2D(wt_host, vocab_size, d_model);
@@ -130,6 +130,7 @@ public:
     /**
      * @class pyDebuggerReleaseStage4
      * @brief Releases paramaters P, V for now, reason this is a seperate method is because we might have something else to release in future.
+     *
      *
      * Simply for stage one releases the above paramaters from the attention interface class
      *
@@ -148,6 +149,7 @@ public:
     /**
      * @class pyDebuggerReleaseStage5
      * @brief Releases paramaters P^T and V^T for back most layer of the flash attention, also un-contact G of 3D tensor
+     * Also UNCONTACTS UPSTREAM GRADIENT G, from (B, T, C) to (batch_size, seq_len, num_head, head_dim)
      *
      * These methods are in sequential order, so this releases the P^T and V^T for a python debugger to verify and check
      * model_paramaters.attention_head.P and model_paramaters.attention_head.V should be consumed by the transpose Kernel.
@@ -155,11 +157,16 @@ public:
      */
     void pyDebuggerReleaseStage5()
     {
+        // Uncontact_G_Upstream is in Global mem
+        float *UncG_host = (float *)malloc(batch_size * seq_len * num_heads * head_dim * sizeof(float));
+        cudaMemcpy(UncG_host, model_paramaters.Uncontact_G_Upstream,  batch_size * seq_len * num_heads * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
+
         bulkRelease<float>(
             {
                 {model_paramaters.attention_head.P, batch_size * num_heads * seq_len * seq_len, "pt.bin"},
                 {model_paramaters.attention_head.V, batch_size * num_heads * head_dim * seq_len, "vt.bin"}, // keep in mind of the transposed shape here
+                {UncG_host, batch_size * seq_len * num_heads * head_dim, "G_uncontact.bin"},
             });
-
+        free(UncG_host);
     }
 };

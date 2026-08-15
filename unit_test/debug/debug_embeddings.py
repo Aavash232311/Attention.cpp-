@@ -29,7 +29,8 @@ def verify_embeddings(
     k_total_embeddings = debugger.readEmbeddings('embedding.bin', batch_size * seq_len * d_model)
     x = debugger.readX("x.bin", seq_len * batch_size)
 
-
+    # todo: Known I issue sometimes the embedding is True and sometimes it's False.
+    # This is a serious problem but I will get back to this later.
     py_total_embedding = total_embeddings(x=x, token_embedding_table=token_embeddings,
                                                 positional_embedding_table=pe)
 

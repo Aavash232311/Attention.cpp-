@@ -29,7 +29,8 @@ using namespace std;
 
 // Re-use this from linear.hpp
 extern "C" void TransposeKey(float *arr, float *out, int num_heads, int head_dim, int batch_size, int seq_len, bool reverse);
-
+// from utils.cu
+extern "C" void multiHeadedAttention(float *ws, float *out, int num_head, int head_dimension, int batch_size, int d_model, int seq_len);
 
 class FlashAttention : public AutoGradEngine
 {
@@ -98,30 +99,46 @@ public:
         cudaMemcpy(arr_h, arr_d_out, x * y * z * z1 * sizeof(float), cudaMemcpyDeviceToHost);
     }
 
-
 private: // Note-: very limied kernel opreations here so for readability I am passing args and params.
     /*
         Note:- Upstream gradient G, ignoring the FFN for now, even if not ignored this step would be still the same
         if I am not wrong ofcourse because FFN are linears.
 
-        Shape of G : (B, C, vocab_size)
+        Shape of G : (B, T, C)
         Shaoe of PT: (batch_size * num_heads * seq_len * seq_len )
 
         Uncontact G for matrix multiplication. Remember uncontact does not changes the value,
         just re-arranges the tensor for us to be able to do the matrix multiplication easily.
 
     */
-    void dl_dv_gradient(
-        float *PT,       // (batch_size * num_heads * seq_len * seq_len )
-        float *G_device, //  (B,T, C) from the dl_dh LM head
+
+    void multiHeadG(
+        float *G,              // (B, T, C)
+        // note: its been months I don't remember how I wrote forward pass :)
+        float *G_multi_headed, // (B, n_head, seq_len, head_dim)
+        int num_head,
+        int head_dim,
+        int batch_size,
+        int d_model,
+        int seq_len)
+    {
+        multiHeadedAttention(
+            G,
+            G_multi_headed,
+            num_head,
+            head_dim,
+            batch_size,
+            d_model,
+            seq_len);
+    }
+
+    void dv(
+        float *PT, // (batch_size * num_heads * seq_len * seq_len )
+        float *G,  // (batch_size, seq_len, num_head, head_dim)
         int B,
         int T,
         int C,
         int vocab_size)
-    {
-    }
-
-    void dl_dp_gradient()
     {
     }
 
@@ -166,15 +183,28 @@ public:
             batch_size,
             seq_len);
 
+        // the upstream gradient G from our LM head ignoring the FFN is of shape (B, T, C)
+        // we need to re-arrange in terms of (batch_size, seq_len, num_head, head_dim)
+        // Remember:- this does not changes the values just the way of writing it, its flat anyway.
+        multiHeadG(
+            model_paramaters.Contact_G_Upstream,   // (B, T, C)
+            model_paramaters.Uncontact_G_Upstream, // (batch_size, seq_len, num_head, head_dim)
+            num_heads,
+            head_dim,
+            batch_size,
+            d_model,
+            seq_len);
+
         if (debug)
             pyDebuggerReleaseStage5();
 
-        dl_dv_gradient(
-            model_paramaters.V_T_device, // Still in GDDR RAM
-            model_paramaters.dl_dh_device,
-            batch_size,
-            seq_len,
-            d_model,
-            vocab_size);
+        // now we are doing to multiuply P^T G and G V^T
+        // dv(
+        //     model_paramaters.P_T_device_out,
+        //     model_paramaters.dl_dh_device,
+        //     batch_size,
+        //     seq_len,
+        //     d_model,
+        //     vocab_size);
     }
 };

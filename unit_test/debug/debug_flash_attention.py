@@ -15,7 +15,7 @@ class DebugFlashAttention(torch.nn.Module):
         self.dl_dw = dl_dw # Upstream gradient G
 
         # looks like ideal gas equation, but it's not
-        self.P, self.V, self.PT, self.VT, self.G_unc = ReaderFlashAttention(batch_size, seq_len, vocab_size, d_model, num_heads, head_dim)
+        self.P, self.V, self.PT, self.VT, self.G_unc, self.G = ReaderFlashAttention(batch_size, seq_len, vocab_size, d_model, num_heads, head_dim)
 
     # dV = P^T G
     # dP = GV^T
@@ -33,6 +33,29 @@ class DebugFlashAttention(torch.nn.Module):
             print(f"Checking VT C++ kernel, status:{RED} {check_transpose_v} {RESET}")
         else:
             print(f"Checking VT C++ kernel, status:{GREEN} {check_transpose_v} {RESET}")
+
+        # check the un-contact logic here for upstream gradient G
+        dis_g_torch = self.G.view(
+            self.batch_size,
+            self.seq_len,
+            self.num_heads,
+            self.head_dim
+        )
+
+        # G_unc = Shape (B, n_head, seq_len, head_dim)
+        self.G_unc = self.G_unc.transpose(1, 2)
+        check_un_contact_G = torch.allclose(
+            dis_g_torch,
+            self.G_unc,
+            atol=1e-4,
+            rtol=1e-4
+        )
+
+        if not check_un_contact_G:
+            print(f"Checking contact/uncontact dl_dh kernel, status:{RED} {check_un_contact_G} {RESET}")
+        else:
+            print(f"Checking contact/uncontact dl_dh kernel, status:{GREEN} {check_un_contact_G} {RESET}")
+
 
     def debug_pv(self):
         pass
