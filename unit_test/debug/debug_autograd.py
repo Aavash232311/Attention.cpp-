@@ -11,8 +11,6 @@ def debug_autograd(
         num_heads: int
 ):
     torch.set_printoptions(precision=8, sci_mode=False, threshold=float('inf'))
-    head_dim = d_model // num_heads
-
     delta, y_predicted, y_actual, h, dl_dw_kernel, h_t, wt, w, dl_dh_kernel = Reader(
         batch_size=batch_size,
         seq_len=seq_len,
@@ -52,13 +50,6 @@ def debug_autograd(
         print(f"Checking wt transpose kernel: {RED} {check_wt} {RESET}")
     else:
         print(f"Checking wt transpose kernel: {GREEN} {check_wt} {RESET}")
-
-
-    # here we contact g
-    multi_headed_g = dl_dh_kernel.view(batch_size, seq_len, num_heads, head_dim)
-
-    # todo: check if contact g works
-
 
     dl_dh_torch = delta @ wt
 

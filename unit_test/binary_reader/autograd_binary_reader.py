@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+
 from ml_components.grad import load_tensor
 
 device = torch.device("cpu")
@@ -23,8 +24,10 @@ def ReaderFlashAttention(
     PT = load_tensor('./src/cache/cpp_out/pt.bin', shape=(batch_size, num_heads, seq_len, seq_len), dtype=np.float32).to(device)
     VT = load_tensor('./src/cache/cpp_out/vt.bin', shape=(batch_size, num_heads, head_dim, seq_len), dtype=np.float32).to(device)
 
-    G_unc = load_tensor('./src/cache/cpp_out/uncontact_g.bin', shape=(batch_size, seq_len, num_heads, head_dim), dtype=np.float32).to(device)
-    return P, V, PT, VT, G_unc
+    G_unc = load_tensor('./src/cache/cpp_out/G_uncontact.bin', shape=(batch_size, num_heads, seq_len, head_dim), dtype=np.float32).to(device)
+    dl_dh = load_tensor('./src/cache/cpp_out/dl_dh.bin', shape=(batch_size, seq_len, d_model), dtype=np.float32).to(
+        device)
+    return P, V, PT, VT, G_unc, dl_dh
 
 def Reader(
         batch_size: int,
@@ -32,8 +35,6 @@ def Reader(
         vocab_size: int,
         d_model: int
 ):
-    # To avoid monolith here
-
     delta = load_tensor('./src/cache/cpp_out/delta.bin', shape=(batch_size, seq_len, vocab_size), dtype=np.float32).to(device)
     y_predicted = load_tensor('./src/cache/cpp_out/y_prediced.bin', shape=(batch_size, seq_len, vocab_size), dtype=np.float32).to(device)
     y_actual = load_tensor('./src/cache/cpp_out/y_actual.bin', shape=(batch_size, seq_len, vocab_size), dtype=np.float32).to(device)
@@ -46,7 +47,6 @@ def Reader(
     w = load_tensor('./src/cache/cpp_out/w.bin', shape=(d_model, vocab_size), dtype=np.float32).to(device)
 
     dl_dh = load_tensor('./src/cache/cpp_out/dl_dh.bin', shape=(batch_size, seq_len, d_model), dtype=np.float32).to(device)
-
 
     return delta, y_predicted, y_actual, h, dl_dw_kernel, h_t, wt, w, dl_dh
 
