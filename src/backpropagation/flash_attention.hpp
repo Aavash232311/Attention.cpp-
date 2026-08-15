@@ -173,6 +173,27 @@ private: // Note-: very limied kernel opreations here so for readability I am pa
             seq_len); // e
     }
 
+    // Now we will have to deal with softmax part.
+
+    void ppt(       // P times P^T
+        float *P,   // (batch_size, num_heads, seq_len, seq_len)
+        float *PT,  // (batch_size, num_heads, seq_len, seq_len)
+        float *PPT, //(batch_size, num_heads, seq_len, seq_len)
+        int batch_size,
+        int num_heads,
+        int seq_len)
+    {
+        MatMul4D(
+            P,
+            PT,
+            PPT,
+            batch_size,
+            num_heads,
+            seq_len,
+            seq_len,
+            seq_len);
+    }
+
 public:
     FlashAttention(int d_model, int vocab_size, int num_heads,
                    int seq_len, int batch_size, bool debug)
@@ -246,6 +267,20 @@ public:
             num_heads,                             // num_heads
             seq_len,                               // seq_len
             head_dim                               // head_dim
+        );
+
+        /*
+            Note:- model_paramaters.attention_head.P = (batch_size * num_heads * seq_len * seq_len )
+                    model_paramaters.P_T_device_out = (batch_size * num_heads * seq_len * seq_len )
+        */
+
+        ppt(
+            model_paramaters.attention_head.P,
+            model_paramaters.P_T_device_out,
+            model_paramaters.ppt,
+            batch_size,
+            num_heads,
+            seq_len
         );
 
         if (debug)

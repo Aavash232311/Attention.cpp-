@@ -52,4 +52,7 @@ struct FlashAttentionPointers : NetAttentionParamaters
 
     float *dV;
     float *dP;
+
+    // softmax terms
+    float *ppt;
 };

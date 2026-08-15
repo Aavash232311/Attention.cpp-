@@ -107,6 +107,10 @@ class AttentionInterface
     float *dV; // O = PV one of the derivative terms.
     float *dP; // same derviative terms.
 
+    // softmax activation derivative terms. 
+
+    float *ppt;
+
 private:
     // ----------- TEMPORARY DEBUGGER SCRIPT ---------------------
 
@@ -221,6 +225,8 @@ public:
 
         cudaMalloc((void **)&dV, batch_size * num_heads * seq_len * head_dim * sizeof(float));
         cudaMalloc((void **)&dP, batch_size * num_heads * seq_len * seq_len * sizeof(float));
+
+        cudaMalloc((void **)&ppt, batch_size *  num_heads * seq_len * seq_len * sizeof(float));
     }
 
     ~AttentionInterface()
@@ -265,6 +271,7 @@ public:
 
         cudaFree(dV);
         cudaFree(dP);
+        cudaFree(ppt);
     }
 
     LinearParams getLmHeadParams()
@@ -406,6 +413,8 @@ public:
 
                 modelParamaters.dV = dV;
                 modelParamaters.dP = dP;
+
+                modelParamaters.ppt = ppt;
 
                 // because the backprops needs to be done for each epoch.
                 // we need to keep in mind that the things hurting performace like cuda malloc and everything declared
