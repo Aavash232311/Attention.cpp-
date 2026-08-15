@@ -31,6 +31,7 @@ using namespace std;
 extern "C" void TransposeKey(float *arr, float *out, int num_heads, int head_dim, int batch_size, int seq_len, bool reverse);
 // from utils.cu
 extern "C" void multiHeadedAttention(float *ws, float *out, int num_head, int head_dimension, int batch_size, int d_model, int seq_len);
+extern "C" void MatMul4D(float *A, float *B, float *C, int a, int b, int c, int d, int e);
 
 class FlashAttention : public AutoGradEngine
 {
@@ -113,7 +114,7 @@ private: // Note-: very limied kernel opreations here so for readability I am pa
     */
 
     void multiHeadG(
-        float *G,              // (B, T, C)
+        float *G, // (B, T, C)
         // note: its been months I don't remember how I wrote forward pass :)
         float *G_multi_headed, // (B, n_head, seq_len, head_dim)
         int num_head,
@@ -133,14 +134,26 @@ private: // Note-: very limied kernel opreations here so for readability I am pa
     }
 
     void dv(
-        float *PT, // (batch_size * num_heads * seq_len * seq_len )
-        float *G,  // (batch_size, seq_len, num_head, head_dim)
-        int B,
-        int T,
-        int C,
-        int vocab_size)
+        float *PT, // (batch_size, num_heads, seq_len, seq_len )
+        float *G,  // (B, n_head, seq_len, head_dim)
+        float *dv, // (batch_size, num_heads, seq_len, head_dim)
+        int batch_size,
+        int num_heads,
+        int seq_len,
+        int head_dim)
     {
+        MatMul4D(
+            PT,
+            G,
+            dv,
+            batch_size,
+            num_heads,
+            seq_len,
+            seq_len,
+            head_dim);
     }
+
+
 
 public:
     FlashAttention(int d_model, int vocab_size, int num_heads,
@@ -188,7 +201,7 @@ public:
         // Remember:- this does not changes the values just the way of writing it, its flat anyway.
         multiHeadG(
             model_paramaters.Contact_G_Upstream,   // (B, T, C)
-            model_paramaters.Uncontact_G_Upstream, // (batch_size, seq_len, num_head, head_dim)
+            model_paramaters.Uncontact_G_Upstream, // (B, n_head, seq_len, head_dim)
             num_heads,
             head_dim,
             batch_size,
@@ -199,12 +212,15 @@ public:
             pyDebuggerReleaseStage5();
 
         // now we are doing to multiuply P^T G and G V^T
-        // dv(
-        //     model_paramaters.P_T_device_out,
-        //     model_paramaters.dl_dh_device,
-        //     batch_size,
-        //     seq_len,
-        //     d_model,
-        //     vocab_size);
+
+        dv(
+            model_paramaters.P_T_device_out, // PT
+            model_paramaters.Uncontact_G_Upstream,   // G uncontacted G (B, n_head, seq_len, head_dim)
+            model_paramaters.dV,             // dv
+            batch_size,                      // batch_size
+            num_heads,                       // num_heads
+            seq_len,                         // seq_len
+            head_dim                         // head_dim
+        );
     }
 };

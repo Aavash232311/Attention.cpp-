@@ -104,6 +104,8 @@ class AttentionInterface
     float *Uncontact_G_Upstream;
     float *Contact_G_Upstream;
 
+    float *dV; // O = PV one of the derivative terms.
+
 private:
     // ----------- TEMPORARY DEBUGGER SCRIPT ---------------------
 
@@ -215,6 +217,8 @@ public:
         cudaMalloc((void **)&Uncontact_G_Upstream, batch_size * seq_len * num_heads * head_dim * sizeof(float));
 
         cudaMalloc((void **)&Contact_G_Upstream, batch_size * seq_len * d_model * sizeof(float));
+
+        cudaMalloc((void **)&dV, batch_size * num_heads * seq_len * head_dim * sizeof(float));
     }
 
     ~AttentionInterface()
@@ -256,6 +260,8 @@ public:
         cudaFree(Uncontact_G_Upstream);
 
         cudaFree(Contact_G_Upstream);
+
+        cudaFree(dV);
     }
 
     LinearParams getLmHeadParams()
@@ -394,6 +400,8 @@ public:
                 // GDDR RAM
                 modelParamaters.Uncontact_G_Upstream = Uncontact_G_Upstream;
                 modelParamaters.Contact_G_Upstream = Contact_G_Upstream;
+
+                modelParamaters.dV = dV;
 
                 // because the backprops needs to be done for each epoch.
                 // we need to keep in mind that the things hurting performace like cuda malloc and everything declared
