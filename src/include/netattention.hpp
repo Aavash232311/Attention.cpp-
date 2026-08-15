@@ -51,4 +51,5 @@ struct FlashAttentionPointers : NetAttentionParamaters
     float *Contact_G_Upstream;
 
     float *dV;
+    float *dP;
 };
