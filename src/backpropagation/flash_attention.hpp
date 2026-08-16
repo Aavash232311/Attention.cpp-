@@ -251,8 +251,10 @@ public:
         );
 
         /*
-            Note:- model_paramaters.attention_head.P = (batch_size * num_heads * seq_len * seq_len )
-                    model_paramaters.P_T_device_out = (batch_size * num_heads * seq_len * seq_len )
+            It's been a while not, been through a lot so. Just a small re-cap
+
+            J(P1) = diag(P1) - P1^T P1  where P1 is exactly the one row of P = softmax(s) matrix and P1 diag is [seq_len, seq_len] dimension matrix,
+            and at the end we multiply that d(scores)_row = J(P1) @ dP_row is I am not wrong ofcourse.
         */
 
 
