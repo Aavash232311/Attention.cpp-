@@ -49,6 +49,19 @@ __global__ void matmulLastTwo4DKernel(
     C[out_idx] = sum;
 }
 
+// How am I gonna be so god damn genious to distrubute the load
+// of that formula derived in flashback.md row wise to do the softmax
+// backpropagation. 
+
+
+__global__ void softmaxBackTankKernel(
+
+)
+{
+    
+}
+
+
 extern "C"
 {
     void MatMul4D(
