@@ -166,18 +166,40 @@ Using the total derivative chain rule, we must sum the gradient contributions fl
 
 In this case, we have $\frac{\partial L}{\partial P}$ as our **upstream gradient** and $\frac{\partial P}{\partial S_{11}}$ as our **local gradient**. Therefore,
 
-\[
+$$
 \frac{\partial L}{\partial S_{11}}
 =
 \frac{\partial L}{\partial P}
 \cdot
-\frac{\partial P}{\partial S_{11}}.
-\]
+\frac{\partial P}{\partial S_{11}}
+$$
 
 This follows directly from the chain rule.
 
+More explicitly, if $P$ has multiple elements, we can write:
 
-$$\frac{\partial L}{\partial s_{11}} = \frac{\partial L}{\partial p_{11}} \frac{\partial p_{11}}{\partial s_{11}} + \frac{\partial L}{\partial p_{12}} \frac{\partial p_{12}}{\partial s_{11}} + \frac{\partial L}{\partial p_{13}} \frac{\partial p_{13}}{\partial s_{11}}$$
+$$
+\frac{\partial L}{\partial S_{11}}
+=
+\frac{\partial L}{\partial P_{11}}
+\frac{\partial P_{11}}{\partial S_{11}}
++
+\frac{\partial L}{\partial P_{12}}
+\frac{\partial P_{12}}{\partial S_{11}}
++
+\frac{\partial L}{\partial P_{13}}
+\frac{\partial P_{13}}{\partial S_{11}}
+$$
+
+In a more compact notation using the upstream gradient components $\frac{\partial L}{\partial P_{1j}}$:
+
+$$
+\frac{\partial L}{\partial S_{11}}
+=
+\sum_{j=1}^{3}
+\frac{\partial L}{\partial P_{1j}}
+\frac{\partial P_{1j}}{\partial S_{11}}
+$$
 
 In a more compact notation using the upstream gradient components $(L_P)_{1j}$:
 
