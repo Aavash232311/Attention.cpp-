@@ -49,13 +49,23 @@ __global__ void matmulLastTwo4DKernel(
     C[out_idx] = sum;
 }
 
-// How am I gonna be so god damn genious to distrubute the load
-// of that formula derived in flashback.md row wise to do the softmax
-// backpropagation. 
+/*
+J1 = diag(P[0]) - P[0]·P[0]T   
+J2 = diag(P[1]) - P[1]·P[1]T  
+J3 = diag(P[2]) - P[2]·P[2]T  
+
+row = cols happens in the diagonal
+if row = cols then subract from the element 
+else subract from zero.
+
+write the output 
+
+*/
 
 
 __global__ void softmaxBackTankKernel(
-
+    float *P, // row of softmax 
+    float *out
 )
 {
     
