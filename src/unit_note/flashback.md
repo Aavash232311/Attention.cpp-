@@ -304,6 +304,33 @@ Now we will split this into Jacobian matrix and if you have doubt then multiply 
 
 $$J(P_1) = \text{diag}(P_1) - P_1^T P_1$$
 
+By the definition of a diagonal matrix, expanding the above equation, we get:
+
+$$
+J_{ij}
+=
+\delta_{ij} p_{1i}
+-
+p_{1j}^{T} P
+-
+\text{function } J
+$$
+
+Let $dY$ be the upstream gradient.
+
+Basically, we multiply by the incoming gradient. I like to call it $G$, but let it be $dY$ for now.
+
+$$
+dX_i
+=
+P_{1,i}
+\left(
+dY_i
+-
+\sum_j P_{1,j} dY_j
+\right)
+$$
+
 Where:
 
 $$\text{diag}(P_1) = 
