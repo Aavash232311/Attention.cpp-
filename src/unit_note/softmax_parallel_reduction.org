@@ -147,7 +147,7 @@ We have the warp level reducer.
 
 
 
-```
+#+BEGIN_SRC C
 __device__ __forceinline__ void warpReducer(float &m, float &d)
 {
     for (int offset = 16; offset > 0; offset >>= 1)
@@ -161,7 +161,7 @@ __device__ __forceinline__ void warpReducer(float &m, float &d)
     }
 }
 
-```
+#+END_SRC
 
 Now you have that local m and d from each thread.
 Each threads value of `local_d` and `local_m` is the local amoung the four values that it has touched in case of the above example. Now from that memory location we are again doing the tree level reduction in warp.
@@ -190,9 +190,7 @@ g++ unit_test.cpp -o unit_test
 
 
 
-
-
-```
+#+BEGIN_SRC c
 
     if (lane == 0)
     {
@@ -200,14 +198,13 @@ g++ unit_test.cpp -o unit_test
         smem_d[warp_id] = local_d;
     }
     __syncthreads();
-```
+#+END_SRC
 
 
 Here thread 0 of each warp writes to the shared memory because for example in `local_m` the heaver element is pushed to the front.
 
 
-
-```
+#+BEGIN_SRC C
     if (warp_id == 0)
     {
         local_m = (lane < num_warps) ? smem_m[lane] : -FLT_MAX;
@@ -222,13 +219,12 @@ Here thread 0 of each warp writes to the shared memory because for example in `l
         }
     }
     __syncthreads();
-```
+#+END_SRC
 
 Before we were writing to shared memory from thread 0 of each warps and shared memory still has partial results we are doing reduction there again and writing to the position 0 of both the shared memory.
 
 
-
-```
+#+BEGIN_SRC C
     float global_m = smem_m[0];
     float global_d = smem_d[0];
 
@@ -236,13 +232,13 @@ Before we were writing to shared memory from thread 0 of each warps and shared m
     {
         out_row[i] = __expf(row[i] - global_m) / global_d;
     }
-```
+#+END_SRC
 
 For whatever element each thread touched we are writing that down.
 
 Full simple cuda kenrel. Actual production level kernel for softmax itself might be 1000's of lines of code. This is simple and fast enough for us to write attention mechanism.
 
-```
+#+BEGIN_SRC c
 __device__ __forceinline__ void warpReducer(float &m, float &d)
 {
     for (int offset = 16; offset > 0; offset >>= 1)
@@ -319,7 +315,7 @@ __global__ void SoftmaxKernel2D(
         out_row[i] = __expf(row[i] - global_m) / global_d;
     }
 }
-```
+#+END_SRC
 
 Let us understand the level of reduction here. So in level 1 we have loop which is going to touch some unique elements in the memory.
 
