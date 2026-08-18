@@ -184,6 +184,9 @@ __global__ void SoftmaxKernel2D(
     int warp_id = threadIdx.x / 32;  // position within block
     int num_warps = blockDim.x / 32; // total warps avalible
 
+    // I believe this is the online softmax activation that we were doing back then
+    // seeing it after a long time.
+
     __shared__ float smem_m[32];
     __shared__ float smem_d[32];
 
@@ -198,6 +201,7 @@ __global__ void SoftmaxKernel2D(
         local_m = m_new;
     }
 
+    // parallel reduction happenning inside of the kernel.
     warpReducerHelper(local_m, local_d);
 
     if (lane == 0)
@@ -511,6 +515,8 @@ extern "C"
         // Here if the T dimension is less than 32 then we can talk with the
         // internel registers in our thread and softmaxKernel4D will be enough.
         // else we will need to use other kernel
+
+        // Note:- this probally will not scale.
 
         int rows = batch_size * n_head * seq_len; // each row gets softmaxed, and this 2D works for 2D
 
