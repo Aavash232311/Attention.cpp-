@@ -177,15 +177,15 @@ private: // Note-: very limied kernel opreations here so for readability I am pa
     // Now we will have to deal with softmax part.
     // Here G is dl_dh if I am not wrong again I am old
     void softmaxBackGrad(
-        float *P,
-        float *dY,
+        float *P, // (batch_sieq, num_head, seq_len, seq_len)
+        float *dY, // shape (batch_size, seq_len, num_head, head_dim)
         float *out,
-        int N,
-        int seq_len,
+        int N, // I belive this is supposed to be N of P
+        int seq_len, 
         int n_head
     )
     {
-        
+
     }
 
 public:
@@ -270,7 +270,7 @@ public:
             and at the end we multiply that d(scores)_row = J(P1) @ dP_row is I am not wrong ofcourse.
         */
 
-
+        
 
         if (debug)
             pyDebuggerReleaseStage5();

@@ -50,6 +50,7 @@ __global__ void matmulLastTwo4DKernel(
 }
 
 /*
+Just for me to unfold the logic here. 
 J1 = diag(P[0]) - P[0]·P[0]T
 J2 = diag(P[1]) - P[1]·P[1]T
 J3 = diag(P[2]) - P[2]·P[2]T
