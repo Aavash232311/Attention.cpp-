@@ -134,10 +134,16 @@ The upstream gradient for \( P = \text{softmax}(S) = \frac{\partial L}{\partial 
 
 **Quotient Rule:**
 
-The quotient rule for derivatives states:
-\[ \left( \frac{u}{v} \right)' = \frac{u'v - uv'}{v^2} \]
 
-where \( u \) and \( v \) are functions of \( x \), and \( u' \) and \( v' \) are their respective derivatives.
+
+The quotient rule for derivatives states:
+
+
+$$
+\left(\frac{u}{v}\right)' = \frac{u'v - uv'}{v^2}
+$$
+
+where \(u\) and \(v\) are functions of \(x\), and \(u'\) and \(v'\) are their respective derivatives.
 
 Now, what we want to do is evaluate this row-wise for the attention probability matrix $P$.
 
