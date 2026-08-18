@@ -32,6 +32,7 @@ extern "C" void TransposeKey(float *arr, float *out, int num_heads, int head_dim
 // from utils.cu
 extern "C" void multiHeadedAttention(float *ws, float *out, int num_head, int head_dimension, int batch_size, int d_model, int seq_len);
 extern "C" void MatMul4D(float *A, float *B, float *C, int a, int b, int c, int d, int e);
+extern "C" void softmaxBackTankKernel(float *P, float *dY, float *out, int N, int seq_len, int n_head);
 
 class FlashAttention : public AutoGradEngine
 {
@@ -174,6 +175,18 @@ private: // Note-: very limied kernel opreations here so for readability I am pa
     }
 
     // Now we will have to deal with softmax part.
+    // Here G is dl_dh if I am not wrong again I am old
+    void softmaxBackGrad(
+        float *P,
+        float *dY,
+        float *out,
+        int N,
+        int seq_len,
+        int n_head
+    )
+    {
+        
+    }
 
 public:
     FlashAttention(int d_model, int vocab_size, int num_heads,

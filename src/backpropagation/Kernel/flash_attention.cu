@@ -76,7 +76,7 @@ __device__ float warpReduceSum(float val)
 // it will be a weak model but lets focus on getting the result right at first.
 __global__ void softmaxBackTankKernel(
     float *P, // (batch_size * num_heads * seq_len * seq_len )
-    float *dY,
+    float *dY, // Shape (batch_size, seq_len, num_head, head_dim) again I might be wrong I am old.
     float *out,
     int N,
     int seq_len,
@@ -103,6 +103,8 @@ __global__ void softmaxBackTankKernel(
     __shared__ float smem_pdy[32]; // certian limit is there depending upon the GPU but this should be fine;.
     __shared__ float s_shared;
 
+    // this is what I like to call surface level reduction
+    // I have noted this concept on softmax_activation.org
     float tempSum = 0.0f;
     for (int i = seq_len_idx2; i < N; i += blockDim.x)
     {
@@ -129,7 +131,7 @@ __global__ void softmaxBackTankKernel(
 
     if (seq_len_idx2 == 0)
         s_shared = rowSum;
-        
+
     __syncthreads();
 
     float s = s_shared;
