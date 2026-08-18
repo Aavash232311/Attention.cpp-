@@ -35,7 +35,7 @@ __global__ void matmulLastTwo4DKernel(
     float sum = 0.0f;
     for (int i = 0; i < d; ++i)
     {
-        /* 
+        /*
             Little bit of a re-cap after my cooperate SWE work I might have forgotten these,
             skipA = normal offset, rows and cols are globally unqiue id, we need to skip those to reach the particular thread.
 
@@ -50,27 +50,93 @@ __global__ void matmulLastTwo4DKernel(
 }
 
 /*
-J1 = diag(P[0]) - P[0]·P[0]T   
-J2 = diag(P[1]) - P[1]·P[1]T  
-J3 = diag(P[2]) - P[2]·P[2]T  
+J1 = diag(P[0]) - P[0]·P[0]T
+J2 = diag(P[1]) - P[1]·P[1]T
+J3 = diag(P[2]) - P[2]·P[2]T
 
-row = cols happens in the diagonal
-if row = cols then subract from the element 
-else subract from zero.
+The shape of matrix P is:  (batch, n_head, seq_len, seq_len) from the attn head.
 
-write the output 
 
+I was hitting the so called "flow state" when I wrote parallel reduction for
+forward pass kernels reading pdf's from NVIDA now I do not remember, but
+lets try to unfold first.
 */
 
-
-__global__ void softmaxBackTankKernel(
-    float *P, // row of softmax 
-    float *out
-)
+__device__ float warpReduceSum(float val)
 {
-    
+    for (int offset = 16; offset > 0; offset >>= 1)
+        val += __shfl_down_sync(0xffffffff, val, offset);
+    return val;
 }
 
+// One Kernel that accounts for seq_len > 32 if its small don't care
+// even though we would have the advantage of warp level reduction.
+
+// forget 1024 hardware limit for NOW at least lets get the model working atleast
+// it will be a weak model but lets focus on getting the result right at first.
+__global__ void softmaxBackTankKernel(
+    float *P, // (batch_size * num_heads * seq_len * seq_len )
+    float *dY,
+    float *out,
+    int N,
+    int seq_len,
+    int n_head)
+{
+
+    int batch_idx = blockIdx.z;
+    int nhead_idx = blockIdx.y;
+    int seq_len_idx1 = blockIdx.x;
+    int seq_len_idx2 = threadIdx.x;
+
+    int lane = threadIdx.x % 32;     // position within warp
+    int warp_id = threadIdx.x / 32;  // position within block
+    int num_warps = blockDim.x / 32; // total warps avalible
+
+    // one boundary condition like in the forward pass softmax kernel
+    if (seq_len_idx2 >= seq_len)
+        return; // even throuh "seq_len" of the last dim are transposed or whatever
+                // the shape remains the smae.
+
+    int row_base = batch_idx * (n_head * seq_len * seq_len) + nhead_idx * (seq_len * seq_len) + seq_len_idx1 * seq_len;
+
+    // I will note here, I am just learning, this will get populated and reduction happens in the warp level.
+    __shared__ float smem_pdy[32]; // certian limit is there depending upon the GPU but this should be fine;.
+    __shared__ float s_shared;
+
+    float tempSum = 0.0f;
+    for (int i = seq_len_idx2; i < N; i += blockDim.x)
+    {
+        // here i is the offset and blockDim.x is the number of thread in a block.
+        tempSum += P[row_base + i] * dY[row_base + i];
+    } // multipled with the upstream gradient dY, I like to call it G but, school damn.
+    // I have a cheat sheet in collab somewhere.
+
+    tempSum = warpReduceSum(tempSum);
+
+    __syncthreads();
+
+    if (seq_len_idx2 == 0)
+    {
+        // lane 0 if the each warp get assigned the reduced sum.
+        smem_pdy[warp_id] = tempSum;
+    } // confusing but I might get used to it, I promise, even after I wrote this from scratch twice already :)
+
+    __syncthreads();
+
+    float rowSum = (lane < num_warps) ? smem_pdy[lane] : 0.0f;
+    if (warp_id == 0)
+        rowSum = warpReduceSum(rowSum);
+
+    if (seq_len_idx2 == 0)
+        s_shared = rowSum;
+        
+    __syncthreads();
+
+    float s = s_shared;
+
+    for (int i = threadIdx.x; i < N; i += blockDim.x)
+        out[i] = P[i] * (dY[i] - s);
+}
 
 extern "C"
 {
