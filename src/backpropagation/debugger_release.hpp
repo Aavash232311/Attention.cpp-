@@ -189,7 +189,7 @@ public:
     void pyDebuggerReleaseStage6()
     {
         float *G = (float *)malloc(batch_size * num_heads * seq_len * seq_len * sizeof(float));
-        cudaMemcpy(G, model_paramaters.P_T_device_out, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(G, d_scores_device, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
 
         bulkRelease<float>(
             {{G, batch_size * num_heads * seq_len * seq_len * sizeof(float), "softmax_upstream.bin"}}

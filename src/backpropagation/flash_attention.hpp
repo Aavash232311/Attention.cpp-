@@ -37,6 +37,7 @@ extern "C" void softmaxBackGradKernel(float *P, float *dY, float *out, int N, in
 class FlashAttention : public AutoGradEngine
 {
 public:
+    float *d_scores_device;
     /**
      * @class FlashAttention: AutoGradEngine
      * @brief Transposes last two dimension of 4D tensor PT
@@ -282,13 +283,14 @@ public:
 
         softmaxBackGrad(
             model_paramaters.attention_head.P,
-            model_paramaters.Uncontact_G_Upstream,
+            model_paramaters.dP,
             model_paramaters.P_T_device_out, // (B, num_head, T, T) buffer re-used
             batch_size * num_heads * seq_len * seq_len,
             batch_size,
             seq_len,
             num_heads);
         // Just to alias it properly for readability
+        d_scores_device = model_paramaters.P_T_device_out;
 
         if (debug)
             pyDebuggerReleaseStage6();

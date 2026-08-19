@@ -58,7 +58,10 @@ class DebugFlashAttention(torch.nn.Module):
         check_dv = torch.allclose(dv_torch, self.dv, atol=1e-4, rtol=1e-4)
         check_dp = torch.allclose(dp_torch, self.dp, atol=1e-4, rtol=1e-4)
 
-    
+        # check softmax back pass
+        row_sum = (self.P * self.dp).sum(dim=-1, keepdim=True)  # (B, H, T, 1)
+        d_score_torch = self.P * (self.dp - row_sum)
+        print(f" real truth: {d_score_torch}")
 
         if not check_dp:
             print(f"Checking dp kernel, status:{RED} {check_dp} {RESET}")

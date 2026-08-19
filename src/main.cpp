@@ -36,6 +36,7 @@
 // backprop https://arxiv.org/pdf/2307.08691
 
 // purely for learning, not even expecting to job related to this in the future, I might not be smart enough to crack these C++ interviews not even close.
+// find . -name "*.cpp" -o -name "*.hpp" | xargs wc -l
 
 int main()
 {

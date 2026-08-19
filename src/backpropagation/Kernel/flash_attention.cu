@@ -80,6 +80,7 @@ __global__ void softmaxBackTankKernel(
     float *dY, // Shape (batch_size, seq_len, num_head, head_dim) again I might be wrong I am old.
     float *out,
     int N,
+    int batch_size,
     int seq_len,
     int n_head)
 {
@@ -93,10 +94,6 @@ __global__ void softmaxBackTankKernel(
     int warp_id = threadIdx.x / 32;  // position within block
     int num_warps = blockDim.x / 32; // total warps avalible
 
-    // one boundary condition like in the forward pass softmax kernel
-    if (seq_len_idx2 >= seq_len)
-        return; // even throuh "seq_len" of the last dim are transposed or whatever
-                // the shape remains the smae.
 
     int row_base = batch_idx * (n_head * seq_len * seq_len) + nhead_idx * (seq_len * seq_len) + seq_len_idx1 * seq_len;
 
@@ -107,7 +104,7 @@ __global__ void softmaxBackTankKernel(
     // this is what I like to call surface level reduction
     // I have noted this concept on softmax_activation.org
     float tempSum = 0.0f;
-    for (int i = seq_len_idx2; i < N; i += blockDim.x)
+    for (int i = seq_len_idx2; i < seq_len; i += blockDim.x)
     {
         // here i is the offset and blockDim.x is the number of thread in a block.
         tempSum += P[row_base + i] * dY[row_base + i];
@@ -137,8 +134,11 @@ __global__ void softmaxBackTankKernel(
 
     float s = s_shared;
 
-    for (int i = threadIdx.x; i < N; i += blockDim.x)
-        out[i] = P[i] * (dY[i] - s);
+    if (seq_len_idx2 < seq_len)
+    {
+        for (int i = seq_len_idx2; i < seq_len; i += blockDim.x)
+            out[row_base + i] = P[row_base + i] * (dY[row_base + i] - s);
+    }
 }
 
 extern "C"
@@ -152,15 +152,14 @@ extern "C"
         int seq_len,
         int n_head)
     {
-        dim3 blockSize(256, 1, 1);
+        dim3 blockSize(((seq_len + 31) / 32) * 32, 1, 1); // enough threads to cover one row, e.g. round seq_len up to nearest 32
         dim3 gridSize(
-            (seq_len + blockSize.x - 1) / blockSize.x, // cover one row's elements
-            1,
-            batch_size * n_head // combined batch*head axis
-        );
+            seq_len,
+            n_head,
+            batch_size);
 
         softmaxBackTankKernel<<<gridSize, blockSize>>>(
-            P, dY, out, N, seq_len, n_head);
+            P, dY, out, N, batch_size, seq_len, n_head);
         cudaDeviceSynchronize();
     }
 
