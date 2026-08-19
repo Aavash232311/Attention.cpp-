@@ -37,7 +37,11 @@ def ReaderFlashAttention(
                      shape=(batch_size, num_heads, seq_len, head_dim),
                      dtype=np.float32).to(device)
 
-    return P, V, PT, VT, G_unc, dl_dh, dp, dV
+    softmax_upstream = load_tensor("./src/cache/cpp_out/softmax_upstream.bin",
+                                   shape=(batch_size, num_heads, seq_len, seq_len),
+                                   dtype=np.float32).to(device)
+
+    return P, V, PT, VT, G_unc, dl_dh, dp, dV, softmax_upstream
 
 def Reader(
         batch_size: int,

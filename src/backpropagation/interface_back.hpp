@@ -235,6 +235,7 @@ public:
     virtual void pyDebuggerReleaseStage3() {}
     virtual void pyDebuggerReleaseStage4() {}
     virtual void pyDebuggerReleaseStage5() {}
+    virtual void pyDebuggerReleaseStage6() {}
 
     void backprop(
         const FlashAttentionPointers &paramaters)

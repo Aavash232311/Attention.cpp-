@@ -32,7 +32,7 @@ extern "C" void TransposeKey(float *arr, float *out, int num_heads, int head_dim
 // from utils.cu
 extern "C" void multiHeadedAttention(float *ws, float *out, int num_head, int head_dimension, int batch_size, int d_model, int seq_len);
 extern "C" void MatMul4D(float *A, float *B, float *C, int a, int b, int c, int d, int e);
-extern "C" void softmaxBackTankKernel(float *P, float *dY, float *out, int N, int seq_len, int n_head);
+extern "C" void softmaxBackGradKernel(float *P, float *dY, float *out, int N, int batch_size, int seq_len, int n_head);
 
 class FlashAttention : public AutoGradEngine
 {
@@ -177,15 +177,22 @@ private: // Note-: very limied kernel opreations here so for readability I am pa
     // Now we will have to deal with softmax part.
     // Here G is dl_dh if I am not wrong again I am old
     void softmaxBackGrad(
-        float *P, // (batch_sieq, num_head, seq_len, seq_len)
+        float *P,  // (batch_sieq, num_head, seq_len, seq_len)
         float *dY, // shape (batch_size, seq_len, num_head, head_dim)
         float *out,
         int N, // I belive this is supposed to be N of P
-        int seq_len, 
-        int n_head
-    )
+        int btach_size,
+        int seq_len,
+        int n_head)
     {
-
+        softmaxBackGradKernel(
+            P,
+            dY,
+            out,
+            N,
+            batch_size,
+            seq_len,
+            n_head);
     }
 
 public:
@@ -270,9 +277,20 @@ public:
             and at the end we multiply that d(scores)_row = J(P1) @ dP_row is I am not wrong ofcourse.
         */
 
-        
-
         if (debug)
             pyDebuggerReleaseStage5();
+
+        softmaxBackGrad(
+            model_paramaters.attention_head.P,
+            model_paramaters.Uncontact_G_Upstream,
+            model_paramaters.P_T_device_out, // (B, num_head, T, T) buffer re-used
+            batch_size * num_heads * seq_len * seq_len,
+            batch_size,
+            seq_len,
+            num_heads);
+        // Just to alias it properly for readability
+
+        if (debug)
+            pyDebuggerReleaseStage6();
     }
 };
