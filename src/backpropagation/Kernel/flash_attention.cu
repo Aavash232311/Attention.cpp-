@@ -50,7 +50,7 @@ __global__ void matmulLastTwo4DKernel(
 }
 
 /*
-Just for me to unfold the logic here. 
+Just for me to unfold the logic here.
 J1 = diag(P[0]) - P[0]·P[0]T
 J2 = diag(P[1]) - P[1]·P[1]T
 J3 = diag(P[2]) - P[2]·P[2]T
@@ -76,7 +76,7 @@ __device__ float warpReduceSum(float val)
 // forget 1024 hardware limit for NOW at least lets get the model working atleast
 // it will be a weak model but lets focus on getting the result right at first.
 __global__ void softmaxBackTankKernel(
-    float *P, // (batch_size * num_heads * seq_len * seq_len )
+    float *P,  // (batch_size * num_heads * seq_len * seq_len )
     float *dY, // Shape (batch_size, seq_len, num_head, head_dim) again I might be wrong I am old.
     float *out,
     int N,
@@ -143,6 +143,27 @@ __global__ void softmaxBackTankKernel(
 
 extern "C"
 {
+    void softmaxBackGradKernel(
+        float *P,
+        float *dY,
+        float *out,
+        int N,
+        int batch_size,
+        int seq_len,
+        int n_head)
+    {
+        dim3 blockSize(256, 1, 1);
+        dim3 gridSize(
+            (seq_len + blockSize.x - 1) / blockSize.x, // cover one row's elements
+            1,
+            batch_size * n_head // combined batch*head axis
+        );
+
+        softmaxBackTankKernel<<<gridSize, blockSize>>>(
+            P, dY, out, N, seq_len, n_head);
+        cudaDeviceSynchronize();
+    }
+
     void MatMul4D(
         float *A, // (a, b, c, d)
         float *B, // (a, b, d, e)

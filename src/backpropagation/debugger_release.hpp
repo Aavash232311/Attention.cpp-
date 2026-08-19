@@ -148,7 +148,7 @@ public:
 
     /**
      * @class pyDebuggerReleaseStage5
-     * @brief Releases paramaters P^T and V^T for back most layer of the flash attention, also un-contact G of 3D tensor, also dP, dV matmul
+     * @brief Releases paramaters P^T and V^T for back most layer of the flash attention, also un-contact G of 3D tensor
      * Also UNCONTACTS UPSTREAM GRADIENT G, from (B, T, C) to (batch_size, seq_len, num_head, head_dim)
      *
      * These methods are in sequential order, so this releases the P^T and V^T for a python debugger to verify and check
@@ -167,15 +167,34 @@ public:
         cudaMemcpy(dV, model_paramaters.dV, batch_size * num_heads * seq_len * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
 
         bulkRelease<float>(
-            {
-                {model_paramaters.attention_head.P, batch_size * num_heads * seq_len * seq_len, "pt.bin"},
-                {model_paramaters.attention_head.V, batch_size * num_heads * head_dim * seq_len, "vt.bin"}, // keep in mind of the transposed shape here
-                {UncG_host, batch_size * seq_len * num_heads * head_dim, "G_uncontact.bin"},
-                {dP, batch_size * num_heads * seq_len * seq_len, "dp.bin"},
-                {dV, batch_size * num_heads * seq_len * head_dim, "dv.bin"}
-            });
+            {{model_paramaters.attention_head.P, batch_size * num_heads * seq_len * seq_len, "pt.bin"},
+             {model_paramaters.attention_head.V, batch_size * num_heads * head_dim * seq_len, "vt.bin"}, // keep in mind of the transposed shape here
+             {UncG_host, batch_size * seq_len * num_heads * head_dim, "G_uncontact.bin"},
+             {dP, batch_size * num_heads * seq_len * seq_len, "dp.bin"},
+             {dV, batch_size * num_heads * seq_len * head_dim, "dv.bin"}});
+
+        // after part I release we are going to release
         free(UncG_host);
         free(dP);
         free(dV);
+    }
+    /**
+     * @class pyDebuggerReleaseStage6
+     * @brief Releases paramaters upstream gradient from the softmax kernel
+
+
+     * @note Call this after all the 1, 2, 3, 4, and 5 are called stage are released
+     */
+
+    void pyDebuggerReleaseStage6()
+    {
+        float *G = (float *)malloc(batch_size * num_heads * seq_len * seq_len * sizeof(float));
+        cudaMemcpy(G, model_paramaters.P_T_device_out, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
+
+        bulkRelease<float>(
+            {{G, batch_size * num_heads * seq_len * seq_len * sizeof(float), "softmax_upstream.bin"}}
+        );
+
+        free(G);
     }
 };
