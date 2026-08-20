@@ -163,15 +163,21 @@ public:
         float *dP = (float *)malloc(batch_size * num_heads * seq_len * seq_len * sizeof(float));
         float *dV = (float *)malloc(batch_size * num_heads * seq_len * head_dim * sizeof(float));
 
+        float *Pt = (float *)malloc(batch_size * num_heads * seq_len * seq_len * sizeof(float));
+        float *Vt = (float *)malloc(batch_size * num_heads * head_dim * seq_len * sizeof(float));
+
         cudaMemcpy(UncG_host, model_paramaters.Uncontact_G_Upstream, batch_size * seq_len * num_heads * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
         cudaMemcpy(dP, model_paramaters.dP, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
         cudaMemcpy(dV, model_paramaters.dV, batch_size * num_heads * seq_len * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
 
+        cudaMemcpy(Pt, model_paramaters.P_T_device_out, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(Vt, model_paramaters.V_T_device_out, batch_size * num_heads * head_dim * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
+
 
 
         bulkRelease<float>(
-            {{model_paramaters.attention_head.P, batch_size * num_heads * seq_len * seq_len, "pt.bin"},
-             {model_paramaters.attention_head.V, batch_size * num_heads * head_dim * seq_len, "vt.bin"}, // keep in mind of the transposed shape here
+            {{Pt, batch_size * num_heads * seq_len * seq_len, "pt.bin"},
+             {Vt, batch_size * num_heads * head_dim * seq_len, "vt.bin"}, // keep in mind of the transposed shape here
              {UncG_host, batch_size * seq_len * num_heads * head_dim, "G_uncontact.bin"},
              {dP, batch_size * num_heads * seq_len * seq_len, "dp.bin"},
              {dV, batch_size * num_heads * seq_len * head_dim, "dv.bin"}});
@@ -180,6 +186,9 @@ public:
         free(UncG_host);
         free(dP);
         free(dV);
+
+        free(Pt);
+        free(Vt);
     }
     /**
      * @class pyDebuggerReleaseStage6

@@ -56,6 +56,19 @@ public:
         int z,
         int z1)
     {
+        /*
+            Passed signature.
+
+            transpose4DLastTwoPT(
+            model_paramaters.attention_head.P, // (batch_size * num_heads * seq_len * seq_len )
+            model_paramaters.P_T_device,
+            model_paramaters.P_T_device_out,
+            batch_size, // according to the shape of P
+            num_heads,
+            seq_len,
+            seq_len);
+
+        */
         cudaMemcpy(arr_d, arr_h, x * y * z * z1 * sizeof(float), cudaMemcpyHostToDevice);
 
         TransposeKey(
@@ -67,7 +80,6 @@ public:
             z,  // seq_len
             false);
 
-        cudaMemcpy(arr_h, arr_d_out, x * y * z * z1 * sizeof(float), cudaMemcpyDeviceToHost);
     }
 
     /**
@@ -83,7 +95,7 @@ public:
         float *arr_h,
         float *arr_d,
         float *arr_d_out,
-        int x,
+        int x, //
         int y,
         int z,
         int z1)
@@ -98,8 +110,6 @@ public:
             z,
             z1,
             false);
-
-        cudaMemcpy(arr_h, arr_d_out, x * y * z * z1 * sizeof(float), cudaMemcpyDeviceToHost);
     }
 
 private: // Note-: very limied kernel opreations here so for readability I am passing args and params.
@@ -221,17 +231,23 @@ public:
         transpose4DLastTwoPT(
             model_paramaters.attention_head.P, // (batch_size * num_heads * seq_len * seq_len )
             model_paramaters.P_T_device,
-            model_paramaters.P_T_device_out,
+            model_paramaters.P_T_device_out, // out
             batch_size, // according to the shape of P
             num_heads,
             seq_len,
             seq_len);
 
+        // if (debug)
+        // {
+        //     std::cout << "P from C++ itself" << std::endl;
+        //     utils->print2DMatrixLastTwo(model_paramaters.attention_head.P, batch_size, num_heads, seq_len, seq_len);
+        // }
+
         // For V^T
         transpose4DLastTwoVT(
             model_paramaters.attention_head.V, // (B, n_head, T, head_dim)
             model_paramaters.V_T_device,
-            model_paramaters.V_T_device_out, // (B, n_head, head_dim, T)
+            model_paramaters.V_T_device_out, // (B, n_head, head_dim, T) out
             num_heads,                       // according to the shape of P
             head_dim,
             batch_size,
@@ -262,9 +278,9 @@ public:
         );
 
         dp(
-            model_paramaters.V_T_device_out,       // PT
+            model_paramaters.V_T_device_out,       // VT
             model_paramaters.Uncontact_G_Upstream, // G uncontacted G (B, n_head, seq_len, head_dim)
-            model_paramaters.dP,                   // dv
+            model_paramaters.dP,                   // dp
             batch_size,                            // batch_size
             num_heads,                             // num_heads
             seq_len,                               // seq_len
@@ -281,29 +297,31 @@ public:
         if (debug)
             pyDebuggerReleaseStage5();
         // Note: the bug is here since the kerenl looks fine after I unit tested it on collab.
+        size_t soft_back_total = batch_size * num_heads * seq_len * seq_len;
+
         softmaxBackGrad(
-            model_paramaters.attention_head.P,
-            model_paramaters.dP,
-            model_paramaters.P_T_device_out, // (B, num_head, T, T) buffer re-used
-            batch_size * num_heads * seq_len * seq_len,
+            model_paramaters.attention_head.P, // (B, H, T, T)
+            model_paramaters.dP,               // (B, H, T, T)
+            model_paramaters.P_T_device_out,   // (B, num_head, T, T) buffer re-used
+            soft_back_total,
             batch_size,
             seq_len,
             num_heads);
 
+        // Bug found pointer P is modified somewhere in the code.
+
         if (debug)
         {
-            float *G = (float *)malloc(batch_size * num_heads * seq_len * seq_len * sizeof(float));
-            cudaMemcpy(G, model_paramaters.P_T_device_out, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
+            // std::cout << "From the kernel itself " << std::endl;
+            // utils->print2DMatrixLastTwo(
+            //     G,
+            //     batch_size,
+            //     num_heads,
+            //     seq_len,
+            //     seq_len);
 
-            std::cout << "From the kernel itself " << std::endl;
-            utils->print2DMatrixLastTwo(
-                G,
-                batch_size,
-                num_heads,
-                seq_len,
-                seq_len);
-
-            free(G);
+            // what I like to see is P and dp at this point
+            // if any pointer is modified now that will tell me the root cause
         }
 
         // Just to alias it properly for readability
