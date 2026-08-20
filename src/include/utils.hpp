@@ -24,9 +24,6 @@ struct Tensor4 {
 class Utility
 {
 public:
-    Utility()
-    {
-    }
 
     void showHashMap(std::vector<std::unordered_map<char, int>> &encoded_input)
     {

@@ -1,0 +1,120 @@
+* Kernel Testing
+
+** Load Libraries and Data
+#+begin_src c++
+#include <iostream>
+#include <fstream>
+
+float* load_bin(const std::string& path, size_t num_elements) {
+    std::ifstream file(path, std::ios::binary);
+    if (!file) {
+        throw std::runtime_error("Could not open file: " + path);
+    }
+
+    float* data = new float[num_elements];
+    file.read(reinterpret_cast<char*>(data), num_elements * sizeof(float));
+
+    if (file.gcount() != static_cast<std::streamsize>(num_elements * sizeof(float))) {
+        delete[] data;
+        throw std::runtime_error("File size mismatch for: " + path);
+    }
+
+    return data;
+}
+
+void print2DMatrixLastTwo(float* arr, int batch_size, int n_head, int dim_row, int dim_col) {
+    for (int b = 0; b < batch_size; b++) {
+        for (int h = 0; h < n_head; h++) {
+            std::cout << "Matrix [" << b << "][" << h << "]" << std::endl;
+            for (int row = 0; row < dim_row; row++) {
+                std::cout << "  [ ";
+                for (int col = 0; col < dim_col; col++) {
+                    int idx = b * (n_head * dim_row * dim_col) + h * (dim_row * dim_col) + row * dim_col + col;
+                    std::cout << arr[idx] << "  ";
+                }
+                std::cout << "]" << std::endl;
+            }
+            std::cout << std::endl;
+        }
+    }
+}
+
+int main() {
+    try {
+        int batch_size = 4;
+        int num_head = 1;
+        int seq_len = 2;
+        size_t total_elements = batch_size * num_head * seq_len * seq_len;
+
+        float* dP = load_bin("./dp.bin", total_elements);
+        float* P = load_bin("./p.bin", total_elements);
+        float* d_score = load_bin("./d_score.bin", total_elements);
+
+        float* device_dp;
+        float* device_p;
+        float* device_dscore;
+
+        cudaMalloc((void**)&device_dp, total_elements * sizeof(float));
+        cudaMalloc((void**)&device_p, total_elements * sizeof(float));
+        cudaMalloc((void**)&device_dscore, total_elements * sizeof(float));
+
+        cudaMemcpy(device_dp, dP, total_elements * sizeof(float), cudaMemcpyHostToDevice);
+        cudaMemcpy(device_p, P, total_elements * sizeof(float), cudaMemcpyHostToDevice);
+
+        dim3 blockSize(((seq_len + 31) / 32) * 32, 1, 1);
+        dim3 gridSize(
+            seq_len,
+            num_head,
+            batch_size);
+
+        softmaxBackTankKernel<<<gridSize, blockSize>>>(
+            device_p, device_dp, device_dscore, total_elements, batch_size, seq_len, num_head);
+
+        cudaDeviceSynchronize();
+
+        float* d_score_host = (float *)malloc(total_elements * sizeof(float));
+        cudaMemcpy(d_score_host, device_dscore, total_elements * sizeof(float), cudaMemcpyDeviceToHost);
+
+        print2DMatrixLastTwo(d_score_host, batch_size, num_head, seq_len, seq_len);
+
+        delete[] dP;
+        delete[] P;
+
+        cudaFree(device_dp);
+        cudaFree(device_p);
+        cudaFree(device_dscore);
+
+        free(d_score_host);
+    } catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+        return 1;
+    }
+
+    return 0;
+}
+#+end_src
+
+** Compile and Run
+#+begin_shell
+nvcc -x cu -o kernel kernel.cpp
+./kernel
+#+end_shell
+
+** Output
+#+begin_example
+Matrix [0][0]
+  [-2.4759   -4.5910   ]
+  [0.7892    -3.8177   ]
+
+Matrix [1][0]
+  [0.7377    -3.6097   ]
+  [-0.1521   -7.0797   ]
+
+Matrix [2][0]
+  [-0.0780     0.1996   ]
+  [-1.0689    -4.8393   ]
+
+Matrix [3][0]
+  [0.2743     0.0579   ]
+  [0.8462     0.0083   ]
+#+end_example
