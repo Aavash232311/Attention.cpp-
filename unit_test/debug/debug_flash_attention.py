@@ -70,10 +70,10 @@ class DebugFlashAttention(torch.nn.Module):
         '''
         row_sum = (self.P * self.dp).sum(dim=-1, keepdim=True)  # (B, H, T, 1)
         d_score_torch = self.P * (self.dp - row_sum)
-        print(f"d score from torch: {d_score_torch}")
+
 
         check_softmax_Grad = torch.allclose(d_score_torch, self.softmax_upstream, atol=1e-4, rtol=1e-4)
-        print(check_softmax_Grad)
+
 
         if not check_dp:
             print(f"Checking dp kernel, status:{RED} {check_dp} {RESET}")
@@ -90,7 +90,10 @@ class DebugFlashAttention(torch.nn.Module):
         else:
             print(f"Checking contact/uncontact dl_dh kernel, status:{GREEN} {check_un_contact_G} {RESET}")
 
-
+        if not check_softmax_Grad:
+            print(f"Checking softmax back pass kernel, status:{RED} {check_softmax_Grad} {RESET}")
+        else:
+            print(f"Checking softmax back pass kernel, status:{GREEN} {check_softmax_Grad} {RESET}")
 
     def debug_pv(self):
         pass
