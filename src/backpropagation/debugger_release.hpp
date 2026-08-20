@@ -139,6 +139,7 @@ public:
 
     void pyDebuggerReleaseStage4()
     {
+
         bulkRelease<float>(
             {
                 {model_paramaters.attention_head.P, batch_size * num_heads * seq_len * seq_len, "P.bin"},
@@ -166,6 +167,8 @@ public:
         cudaMemcpy(dP, model_paramaters.dP, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
         cudaMemcpy(dV, model_paramaters.dV, batch_size * num_heads * seq_len * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
 
+
+
         bulkRelease<float>(
             {{model_paramaters.attention_head.P, batch_size * num_heads * seq_len * seq_len, "pt.bin"},
              {model_paramaters.attention_head.V, batch_size * num_heads * head_dim * seq_len, "vt.bin"}, // keep in mind of the transposed shape here
@@ -191,9 +194,22 @@ public:
         float *G = (float *)malloc(batch_size * num_heads * seq_len * seq_len * sizeof(float));
         cudaMemcpy(G, d_scores_device, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
 
+        // Note:- in P = softmax(S)
+        // Normal to see bunch of zeros because of softmax
+        // make sure the row sums to one
+
+        // this gets called only when debugger flag is on remember?
+        // std::cout << "From the kernel itself " << std::endl;
+        // utils->print2DMatrixLastTwo(
+
+        //     G,
+        //     batch_size,
+        //     num_heads,
+        //     seq_len,
+        //     seq_len);
+
         bulkRelease<float>(
-            {{G, batch_size * num_heads * seq_len * seq_len * sizeof(float), "softmax_upstream.bin"}}
-        );
+            {{G, batch_size * num_heads * seq_len * seq_len * sizeof(float), "softmax_upstream.bin"}});
 
         free(G);
     }

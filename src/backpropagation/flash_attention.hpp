@@ -178,10 +178,10 @@ private: // Note-: very limied kernel opreations here so for readability I am pa
     // Now we will have to deal with softmax part.
     // Here G is dl_dh if I am not wrong again I am old
     void softmaxBackGrad(
-        float *P,  // (batch_sieq, num_head, seq_len, seq_len)
-        float *dY, // shape (batch_size, seq_len, num_head, head_dim)
-        float *out,
-        int N, // I belive this is supposed to be N of P
+        float *P,   // (batch_sieq, num_head, seq_len, seq_len)
+        float *dY,  // (batch_size, num_head, seq_len, seq_len)
+        float *out, // I believe its the same shape here.
+        int N,      // I belive this is supposed to be N of P
         int btach_size,
         int seq_len,
         int n_head)
@@ -289,6 +289,23 @@ public:
             batch_size,
             seq_len,
             num_heads);
+
+        if (debug)
+        {
+            float *G = (float *)malloc(batch_size * num_heads * seq_len * seq_len * sizeof(float));
+            cudaMemcpy(G, model_paramaters.P_T_device_out, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
+
+            std::cout << "From the kernel itself " << std::endl;
+            utils->print2DMatrixLastTwo(
+                G,
+                batch_size,
+                num_heads,
+                seq_len,
+                seq_len);
+
+            free(G);
+        }
+
         // Just to alias it properly for readability
         d_scores_device = model_paramaters.P_T_device_out;
 
