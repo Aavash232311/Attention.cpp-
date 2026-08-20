@@ -280,7 +280,7 @@ public:
 
         if (debug)
             pyDebuggerReleaseStage5();
-
+        // Note: the bug is here since the kerenl looks fine after I unit tested it on collab.
         softmaxBackGrad(
             model_paramaters.attention_head.P,
             model_paramaters.dP,
