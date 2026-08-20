@@ -59,9 +59,21 @@ class DebugFlashAttention(torch.nn.Module):
         check_dp = torch.allclose(dp_torch, self.dp, atol=1e-4, rtol=1e-4)
 
         # check softmax back pass
+        '''
+            First component of the rwo_sum 
+            (batch_size, num_heads, seq_len, head_dim) * (batch_size, num_heads, seq_len, head_dim)
+            = (batch_size, num_heads, seq_len, head_dim) 
+            
+            p and dp in kernel and torch matches not sure why it wont but I checked it again.
+            Kernel looks healthy to me, every row cannot be zero because one row of P sums to 1.
+            There can be combination of numbers that sums to one but not sure how all rows can be zero.
+        '''
         row_sum = (self.P * self.dp).sum(dim=-1, keepdim=True)  # (B, H, T, 1)
         d_score_torch = self.P * (self.dp - row_sum)
-        print(f" real truth: {d_score_torch}")
+        print(f"d score from torch: {d_score_torch}")
+
+        check_softmax_Grad = torch.allclose(d_score_torch, self.softmax_upstream, atol=1e-4, rtol=1e-4)
+        print(check_softmax_Grad)
 
         if not check_dp:
             print(f"Checking dp kernel, status:{RED} {check_dp} {RESET}")
