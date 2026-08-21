@@ -466,6 +466,11 @@ $$
 dK = G^T Q
 $$
 
+Therefore now with the constant multiplied the equation becomes
+
+- $dQ = \frac{1}{\sqrt{d_k}} G K$
+- $dK = \frac{1}{\sqrt{d_k}} G^T Q$
+
 
 <hr />
 
