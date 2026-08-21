@@ -40,17 +40,17 @@ From equation i)
 
 $$G : (P \, dV) = \sum_{i,j} G_{ij} (P \, dV)_{ij}$$
 
-Let us only take the term $P \, dV$ ( Note:- this is not thermodynamics or waive function the output is defined as the result of something so we cannot keep something constant) 
+Let us only take the term $P \, dV$ ( Note:- this is not thermodynamics or waive function the output is defined as the result of something so we cannot keep something constant)
 
 $$(P \, dV)_{ij} = \sum_{k} P_{ik} (dV)_{kj} \quad \text{--- iii)}$$
 
-> **Note:** From the attention score formula $P$ which is the output of the softmax and then $V$ which is the value is matrix multiplied. 
+> **Note:** From the attention score formula $P$ which is the output of the softmax and then $V$ which is the value is matrix multiplied.
 
 Now multiply that term $(P \, dV)_{ij}$ with upstream gradient $G$
 
 From equation iii)
 
-$P_{ik} (dV)_{kj}$ and $G_{ij}$ will have an inner product. 
+$P_{ik} (dV)_{kj}$ and $G_{ij}$ will have an inner product.
 
 $$G : (P \, dV) = \sum_{i,j,k} G_{ij} P_{ik} (dV)_{kj}$$
 
@@ -84,60 +84,67 @@ Let's unfold exactly what is going on at the matrix level.
 
 The Value matrix has shape $(3 \times 3)$:
 
-$$V = \begin{bmatrix} 
-v_{11} & v_{12} & v_{13} \\ 
-v_{21} & v_{22} & v_{23} \\ 
-v_{31} & v_{32} & v_{33} 
-\end{bmatrix}$$
+$$
+V = \begin{bmatrix}
+v_{11} & v_{12} & v_{13} \\
+v_{21} & v_{22} & v_{23} \\
+v_{31} & v_{32} & v_{33}
+\end{bmatrix}
+$$
 
 ---
 
 ### 2. Attention Probability Matrix ($P$)
-Each row of $P$ is the result of applying the `softmax` function across the corresponding row of the attention score matrix $S$. 
+
+Each row of $P$ is the result of applying the `softmax` function across the corresponding row of the attention score matrix $S$.
 
 Let the row-wise denominator sums be defined as:
-* Row 1: $\sum e^{s_1} = e^{s_{11}} + e^{s_{12}} + e^{s_{13}}$
-* Row 2: $\sum e^{s_2} = e^{s_{21}} + e^{s_{22}} + e^{s_{23}}$
-* Row 3: $\sum e^{s_3} = e^{s_{31}} + e^{s_{32}} + e^{s_{33}}$
 
-$$P = \text{softmax}(S) = \begin{bmatrix}
+- Row 1: $\sum e^{s_1} = e^{s_{11}} + e^{s_{12}} + e^{s_{13}}$
+- Row 2: $\sum e^{s_2} = e^{s_{21}} + e^{s_{22}} + e^{s_{23}}$
+- Row 3: $\sum e^{s_3} = e^{s_{31}} + e^{s_{32}} + e^{s_{33}}$
+
+$$
+P = \text{softmax}(S) = \begin{bmatrix}
 \frac{e^{s_{11}}}{\sum e^{s_1}} & \frac{e^{s_{12}}}{\sum e^{s_1}} & \frac{e^{s_{13}}}{\sum e^{s_1}} \\
 \frac{e^{s_{21}}}{\sum e^{s_2}} & \frac{e^{s_{22}}}{\sum e^{s_2}} & \frac{e^{s_{23}}}{\sum e^{s_2}} \\
 \frac{e^{s_{31}}}{\sum e^{s_3}} & \frac{e^{s_{32}}}{\sum e^{s_3}} & \frac{e^{s_{33}}}{\sum e^{s_3}}
-\end{bmatrix} = \begin{bmatrix} 
-p_{11} & p_{12} & p_{13} \\ 
-p_{21} & p_{22} & p_{23} \\ 
-p_{31} & p_{32} & p_{33} 
-\end{bmatrix}$$
+\end{bmatrix} = \begin{bmatrix}
+p_{11} & p_{12} & p_{13} \\
+p_{21} & p_{22} & p_{23} \\
+p_{31} & p_{32} & p_{33}
+\end{bmatrix}
+$$
 
 ---
 
 ### 3. Output Matrix ($O = PV$)
+
 Multiplying rows of $P$ by columns of $V$ gives us the fully expanded elements of the output matrix $O$:
 
-$$O = \begin{bmatrix}
+$$
+O = \begin{bmatrix}
 p_{11}v_{11} + p_{12}v_{21} + p_{13}v_{31} & p_{11}v_{12} + p_{12}v_{22} + p_{13}v_{32} & p_{11}v_{13} + p_{12}v_{23} + p_{13}v_{33} \\
 p_{21}v_{11} + p_{22}v_{21} + p_{23}v_{31} & p_{21}v_{12} + p_{22}v_{22} + p_{23}v_{32} & p_{21}v_{13} + p_{22}v_{23} + p_{23}v_{33} \\
 p_{31}v_{11} + p_{32}v_{21} + p_{33}v_{31} & p_{31}v_{12} + p_{32}v_{22} + p_{33}v_{32} & p_{31}v_{13} + p_{32}v_{23} + p_{33}v_{33}
-\end{bmatrix}$$
+\end{bmatrix}
+$$
 
 Which maps directly to the standard layout:
-$$O = \begin{bmatrix} 
-O_{11} & O_{12} & O_{13} \\ 
-O_{21} & O_{22} & O_{23} \\ 
-O_{31} & O_{32} & O_{33} 
-\end{bmatrix}$$
 
+$$
+O = \begin{bmatrix}
+O_{11} & O_{12} & O_{13} \\
+O_{21} & O_{22} & O_{23} \\
+O_{31} & O_{32} & O_{33}
+\end{bmatrix}
+$$
 
 The upstream gradient for \( P = \text{softmax}(S) = \frac{\partial L}{\partial P} \)
 
-
 **Quotient Rule:**
 
-
-
 The quotient rule for derivatives states:
-
 
 $$
 \left(\frac{u}{v}\right)' = \frac{u'v - uv'}{v^2}
@@ -147,26 +154,26 @@ where \(u\) and \(v\) are functions of \(x\), and \(u'\) and \(v'\) are their re
 
 Now, what we want to do is evaluate this row-wise for the attention probability matrix $P$.
 
-Let's first look closely at the numerator and the denominator of the softmax fraction. 
+Let's first look closely at the numerator and the denominator of the softmax fraction.
 
 For example, consider the position $p_{11}$:
 
-* **Numerator ($N$):** $N = e^{s_{11}}$
-* **Denominator ($D$):** $D = e^{s_{11}} + e^{s_{12}} + e^{s_{13}}$
+- **Numerator ($N$):** $N = e^{s_{11}}$
+- **Denominator ($D$):** $D = e^{s_{11}} + e^{s_{12}} + e^{s_{13}}$
 
 Let's take the partial derivative with respect to the input score $s_{11}$:
 
-* The derivative of the numerator with respect to $s_{11}$ is:
+- The derivative of the numerator with respect to $s_{11}$ is:
   $$N' = \frac{\partial N}{\partial s_{11}} = e^{s_{11}}$$
 
-* The derivative of the denominator with respect to $s_{11}$ is:
+- The derivative of the denominator with respect to $s_{11}$ is:
   $$D' = \frac{\partial D}{\partial s_{11}} = e^{s_{11}}$$
 
 The Full Chain Rule across the Row
 
-Here we apply the chain rule to compute the gradient with respect to the input logit $s_{11}$. 
+Here we apply the chain rule to compute the gradient with respect to the input logit $s_{11}$.
 
-Because the denominator is a shared sum across the entire row, changing $s_{11}$ alters the value of *every single probability element* in that row ($p_{11}$, $p_{12}$, and $p_{13}$). This row-wise coupling is exactly why parallel reduction in a GPU kernel requires careful shared memory communication or warp shuffles.
+Because the denominator is a shared sum across the entire row, changing $s_{11}$ alters the value of _every single probability element_ in that row ($p_{11}$, $p_{12}$, and $p_{13}$). This row-wise coupling is exactly why parallel reduction in a GPU kernel requires careful shared memory communication or warp shuffles.
 
 Using the total derivative chain rule, we must sum the gradient contributions flowing back through all elements in that row:
 
@@ -221,12 +228,9 @@ Now taking the partial derivative of $p_{11}$ with respect to $s_{11}$ using the
 
 $$\frac{\partial p_{11}}{\partial s_{11}} = \frac{e^{s_{11}} \left( e^{s_{11}} + e^{s_{12}} + e^{s_{13}} \right) - e^{s_{11}} \left( e^{s_{11}} \right)}{\left( e^{s_{11}} + e^{s_{12}} + e^{s_{13}} \right)^2}$$
 
-
 $$\frac{\partial p_{11}}{\partial s_{11}} = \frac{e^{s_{11}} e^{s_{11}} + e^{s_{11}} e^{s_{12}} + e^{s_{11}} e^{s_{13}} - e^{s_{11}} e^{s_{11}}}{\left( e^{s_{11}} + e^{s_{12}} + e^{s_{13}} \right)^2}$$
 
-
 $$\frac{\partial p_{11}}{\partial s_{11}} = \frac{e^{s_{11}} e^{s_{12}} + e^{s_{11}} e^{s_{13}}}{\left( e^{s_{11}} + e^{s_{12}} + e^{s_{13}} \right)^2}$$
-
 
 $$\frac{\partial p_{11}}{\partial s_{11}} = \frac{\left(e^{s_{11}} e^{s_{11}} + e^{s_{11}} e^{s_{12}} + e^{s_{11}} e^{s_{13}}\right) - e^{s_{11}} e^{s_{11}}}{\left( e^{s_{11}} + e^{s_{12}} + e^{s_{13}} \right)^2}$$
 
@@ -246,7 +250,6 @@ Since $p_{11} = \frac{e^{s_{11}}}{e^{s_{11}} + e^{s_{12}} + e^{s_{13}}}$, we can
 
 $$\frac{\partial p_{11}}{\partial s_{11}} = p_{11} - p_{11}^2$$
 
-
 There's nothing to be scared of. Think of this as multiplying by the upstream gradient; it's just the quotient rule applied to the derivative term and then rearranging the terms.
 
 For position $p_{12}$, because this is a partial derivative, everything else is a constant.
@@ -256,7 +259,6 @@ $$\frac{\partial p_{12}}{\partial s_{11}} = \frac{0 \cdot \left(e^{s_{11}} + e^{
 $$\frac{\partial p_{12}}{\partial s_{11}} = \frac{- e^{s_{11}} e^{s_{12}}}{\left(e^{s_{11}} + e^{s_{12}} + e^{s_{13}}\right)^2}$$
 
 $$= -p_{11} p_{12}$$
-
 
 In a similar way for position $p_{13}$:
 
@@ -268,7 +270,6 @@ From Equation V:
 
 $$\frac{\partial L}{\partial s_{11}} = \frac{\partial L}{\partial p_{11}} (p_{11} - p_{11}^2) + \frac{\partial L}{\partial p_{12}} (-p_{11} p_{12}) + \frac{\partial L}{\partial p_{13}} (-p_{11} p_{13})$$
 
-
 In a similar way we can calculate for row 2 and row 3.
 
 For s₁₂, we take:
@@ -279,15 +280,16 @@ For s₁₃, we take:
 
 $$\frac{\partial L}{\partial s_{13}} = \left(\frac{\partial L}{\partial p_{11}} \cdot (-p_{11}p_{13})\right) + \left(\frac{\partial L}{\partial p_{12}} \cdot (-p_{12}p_{13})\right) + \left(\frac{\partial L}{\partial p_{13}} \cdot p_{13}(1-p_{13})\right)$$
 
-
 Now lets take a look at the original matrix.
 
-$$P = \text{softmax}(S) = 
+$$
+P = \text{softmax}(S) =
 \begin{bmatrix}
 p_{11} & p_{12} & p_{13} \\
 p_{21} & p_{22} & p_{23} \\
 p_{31} & p_{32} & p_{33}
-\end{bmatrix}$$
+\end{bmatrix}
+$$
 
 Lets pull out gradient vector from equation vi meaning from the first row for example
 
@@ -299,12 +301,14 @@ $$\frac{\partial L}{\partial p_{1:}} = \begin{bmatrix} \frac{\partial L}{\partia
 
 will we wrap those vectors like this, if you multiply then you get the same result as above and remember all this for a single row.
 
-$$\frac{\partial L}{\partial S_1} = \frac{\partial L}{\partial P_1} \cdot
+$$
+\frac{\partial L}{\partial S_1} = \frac{\partial L}{\partial P_1} \cdot
 \begin{bmatrix}
 p_{11}(1-p_{11}) & -p_{11}p_{12} & -p_{11}p_{13} \\
 -p_{11}p_{12} & p_{12}(1-p_{12}) & -p_{12}p_{13} \\
 -p_{11}p_{13} & -p_{12}p_{13} & p_{13}(1-p_{13})
-\end{bmatrix}$$
+\end{bmatrix}
+$$
 
 Now we will split this into Jacobian matrix and if you have doubt then multiply and see a small example its the same.
 
@@ -339,15 +343,17 @@ $$
 
 Where:
 
-$$\text{diag}(P_1) = 
+$$
+\text{diag}(P_1) =
 \begin{bmatrix}
 p_{11} & 0 & 0 \\
 0 & p_{12} & 0 \\
 0 & 0 & p_{13}
-\end{bmatrix}$$
+\end{bmatrix}
+$$
 
 $$
-P_1^T P_1 = 
+P_1^T P_1 =
 \begin{bmatrix} p_{11} \\ p_{12} \\ p_{13} \end{bmatrix}
 \begin{bmatrix} p_{11} & p_{12} & p_{13} \end{bmatrix}
 =
@@ -359,7 +365,7 @@ p_{11}p_{13} & p_{12}p_{13} & p_{13}^2
 $$
 
 $$
-J(P_1) = 
+J(P_1) =
 \begin{bmatrix} p_{11} & 0 & 0 \\ 0 & p_{12} & 0 \\ 0 & 0 & p_{13} \end{bmatrix}
 -
 \begin{bmatrix} p_{11}^2 & p_{11}p_{12} & p_{11}p_{13} \\ p_{11}p_{12} & p_{12}^2 & p_{12}p_{13} \\ p_{11}p_{13} & p_{12}p_{13} & p_{13}^2 \end{bmatrix}
@@ -405,14 +411,61 @@ With incoming gradient $G = dS$, the gradients with respect to the input tensors
 - $dQ = \frac{1}{\sqrt{d_k}} G K$
 - $dK = \frac{1}{\sqrt{d_k}} G^T Q$
 
-
 <b>Where G in this particular case is d_score gradient from our softmax activation back formula.</b>
 
+$dS = \frac{1}{\sqrt{d_k}}  G: (Q dK^T) + K^T dQ$
+
+Where G is the upstream grading using the chain rule of derivative G = d_scores, just my naming convention.
+
+<i>
+Let's ingore that constant term for now, it will be difficult for me to type it down. I will multiply later.
+</i>
+
+<b>Not something from physics where we could do the derivative where
+one thing is constant.</b>
+
+Lets take on component at a time such that we can read them easily.
+
+$$ dS = G: K^T dQ $$
+
+$$dS = G: K^T dQ =\sum_{i,j} G_{ij} (dQ \, K^T)_{ij} \quad \text{--- vi}$$
+
+$$ G: K^T dQ = \sum_{i,j, K} G_{ij} (dQ_{ik}) ( \, K^T)_{kj} $$
+
+$$
+\sum_{k,j} \left( \sum_i dQ_{ik} G_{ij} \right) K^T_{kj} \quad \text{--- vii}
+$$
+
+By the defination of transpose matrix:
+
+$$K^T_{kj} = K_{jk}$$
+
+So equation seven becomes
+
+$$
+\sum_{k,j} \left( \sum_i dQ_{ik} G_{ij} \right) K_{jk}
+= G K : dQ = dL_{1}  \quad \text{--- viii}
+$$
+
+Equation viii gives one of the compoenent of the derivative now lets continue.
 
 
-Substituting this back into the chain rule expression yields the matrix multiplication form:
+$$ dS = G: (Q dK^T) $$
 
-$$\frac{\partial L}{\partial Q} = \frac{\partial L}{\partial S} K$$
+$$
+\sum_{k,j} \left( \sum_i Q_{ik} G_{ij} \right) dK^T_{kj} 
+$$
+
+using the def of transpose
+
+$$
+dK_{jk} = \sum_i G_{ij} \, Q_{ik} = \sum_i G^T_{ji} \, Q_{ik} = (G^T  Q)_{jk}
+$$
+
+$$
+dK = G^T Q
+$$
+
 
 <hr />
 
@@ -422,7 +475,6 @@ $$V = \begin{bmatrix} V_{11} & V_{12} & V_{13} \\ V_{21} & V_{22} & V_{23} \\ V_
 
 $$O = \begin{bmatrix} O_{11} & O_{12} & O_{13} \\ O_{21} & O_{22} & O_{23} \\ O_{31} & O_{32} & O_{33} \end{bmatrix}$$
 
-
 $$K = \begin{bmatrix} K_{11} & K_{12} & K_{13} \\ K_{21} & K_{22} & K_{23} \\ K_{31} & K_{32} & K_{33} \end{bmatrix}$$
 
 O = PV
@@ -431,15 +483,15 @@ Here, the upstream gradient backpropagating from the loss function down to this 
 
 $$\frac{\partial L}{\partial O} = \begin{bmatrix} \frac{\partial L}{\partial O_{11}} & \frac{\partial L}{\partial O_{12}} & \frac{\partial L}{\partial O_{13}} \\ \frac{\partial L}{\partial O_{21}} & \frac{\partial L}{\partial O_{22}} & \frac{\partial L}{\partial O_{23}} \\ \frac{\partial L}{\partial O_{31}} & \frac{\partial L}{\partial O_{32}} & \frac{\partial L}{\partial O_{33}} \end{bmatrix}$$
 
-$$O = \begin{bmatrix} O_{11} & O_{12} & O_{13} \\ O_{21} & O_{22} & O_{23} \\ O_{31} & O_{32} & O_{33} \end{bmatrix} = \begin{bmatrix}
+$$
+O = \begin{bmatrix} O_{11} & O_{12} & O_{13} \\ O_{21} & O_{22} & O_{23} \\ O_{31} & O_{32} & O_{33} \end{bmatrix} = \begin{bmatrix}
 p_{11}v_{11} + p_{12}v_{21} + p_{13}v_{31} & p_{11}v_{12} + p_{12}v_{22} + p_{13}v_{32} & p_{11}v_{13} + p_{12}v_{23} + p_{13}v_{33} \\
 p_{21}v_{11} + p_{22}v_{21} + p_{23}v_{31} & p_{21}v_{12} + p_{22}v_{22} + p_{23}v_{32} & p_{21}v_{13} + p_{22}v_{23} + p_{23}v_{33} \\
 p_{31}v_{11} + p_{32}v_{21} + p_{33}v_{31} & p_{31}v_{12} + p_{32}v_{22} + p_{33}v_{32} & p_{31}v_{13} + p_{32}v_{23} + p_{33}v_{33}
-\end{bmatrix}$$
-
+\end{bmatrix}
+$$
 
 $$O_{11} = p_{11}v_{11} + p_{12}v_{21} + p_{13}v_{31}$$
-
 
 This opreation happens column wise.
 
@@ -453,12 +505,9 @@ Applying the multivariate chain rule:
 
 $$\frac{\partial L}{\partial v_{11}} = \frac{\partial L}{\partial O_{11}} \frac{\partial O_{11}}{\partial v_{11}} + \frac{\partial L}{\partial O_{21}} \frac{\partial O_{21}}{\partial v_{11}} + \frac{\partial L}{\partial O_{31}} \frac{\partial O_{31}}{\partial v_{11}}$$
 
-
-
-Lets take the expression 
+Lets take the expression
 
 $$O_{11} = p_{11}v_{11} + p_{12}v_{21} + p_{13}v_{31}$$
-
 
 $$\frac{\partial O_{11}}{\partial v_{11}} = p_{11} \frac{\partial v_{11}}{\partial v_{11}} = p_{11}$$
 
@@ -468,19 +517,19 @@ $$\frac{\partial O_{21}}{\partial v_{11}} = p_{21}$$
 
 $$\frac{\partial O_{31}}{\partial v_{11}} = p_{31}$$
 
-
 Substituting those local derivatives back into the chain rule expression gives:
 
 $$\frac{\partial L}{\partial v_{11}} = \frac{\partial L}{\partial O_{11}} p_{11} + \frac{\partial L}{\partial O_{21}} p_{21} + \frac{\partial L}{\partial O_{31}} p_{31}$$
 
-
-So this is equal to the:- 
+So this is equal to the:-
 
 $$\frac{\partial L}{\partial V} = P^T G$$
 
 ### FlashAttention Backpropagation — Derivation and Implementation
-**Author:** Avash Lamichhane 
+
+**Author:** Avash Lamichhane
 **Date:** 2026
 
 ### References
+
 - Dao et al., FlashAttention (2022) https://arxiv.org/abs/2205.14135
