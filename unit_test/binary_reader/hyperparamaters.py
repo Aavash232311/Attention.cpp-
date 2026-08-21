@@ -23,10 +23,6 @@ def read_hyperparamaters(path="./src/cache/config.json"):
         print("Exiting program.")
         sys.exit(1)
 
-    device = torch.device("cpu")
-    if torch.cuda.is_available():
-        device = torch.device("cuda")
-
     print("Autograd engine C++ kenrel out")
 
 

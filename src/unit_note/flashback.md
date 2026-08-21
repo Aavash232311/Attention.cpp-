@@ -391,6 +391,25 @@ Therefore, the local gradient is:
 
 $$\frac{\partial s_{ik}}{\partial q_{ij}} = K_{jk}$$
 
+Now similar to the <b>O = PV </b>, our final gradients were,
+
+- $dV = P^T G$
+- $dP = GV^T$
+
+Given the attention score formula:
+
+$S = \frac{1}{\sqrt{d_k}} Q K^T$
+
+With incoming gradient $G = dS$, the gradients with respect to the input tensors are:
+
+- $dQ = \frac{1}{\sqrt{d_k}} G K$
+- $dK = \frac{1}{\sqrt{d_k}} G^T Q$
+
+
+<b>Where G in this particular case is d_score gradient from our softmax activation back formula.</b>
+
+
+
 Substituting this back into the chain rule expression yields the matrix multiplication form:
 
 $$\frac{\partial L}{\partial Q} = \frac{\partial L}{\partial S} K$$
