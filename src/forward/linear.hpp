@@ -177,6 +177,11 @@ public:
         return ws;
     }
 
+    float *getMultiHeadedDeivce()
+    {
+        return this->mhead_out_device;
+    }
+
     float *reshapeHead() // make it have more dim so that effective computation can happen in parallel.
     {
         // copy that weighted sum into device so we can split it down.

@@ -11,9 +11,10 @@
 
 // we will experiement with tensor cors later on :)
 __global__ void matmulLastTwo4DKernel(
-    float *A, // (a, b, c, d)
-    float *B, // (a, b, d, e)
-    float *C, // (a, b, c, e)
+    float *A,             // (a, b, c, d)
+    float *B,             // (a, b, d, e)
+    float *C,             // (a, b, c, e)
+    float scaling, // to re-use this for something like attention sore, and backpropagation.
     int a,
     int b,
     int c,
@@ -46,7 +47,7 @@ __global__ void matmulLastTwo4DKernel(
     }
 
     int out_idx = c_a * (b * c * e) + c_b * (c * e) + rows * e + cols;
-    C[out_idx] = sum;
+    C[out_idx] = sum * scaling;
 }
 
 /*
@@ -93,7 +94,6 @@ __global__ void softmaxBackTankKernel(
     int lane = threadIdx.x % 32;     // position within warp
     int warp_id = threadIdx.x / 32;  // position within block
     int num_warps = blockDim.x / 32; // total warps avalible
-
 
     int row_base = batch_idx * (n_head * seq_len * seq_len) + nhead_idx * (seq_len * seq_len) + seq_len_idx1 * seq_len;
 
@@ -167,6 +167,7 @@ extern "C"
         float *A, // (a, b, c, d)
         float *B, // (a, b, d, e)
         float *C, // (a, b, c, e)
+        float scaling, // pass 1.0f if not scaling
         int a,
         int b,
         int c,
@@ -182,7 +183,7 @@ extern "C"
         );
 
         matmulLastTwo4DKernel<<<gridDim, blockDim>>>(
-            A, B, C,
+            A, B, C, scaling,
             a, b, c, d, e);
         cudaDeviceSynchronize();
     }
