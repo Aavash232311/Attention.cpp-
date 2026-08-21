@@ -1,3 +1,4 @@
+import math
 import torch
 from debug.static import RESET, RED, GREEN
 from binary_reader.autograd_binary_reader import ReaderFlashAttention
@@ -15,7 +16,7 @@ class DebugFlashAttention(torch.nn.Module):
         self.dl_dw = dl_dw # Upstream gradient G
 
         # looks like ideal gas equation, but it's not
-        self.P, self.V, self.PT, self.VT, self.G_unc, self.G, self.dp, self.dv, self.softmax_upstream = ReaderFlashAttention(batch_size, seq_len, vocab_size, d_model, num_heads, head_dim)
+        self.P, self.V, self.PT, self.VT, self.G_unc, self.G, self.dp, self.dv, self.softmax_upstream, self.dQ, self.K, self.Q = ReaderFlashAttention(batch_size, seq_len, vocab_size, d_model, num_heads, head_dim)
 
     # dV = P^T G
     # dP = GV^T
@@ -74,6 +75,13 @@ class DebugFlashAttention(torch.nn.Module):
 
         check_softmax_Grad = torch.allclose(d_score_torch, self.softmax_upstream, atol=1e-4, rtol=1e-4)
 
+        # Now for the dQ and dK tensor for S = QK^T part
+        scaling_factor = 1.0 / math.sqrt(self.head_dim)
+        # now the new upstream gradient will be d_score_torch
+
+        dQ = scaling_factor * (d_score_torch @ self.K)
+        check_dq = torch.allclose(dQ, self.dQ, atol=1e-4, rtol=1e-4)
+        print(check_dq)
 
         if not check_dp:
             print(f"Checking dp kernel, status:{RED} {check_dp} {RESET}")

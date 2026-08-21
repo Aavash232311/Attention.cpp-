@@ -41,7 +41,22 @@ def ReaderFlashAttention(
                                    shape=(batch_size, num_heads, seq_len, seq_len),
                                    dtype=np.float32).to(device)
 
-    return P, V, PT, VT, G_unc, dl_dh, dp, dV, softmax_upstream
+    dQ = load_tensor("./src/cache/cpp_out/dq.bin",
+                     shape=(batch_size, num_heads, seq_len, head_dim),
+                     dtype=np.float32
+                     ).to(device)
+
+    # load K and Q cache in the debugger
+    k = load_tensor("./src/cache/cpp_out/k.bin",
+                    shape=(batch_size, num_heads, seq_len, head_dim), # (batch_size, num_head, seq_len, head_dim)
+                    dtype=np.float32
+                    ).to(device)
+    q = load_tensor("./src/cache/cpp_out/q.bin",
+                    shape=(batch_size, num_heads, seq_len, head_dim), # (batch_size, num_head, seq_len, head_dim)
+                    dtype=np.float32
+                    ).to(device)
+
+    return P, V, PT, VT, G_unc, dl_dh, dp, dV, softmax_upstream, dQ, k, q
 
 def Reader(
         batch_size: int,

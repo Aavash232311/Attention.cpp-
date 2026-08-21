@@ -366,14 +366,19 @@ public:
         if (debug)
             pyDebuggerReleaseStage6();
 
+        //  dQ = 1/sqrt(dk) GK
         GolfKiloBackGrad(
-            sqrtf((float)head_dim), // constant that I like to call
-            d_scores_device,
-            model_paramaters.attention_head.P,
-            model_paramaters.dQ,
+            1.0 / sqrtf((float)head_dim), // constant that I like to call
+            d_scores_device, // G (B, H, T, T)
+            model_paramaters.attention_head.K_cache,
+            model_paramaters.dQ, // (batch_size, num_head, seq_len, head_dim) 
             batch_size,
             num_heads,
             seq_len,
             head_dim);
+
+        if (debug)
+            pyDebuggerReleaseStage7();
+
     }
 };
