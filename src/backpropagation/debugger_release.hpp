@@ -173,8 +173,6 @@ public:
         cudaMemcpy(Pt, model_paramaters.P_T_device_out, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
         cudaMemcpy(Vt, model_paramaters.V_T_device_out, batch_size * num_heads * head_dim * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
 
-
-
         bulkRelease<float>(
             {{Pt, batch_size * num_heads * seq_len * seq_len, "pt.bin"},
              {Vt, batch_size * num_heads * head_dim * seq_len, "vt.bin"}, // keep in mind of the transposed shape here
@@ -221,5 +219,37 @@ public:
             {{G, batch_size * num_heads * seq_len * seq_len * sizeof(float), "softmax_upstream.bin"}});
 
         free(G);
+    }
+
+    /**
+ * @class pyDebuggerReleaseStage7
+ * @brief Releases (1/sqrt(dk) GK) and (1/sqrt(dk)) G^T Q
+
+
+ * @note Call this after all the 1, 2, 3, 4, 5, 6 and 7 are called stage are released
+ */
+
+    void pyDebuggerReleaseStage7()
+    {
+        float *dQ_host = (float *)malloc(batch_size * seq_len * num_heads * head_dim * sizeof(float));
+
+        float *Q_host = (float *)malloc(batch_size * seq_len * num_heads * head_dim * sizeof(float));
+        float *K_host = (float *)malloc(batch_size * seq_len * num_heads * head_dim * sizeof(float));
+
+        cudaMemcpy(dQ_host, model_paramaters.dQ, batch_size * seq_len * num_heads * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(Q_host, model_paramaters.attention_head.Q_cache, batch_size * seq_len * num_heads * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(K_host, model_paramaters.attention_head.K_cache, batch_size * seq_len * num_heads * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
+
+        bulkRelease<float>(
+            {
+                {dQ_host, batch_size * seq_len * num_heads * head_dim * sizeof(float), "dq.bin"},
+                {Q_host, batch_size * seq_len * num_heads * head_dim * sizeof(float), "q.bin"},
+                {K_host, batch_size * seq_len * num_heads * head_dim * sizeof(float), "k.bin"},
+
+            });
+
+        free(dQ_host);
+        free(Q_host);
+        free(K_host);
     }
 };
