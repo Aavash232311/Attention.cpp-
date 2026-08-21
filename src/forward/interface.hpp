@@ -107,6 +107,9 @@ class AttentionInterface
     float *dV; // O = PV one of the derivative terms.
     float *dP; // same derviative terms.
 
+    float *dQ;
+    float *dK;
+
     // softmax activation derivative terms. 
 
     float *ppt;
@@ -227,6 +230,10 @@ public:
         cudaMalloc((void **)&dP, batch_size * num_heads * seq_len * seq_len * sizeof(float));
 
         cudaMalloc((void **)&ppt, batch_size *  num_heads * seq_len * seq_len * sizeof(float));
+
+        // dQ and dK for the QK^T backpropagation
+        cudaMalloc((void **)&dQ, batch_size * seq_len * num_heads * head_dim * sizeof(float));
+        cudaMalloc((void **)&dK, batch_size * seq_len * num_heads * head_dim * sizeof(float));
     }
 
     ~AttentionInterface()
@@ -272,6 +279,9 @@ public:
         cudaFree(dV);
         cudaFree(dP);
         cudaFree(ppt);
+
+        cudaFree(dQ);
+        cudaFree(dK);
     }
 
     LinearParams getLmHeadParams()
@@ -415,6 +425,9 @@ public:
                 modelParamaters.dP = dP;
 
                 modelParamaters.ppt = ppt;
+
+                modelParamaters.dQ = dQ;
+                modelParamaters.dK = dK;
 
                 // because the backprops needs to be done for each epoch.
                 // we need to keep in mind that the things hurting performace like cuda malloc and everything declared

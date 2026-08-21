@@ -31,7 +31,7 @@ using namespace std;
 extern "C" void TransposeKey(float *arr, float *out, int num_heads, int head_dim, int batch_size, int seq_len, bool reverse);
 // from utils.cu
 extern "C" void multiHeadedAttention(float *ws, float *out, int num_head, int head_dimension, int batch_size, int d_model, int seq_len);
-extern "C" void MatMul4D(float *A, float *B, float *C, int a, int b, int c, int d, int e);
+extern "C" void MatMul4D(float *A, float *B, float *C, float scale, int a, int b, int c, int d, int e);
 extern "C" void softmaxBackGradKernel(float *P, float *dY, float *out, int N, int batch_size, int seq_len, int n_head);
 
 class FlashAttention : public AutoGradEngine
@@ -79,7 +79,6 @@ public:
             x,  // batch_size
             z,  // seq_len
             false);
-
     }
 
     /**
@@ -158,6 +157,7 @@ private: // Note-: very limied kernel opreations here so for readability I am pa
             PT,
             G,
             dv,
+            1.0f,
             batch_size,
             num_heads,
             seq_len,
@@ -178,6 +178,7 @@ private: // Note-: very limied kernel opreations here so for readability I am pa
             G,
             VT,
             dp,
+            1.0f,
             batch_size,
             num_heads,
             seq_len,  // c
@@ -206,6 +207,41 @@ private: // Note-: very limied kernel opreations here so for readability I am pa
             n_head);
     }
 
+    // For S = QK^T part
+    // I cannot think through optimization atm, lets get the model
+    // to output something and then we will suerely two another
+    // data science project to analyse kernel preformance.
+
+    // anyway I will ignore optimization here,
+    // even through its making me uncomfortable.
+
+    /*
+        From our derivation of the formula:
+        dQ = 1/sqrt(dk) GK
+        dK = 1/sqrt(dk) G^T Q
+    */
+    void GolfKiloBackGrad(
+        float N,  // scaling factor 1/sqrt(dk)
+        float *G, // (batch_size, num_head, seq_len, seq_len)
+        float *K, //  (batch_size, num_head, seq_len, head_dim) passing in the re-shaped head for valid matrix multiplication
+        float *out,
+        int batch_size,
+        int num_head,
+        int seq_len,
+        int head_dim)
+    {
+        MatMul4D(
+            G,   //  (batch_size, num_head, seq_len, seq_len) = (a, b, c, d)
+            K,   // (batch_size, num_head, seq_len, head_dim)
+            out, // (batch_size, num_head, seq_len, head_dim)
+            N, // scaling factor (1/squrt(dk))
+            batch_size,
+            num_heads,
+            seq_len,
+            seq_len,
+            head_dim);
+    }
+
 public:
     FlashAttention(int d_model, int vocab_size, int num_heads,
                    int seq_len, int batch_size, bool debug)
@@ -232,7 +268,7 @@ public:
             model_paramaters.attention_head.P, // (batch_size * num_heads * seq_len * seq_len )
             model_paramaters.P_T_device,
             model_paramaters.P_T_device_out, // out
-            batch_size, // according to the shape of P
+            batch_size,                      // according to the shape of P
             num_heads,
             seq_len,
             seq_len);
@@ -329,5 +365,15 @@ public:
 
         if (debug)
             pyDebuggerReleaseStage6();
+
+        GolfKiloBackGrad(
+            sqrtf((float)head_dim), // constant that I like to call
+            d_scores_device,
+            model_paramaters.attention_head.P,
+            model_paramaters.dQ,
+            batch_size,
+            num_heads,
+            seq_len,
+            head_dim);
     }
 };

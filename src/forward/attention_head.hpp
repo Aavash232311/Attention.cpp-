@@ -85,6 +85,9 @@ public:
     float *O = nullptr;
     float *value_mat = nullptr;
 
+    float *Q_cache;
+    float *K_cache;
+
     Attention(
         int d_model,
         int vocab_size,
@@ -168,6 +171,8 @@ public:
         S = (float *)malloc(seq_len * batch_size * num_heads * head_dim * sizeof(float));
         P = (float *)malloc(batch_size * num_heads * seq_len * seq_len * sizeof(float));
         O = (float *)malloc(batch_size * num_heads * seq_len * head_dim * sizeof(float));
+
+
         // (B, n_head, T, head_dim) s
         value_mat = (float *)malloc(batch_size * num_heads * seq_len * head_dim * sizeof(float));
     };
@@ -396,6 +401,14 @@ public:
         // not using V because it is already used.
         std::memcpy(value_mat, V, batch_size * num_heads * seq_len * head_dim * sizeof(float));
 
+        /*
+            Note: the host pointer might be modified here, but the device pointer remains 
+            untouched such that we can re-use this.
+        */
+        Q_cache = query->getMultiHeadedDeivce();
+        K_cache = key->getMultiHeadedDeivce();
+        
+
         // for a valid matrix mul (..., T, head_dim) @ (..., head_dim, T) = (..., T, T) so we need to swap the last two dims
 
         // if (debug)
@@ -406,7 +419,7 @@ public:
 
         float *s = key->teansposeKeyForAttnScore(
             DeviceKt // (batch_size, n_head, head_dim, seq_len) same shape this buffer should work here.
-        ); // Shape (batch_size, n_head, head_dim, seq_len)
+        );           // Shape (batch_size, n_head, head_dim, seq_len)
 
         // if (debug)
         // {
@@ -592,6 +605,11 @@ public:
             value_mat,
 
             BTCdevice,
-            BATCH_NEAD_TIME_HEADDIM_DEVICE};
+            BATCH_NEAD_TIME_HEADDIM_DEVICE,
+
+            Q_cache,
+            K_cache
+        
+        };
     }
 };
