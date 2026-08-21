@@ -180,7 +180,7 @@ Using the total derivative chain rule, we must sum the gradient contributions fl
 In this case, we have $\frac{\partial L}{\partial P}$ as our **upstream gradient** and $\frac{\partial P}{\partial S_{11}}$ as our **local gradient**. Therefore,
 
 $$
-\frac{\partial L}{\partial S_{11}}
+\frac{\partial L}{\partial S_{11}} 
 =
 \frac{\partial L}{\partial P}
 \cdot
@@ -216,7 +216,9 @@ $$
 
 In a more compact notation using the upstream gradient components $(L_P)_{1j}$:
 
-$$\frac{\partial L}{\partial s_{11}} = \sum_{j=1}^{3} \frac{\partial L}{\partial p_{1j}} \frac{\partial p_{1j}}{\partial s_{11}}$$
+$$
+\frac{\partial L}{\partial s_{11}} = \sum_{j=1}^{3} \frac{\partial L}{\partial p_{1j}} \frac{\partial p_{1j}}{\partial s_{11}}
+$$
 
 $$\frac{\partial L}{\partial s_{11}} = \left( \frac{\partial L}{\partial p_{11}} \cdot \frac{\partial p_{11}}{\partial s_{11}} \right) + \left( \frac{\partial L}{\partial p_{12}} \cdot \frac{\partial p_{12}}{\partial s_{11}} \right) + \left( \frac{\partial L}{\partial p_{13}} \cdot \frac{\partial p_{13}}{\partial s_{11}} \right) \quad \text{--- (Equation V)}$$
 
