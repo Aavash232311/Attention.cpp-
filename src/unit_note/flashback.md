@@ -532,6 +532,62 @@ So this is equal to the:-
 
 $$\frac{\partial L}{\partial V} = P^T G$$
 
+### Layer norm back propagation formula
+
+Let us consider a function 
+
+$$f(x) = y = \gamma \frac{x - \mu}{\sqrt{\sigma^2 + \varepsilon}} + \beta$$
+
+where 
+
+$\varepsilon$ = constant  = 1e^-8 
+
+
+$\gamma$ is a learnable parameter.
+
+$\beta$ is a learnable paramater.
+
+$\mu$ is the mean
+
+$\sigma$ is the standard deviation
+
+Let let's do the differentation parts by parts.
+
+$$\frac{\partial y}{\partial x} = \frac{\gamma}{\sqrt{\sigma^2 + \varepsilon}} \frac{\partial}{\partial x}(x - \mu)$$
+
+
+$$ = \frac{\gamma}{\sqrt{\sigma^2 + \varepsilon}} (1 - 0)$$
+
+$$ = \frac{\gamma}{\sqrt{\sigma^2 + \varepsilon}} $$
+
+$$\frac{\partial y}{\partial \gamma} = \frac{\partial \gamma}{\partial \gamma} \frac{x - \mu}{\sqrt{\sigma^2 + \varepsilon}}$$
+
+$$ = \frac{x - \mu}{\sqrt{\sigma^2 + \varepsilon}} $$
+
+$$\frac{\partial y}{\partial \mu} = \frac{\gamma}{\sqrt{\sigma^2 + \varepsilon}} \frac{\partial}{\partial \mu}(x - \mu)$$
+
+$$ = \frac{\gamma}{\sqrt{\sigma^2 + \varepsilon}} (0 - 1)$$
+
+$$ = - \frac{\gamma}{\sqrt{\sigma^2 + \varepsilon}}$$
+
+Now here I will subsitute this lengthy constant with something like K
+
+$$K = \gamma(x - \mu)$$
+
+$$\frac{\partial y}{\partial \sigma} = \frac{\partial}{\partial \sigma} \left( \frac{K}{\sqrt{\sigma^2 + \varepsilon}} \right)$$
+
+$$ = K \frac{\partial}{\partial \sigma} (\sigma^2 + \varepsilon)^{-1/2} $$
+
+$$= K \left(-\frac{1}{2}\right) (\sigma^2 + \varepsilon)^{-3/2} \frac{\partial}{\partial \sigma} (\sigma^2 + \varepsilon)$$
+
+$$= K \left(-\frac{1}{2}\right)^2 (\sigma^2 + \varepsilon)^{-3/2} (2\sigma + 0)$$
+
+$$= -K \sigma (\sigma^2 + \varepsilon)^{-3/2}$$
+
+$$= - \gamma(x - \mu)  \sigma (\sigma^2 + \varepsilon)^{-3/2}$$
+
+
+
 ### FlashAttention Backpropagation — Derivation and Implementation
 
 **Author:** Avash Lamichhane
