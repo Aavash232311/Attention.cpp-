@@ -114,6 +114,8 @@ class AttentionInterface
 
     float *ppt;
 
+    float *d_score_t;
+
 private:
     // ----------- TEMPORARY DEBUGGER SCRIPT ---------------------
 
@@ -234,6 +236,8 @@ public:
         // dQ and dK for the QK^T backpropagation
         cudaMalloc((void **)&dQ, batch_size * seq_len * num_heads * head_dim * sizeof(float));
         cudaMalloc((void **)&dK, batch_size * seq_len * num_heads * head_dim * sizeof(float));
+
+        cudaMalloc((void **)&d_score_t, batch_size * num_heads * seq_len * seq_len * sizeof(float));
     }
 
     ~AttentionInterface()
@@ -282,6 +286,8 @@ public:
 
         cudaFree(dQ);
         cudaFree(dK);
+
+        cudaFree(d_score_t);
     }
 
     LinearParams getLmHeadParams()
@@ -428,6 +434,8 @@ public:
 
                 modelParamaters.dQ = dQ;
                 modelParamaters.dK = dK;
+
+                modelParamaters.d_score_t = d_score_t;
 
                 // because the backprops needs to be done for each epoch.
                 // we need to keep in mind that the things hurting performace like cuda malloc and everything declared

@@ -223,7 +223,7 @@ public:
 
     /**
  * @class pyDebuggerReleaseStage7
- * @brief Releases (1/sqrt(dk) GK) and (1/sqrt(dk)) G^T Q
+ * @brief Releases (1/sqrt(dk) GK) (1/sqrt(dk)) G^T Q d_score_t for the dK = N G^T Q part.
 
 
  * @note Call this after all the 1, 2, 3, 4, 5, 6 and 7 are called stage are released
@@ -235,19 +235,24 @@ public:
 
         float *Q_host = (float *)malloc(batch_size * seq_len * num_heads * head_dim * sizeof(float));
         float *K_host = (float *)malloc(batch_size * seq_len * num_heads * head_dim * sizeof(float));
+        float *d_score_t = (float *)malloc(batch_size * num_heads * seq_len * seq_len * sizeof(float));
+
+
 
         cudaMemcpy(dQ_host, model_paramaters.dQ, batch_size * seq_len * num_heads * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
         cudaMemcpy(Q_host, model_paramaters.attention_head.Q_cache, batch_size * seq_len * num_heads * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
         cudaMemcpy(K_host, model_paramaters.attention_head.K_cache, batch_size * seq_len * num_heads * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(d_score_t, model_paramaters.d_score_t, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
 
         bulkRelease<float>(
             {
-                {dQ_host, batch_size * seq_len * num_heads * head_dim * sizeof(float), "dq.bin"},
-                {Q_host, batch_size * seq_len * num_heads * head_dim * sizeof(float), "q.bin"},
-                {K_host, batch_size * seq_len * num_heads * head_dim * sizeof(float), "k.bin"},
-
+                {dQ_host, batch_size * seq_len * num_heads * head_dim, "dq.bin"},
+                {Q_host, batch_size * seq_len * num_heads * head_dim, "q.bin"},
+                {K_host, batch_size * seq_len * num_heads * head_dim, "k.bin"},
+                {d_score_t, batch_size * num_heads * seq_len * seq_len, "d_score_t.bin" }
             });
 
+        free(d_score_t);
         free(dQ_host);
         free(Q_host);
         free(K_host);

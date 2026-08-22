@@ -16,7 +16,7 @@ class DebugFlashAttention(torch.nn.Module):
         self.dl_dw = dl_dw # Upstream gradient G
 
         # looks like ideal gas equation, but it's not
-        self.P, self.V, self.PT, self.VT, self.G_unc, self.G, self.dp, self.dv, self.softmax_upstream, self.dQ, self.K, self.Q = ReaderFlashAttention(batch_size, seq_len, vocab_size, d_model, num_heads, head_dim)
+        self.P, self.V, self.PT, self.VT, self.G_unc, self.G, self.dp, self.dv, self.softmax_upstream, self.dQ, self.K, self.Q, self.d_score_t = ReaderFlashAttention(batch_size, seq_len, vocab_size, d_model, num_heads, head_dim)
 
     # dV = P^T G
     # dP = GV^T
@@ -81,7 +81,8 @@ class DebugFlashAttention(torch.nn.Module):
 
         dQ = scaling_factor * (d_score_torch @ self.K)
         check_dq = torch.allclose(dQ, self.dQ, atol=1e-4, rtol=1e-4)
-        print(check_dq)
+
+        check_d_score_t = torch.allclose(d_score_torch.transpose(2, 3), self.d_score_t, atol=1e-4, rtol=1e-4)
 
         if not check_dp:
             print(f"Checking dp kernel, status:{RED} {check_dp} {RESET}")
@@ -102,6 +103,16 @@ class DebugFlashAttention(torch.nn.Module):
             print(f"Checking softmax back pass kernel, status:{RED} {check_softmax_Grad} {RESET}")
         else:
             print(f"Checking softmax back pass kernel, status:{GREEN} {check_softmax_Grad} {RESET}")
+
+        if not check_dq:
+            print(f"Checking dQ kernel, status:{RED} {check_dq} {RESET}")
+        else:
+            print(f"Checking dQ kernel, status:{GREEN} {check_dq} {RESET}")
+
+        if not check_d_score_t:
+            print(f"Checking d score transpose kernel, status:{RED} {check_d_score_t} {RESET}")
+        else:
+            print(f"Checking d score transpose kernel, status:{GREEN} {check_d_score_t} {RESET}")
 
     def debug_pv(self):
         pass

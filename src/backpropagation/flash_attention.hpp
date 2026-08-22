@@ -234,12 +234,24 @@ private: // Note-: very limied kernel opreations here so for readability I am pa
             G,   //  (batch_size, num_head, seq_len, seq_len) = (a, b, c, d)
             K,   // (batch_size, num_head, seq_len, head_dim)
             out, // (batch_size, num_head, seq_len, head_dim)
-            N, // scaling factor (1/squrt(dk))
+            N,   // scaling factor (1/squrt(dk))
             batch_size,
             num_heads,
             seq_len,
             seq_len,
             head_dim);
+    }
+
+    void GolfQubecBackGrad(
+        float N,
+        float *G, // (batch_size, num_head, seq_len, seq_len)
+        float *Q, //  (batch_size, num_head, seq_len, head_dim)
+        float *out,
+        int batch_size,
+        int num_head,
+        int seq_len,
+        int head_dim)
+    {
     }
 
 public:
@@ -369,16 +381,28 @@ public:
         //  dQ = 1/sqrt(dk) GK
         GolfKiloBackGrad(
             1.0 / sqrtf((float)head_dim), // constant that I like to call
-            d_scores_device, // G (B, H, T, T)
+            d_scores_device,              // G (B, H, T, T)
             model_paramaters.attention_head.K_cache,
-            model_paramaters.dQ, // (batch_size, num_head, seq_len, head_dim) 
+            model_paramaters.dQ, // (batch_size, num_head, seq_len, head_dim)
             batch_size,
             num_heads,
             seq_len,
             head_dim);
 
+
+
+        // G^T here without wrapper method, just do it.
+        TransposeKey(
+            d_scores_device,
+            model_paramaters.d_score_t,
+            num_heads,  // num_heads
+            seq_len,    // seq_len
+            batch_size, // batch_size
+            seq_len,    // seq_len
+            false);
+
+
         if (debug)
             pyDebuggerReleaseStage7();
-
     }
 };
