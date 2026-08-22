@@ -615,7 +615,30 @@ $$= \frac{1}{d} \cdot 2(x - \mu) \frac{\partial}{\partial x}(x - \mu)$$
 
 $$= \frac{1}{d} \cdot 2(x - \mu) $$
 
+Note:- Future me please don't be scared, just derivative broken down
+Remember nobody else is reading this. 
+
+$$\sigma = \sqrt{\text{Var}}$$
+
+$$\frac{\partial \sigma}{\partial x} = \frac{\partial}{\partial x} (\sqrt{\text{Var}})$$
+
+$$ 
+\frac{\partial \sigma}{\partial x} = \frac{\partial}{\partial x} (\sqrt{ \frac{1}{d} \sum_{i=1}^{d} (x_i - \mu)^2 + \varepsilon })
+$$
+
+$$\frac{\partial \sigma}{\partial x} = \frac{\partial}{\partial x} \left( \frac{1}{d} \sum_{i=1}^{d} (x_i - \mu)^2 + \varepsilon \right)^{1/2}$$
+
+
+$$= \frac{1}{2} \left( \frac{1}{d} \sum_{i=1}^{d} (x_i - \mu)^2 + \varepsilon \right)^{-1/2} \frac{\partial}{\partial x} \left( \frac{1}{d} \sum_{i=1}^{d} (x_i - \mu)^2 + \varepsilon \right)$$
+
+$$= \frac{1}{2} \left( \frac{1}{d} \sum_{i=1}^{d} (x_i - \mu)^2 + \varepsilon \right)^{-1/2} \left( \frac{1}{d} \frac{\partial}{\partial x} \sum_{i=1}^{d} (x_i - \mu)^2 + \frac{\partial \varepsilon}{\partial x} \right)$$
+
+
+$$\frac{\partial \sigma}{\partial x_i} = \left[ \frac{x_i - \mu}{d} \right] \left( \frac{1}{d} \sum_{i=1}^{d} (x_i - \mu)^2 + \varepsilon \right)^{-1/2}$$
+
+
 Using the chain rule of derivative lets aim towards $dx$
+$$\frac{dy}{dx} = \frac{\partial y}{\partial x} + \frac{\partial y}{\partial \mu} \frac{\partial \mu}{\partial x} + \frac{\partial y}{\partial \sigma} \frac{\partial \sigma}{\partial x}$$
 
 
 
