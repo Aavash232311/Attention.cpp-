@@ -640,6 +640,9 @@ $$\frac{\partial \sigma}{\partial x_i} = \left[ \frac{x_i - \mu}{d} \right] \lef
 Using the chain rule of derivative lets aim towards $dx$
 $$\frac{dy}{dx} = \frac{\partial y}{\partial x} + \frac{\partial y}{\partial \mu} \frac{\partial \mu}{\partial x} + \frac{\partial y}{\partial \sigma} \frac{\partial \sigma}{\partial x}$$
 
+$$ 
+dy/dx = \frac{\gamma}{\sqrt{\sigma^2 + \varepsilon}} - \frac{\gamma}{\sqrt{\sigma^2 + \varepsilon}} \frac{1}{d}  - \gamma(x - \mu)  \sigma (\sigma^2 + \varepsilon)^{-3/2} \left[ \frac{x_i - \mu}{d} \right] \left( \frac{1}{d} \sum_{i=1}^{d} (x_i - \mu)^2 + \varepsilon \right)^{-1/2}
+$$
 
 
 
