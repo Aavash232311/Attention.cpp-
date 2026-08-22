@@ -586,6 +586,38 @@ $$= -K \sigma (\sigma^2 + \varepsilon)^{-3/2}$$
 
 $$= - \gamma(x - \mu)  \sigma (\sigma^2 + \varepsilon)^{-3/2}$$
 
+Now,
+
+$$\mu = \text{mean}(x) = \frac{1}{d} \sum_{i=1}^{d} x_i$$
+
+Ultimate goal is $dx$
+
+
+$$ \frac{ \partial \mu}{\partial x} = \frac{1}{d} $$
+
+$\sigma$ also depends upon x
+
+$$\sigma = \sqrt{\frac{1}{d} \sum_{i=1}^{d} (x_i - \mu)^2 + \varepsilon}$$
+
+The term inside of the sqrt is simply var
+
+$$ var = \frac{1}{d} \sum_{i=1}^{d} (x_i - \mu)^2 + \varepsilon $$
+
+Now
+
+$$ \frac{\partial var}{\partial x} = \frac{1}{d} \frac{\partial}{\partial x} \sum_{i=1}^{d} (x_i - \mu)^2 + \frac{\partial}{\partial x} (\varepsilon)$$
+
+$$ 
+ = \frac{1}{d} \frac{\partial}{\partial x} \sum_{i=1}^{d} (x_i - \mu)^2 
+$$
+
+$$= \frac{1}{d} \cdot 2(x - \mu) \frac{\partial}{\partial x}(x - \mu)$$
+
+$$= \frac{1}{d} \cdot 2(x - \mu) $$
+
+Using the chain rule of derivative lets aim towards $dx$
+
+
 
 
 ### FlashAttention Backpropagation — Derivation and Implementation
