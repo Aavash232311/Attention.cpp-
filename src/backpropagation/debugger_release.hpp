@@ -232,29 +232,29 @@ public:
     void pyDebuggerReleaseStage7()
     {
         float *dQ_host = (float *)malloc(batch_size * seq_len * num_heads * head_dim * sizeof(float));
+        float *dK_host = (float *)malloc(batch_size * seq_len * num_heads * head_dim * sizeof(float));
 
         float *Q_host = (float *)malloc(batch_size * seq_len * num_heads * head_dim * sizeof(float));
         float *K_host = (float *)malloc(batch_size * seq_len * num_heads * head_dim * sizeof(float));
         float *d_score_t = (float *)malloc(batch_size * num_heads * seq_len * seq_len * sizeof(float));
 
-
-
         cudaMemcpy(dQ_host, model_paramaters.dQ, batch_size * seq_len * num_heads * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(dK_host, model_paramaters.dK, batch_size * seq_len * num_heads * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
         cudaMemcpy(Q_host, model_paramaters.attention_head.Q_cache, batch_size * seq_len * num_heads * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
         cudaMemcpy(K_host, model_paramaters.attention_head.K_cache, batch_size * seq_len * num_heads * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
         cudaMemcpy(d_score_t, model_paramaters.d_score_t, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
 
         bulkRelease<float>(
-            {
-                {dQ_host, batch_size * seq_len * num_heads * head_dim, "dq.bin"},
-                {Q_host, batch_size * seq_len * num_heads * head_dim, "q.bin"},
-                {K_host, batch_size * seq_len * num_heads * head_dim, "k.bin"},
-                {d_score_t, batch_size * num_heads * seq_len * seq_len, "d_score_t.bin" }
-            });
+            {{dQ_host, batch_size * seq_len * num_heads * head_dim, "dq.bin"},
+             {dK_host, batch_size * seq_len * num_heads * head_dim, "dk.bin"},
+             {Q_host, batch_size * seq_len * num_heads * head_dim, "q.bin"},
+             {K_host, batch_size * seq_len * num_heads * head_dim, "k.bin"},
+             {d_score_t, batch_size * num_heads * seq_len * seq_len, "d_score_t.bin"}});
 
         free(d_score_t);
         free(dQ_host);
         free(Q_host);
         free(K_host);
+        free(dK_host);
     }
 };
