@@ -84,6 +84,9 @@ class DebugFlashAttention(torch.nn.Module):
 
         check_d_score_t = torch.allclose(d_score_torch.transpose(2, 3), self.d_score_t, atol=1e-4, rtol=1e-4)
 
+        dk_torch = scaling_factor * (self.d_score_t @ self.Q)
+
+        check_dk = torch.allclose(dk_torch, self.dK, atol=1e-4, rtol=1e-4)
 
         if not check_dp:
             print(f"Checking dp kernel, status:{RED} {check_dp} {RESET}")
@@ -114,6 +117,11 @@ class DebugFlashAttention(torch.nn.Module):
             print(f"Checking d score transpose kernel, status:{RED} {check_d_score_t} {RESET}")
         else:
             print(f"Checking d score transpose kernel, status:{GREEN} {check_d_score_t} {RESET}")
+
+        if not check_dk:
+            print(f"Checking dk kernel, status:{RED} {check_dk} {RESET}")
+        else:
+            print(f"Checking dk kernel, status:{GREEN} {check_dk} {RESET}")
 
     def debug_pv(self):
         pass
