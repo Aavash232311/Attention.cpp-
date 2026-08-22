@@ -389,8 +389,6 @@ public:
             seq_len,
             head_dim);
 
-
-
         // G^T here without wrapper method, just do it.
         TransposeKey(
             d_scores_device,
@@ -401,6 +399,17 @@ public:
             seq_len,    // seq_len
             false);
 
+        // Now we will multiply G^T Q to get dK
+        MatMul4D(
+            model_paramaters.d_score_t, //  (B, H, T, T)
+            model_paramaters.attention_head.Q_cache, // (batch_size, num_head, seq_len, head_dim) 
+            model_paramaters.dK,
+            1.0 / sqrtf((float)head_dim),
+            batch_size,
+            num_heads,
+            seq_len,
+            seq_len,
+            head_dim);
 
         if (debug)
             pyDebuggerReleaseStage7();
