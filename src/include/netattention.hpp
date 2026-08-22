@@ -57,4 +57,6 @@ struct FlashAttentionPointers : NetAttentionParamaters
 
     float *dQ;
     float *dK;
+
+    float *d_score_t;
 };
