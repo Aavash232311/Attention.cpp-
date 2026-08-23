@@ -15,7 +15,7 @@
 __device__ __forceinline__ void ParallelReducer(float &localSum)
 {
     for (int offset = 16; offset > 0; offset /= 2)
-        localSum += __shfl_down_sync(0xffffffff, localSum, offset); // ← use +=
+        localSum += __shfl_down_sync(0xffffffff, localSum, offset);
     localSum = __shfl_sync(0xffffffff, localSum, 0);
 }
 
