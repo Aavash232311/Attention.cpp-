@@ -644,9 +644,27 @@ $$
 dy/dx = \frac{\gamma}{\sqrt{\sigma^2 + \varepsilon}} - \frac{\gamma}{\sqrt{\sigma^2 + \varepsilon}} \frac{1}{d}  - \gamma(x - \mu)  \sigma (\sigma^2 + \varepsilon)^{-3/2} \left[ \frac{x_i - \mu}{d} \right] \left( \frac{1}{d} \sum_{i=1}^{d} (x_i - \mu)^2 + \varepsilon \right)^{-1/2}
 $$
 
+$$ = \frac{\gamma}{\sqrt{\sigma^2 + \varepsilon}} \left[ \frac{d - 1}{d} \right] - \gamma \sigma (x - \mu)^2 (\sigma^2 + \varepsilon)^{-3/2} \left( \frac{1}{d} \right) \left[ \frac{1}{d} (x - \mu)^2 + \varepsilon \right]^{-1/2}$$
 
+$$ = \frac{\gamma}{\sqrt{\sigma^2 + \varepsilon}} \left[ \frac{d - 1}{d} \right] - \gamma \sigma (x - \mu)^2 (\sigma^2 + \varepsilon)^{-3/2} \left( \frac{1}{d} \right) \frac{1}{\sigma}$$
 
-### FlashAttention Backpropagation — Derivation and Implementation
+$$ = \frac{\gamma}{\sqrt{\sigma^2 + \varepsilon}} \left[ \frac{d - 1}{d} \right] - \gamma  (x - \mu)^2 (\sigma^2 + \varepsilon)^{-3/2} \left( \frac{1}{d} \right) $$
+
+$$
+= \frac{\gamma}{\sqrt{\sigma^2 + \varepsilon}} \left[ \frac{d - 1}{d} \right] - \frac{\gamma (x - \mu)^2}{d (\sigma^2 + \varepsilon)^{3/2}}
+$$
+
+$$
+= \frac{\gamma}{\sqrt{\sigma^2 + \varepsilon}} \left[ \frac{d - 1}{d} \right] - \frac{\gamma (x - \mu)^2}{d (\sigma^2 + \varepsilon)^1 (\sigma^2 + \varepsilon)^{1/2}}
+$$
+
+$$
+= \frac{\gamma}{d \sqrt{\sigma^2 + \varepsilon}} \left[ (d - 1) - \frac{(x - \mu)^2}{\sigma^2 + \varepsilon} \right]
+$$
+
+Hope that make sense 
+
+### Backpropagation  Derivation and Implementation
 
 **Author:** Avash Lamichhane
 **Date:** 2026
