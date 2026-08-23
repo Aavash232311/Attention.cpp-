@@ -172,7 +172,6 @@ public:
         P = (float *)malloc(batch_size * num_heads * seq_len * seq_len * sizeof(float));
         O = (float *)malloc(batch_size * num_heads * seq_len * head_dim * sizeof(float));
 
-
         // (B, n_head, T, head_dim) s
         value_mat = (float *)malloc(batch_size * num_heads * seq_len * head_dim * sizeof(float));
     };
@@ -369,8 +368,6 @@ public:
 
         float *x = embeddings->forward(currentBatch); // this brings us with the (B, T, C) batch because we added encoding and embeddings, encoding for our case fixed
 
-        layerNorm->forward(x); // pass by ref so should modify it
-
         // -------- There is this number  8 what appeans after layer norm -----
         // ofcourse the layer norm is not learned yet.
 
@@ -402,12 +399,11 @@ public:
         std::memcpy(value_mat, V, batch_size * num_heads * seq_len * head_dim * sizeof(float));
 
         /*
-            Note: the host pointer might be modified here, but the device pointer remains 
+            Note: the host pointer might be modified here, but the device pointer remains
             untouched such that we can re-use this.
         */
         Q_cache = query->getMultiHeadedDeivce();
         K_cache = key->getMultiHeadedDeivce();
-        
 
         // for a valid matrix mul (..., T, head_dim) @ (..., head_dim, T) = (..., T, T) so we need to swap the last two dims
 
@@ -539,15 +535,17 @@ public:
         // }
 
         addResidual(projectedBTC, tempX);
+        // we are re-using that tempX pointer here, it will write here.
+        layerNorm->forward(tempX);
 
-        // if (debug)
-        // {
-        //     std::cout << " Resedual that got added " << std::endl;
-        //     this->utils->printFlatArray3D(tempX, batch_size, seq_len, d_model);
+        if (debug)
+        {
+            std::cout << " Resedual that got added " << std::endl;
+            this->utils->printFlatArray3D(tempX, batch_size, seq_len, d_model);
 
-        //     std::cout << " After adding the resedual " << std::endl;
-        //     this->utils->printFlatArray3D(BTCHost, batch_size, seq_len, d_model);
-        // }
+            std::cout << " After adding the resedual " << std::endl;
+            this->utils->printFlatArray3D(BTCHost, batch_size, seq_len, d_model);
+        }
 
         debug = false;
 
@@ -609,7 +607,7 @@ public:
 
             Q_cache,
             K_cache
-        
+
         };
     }
 };
