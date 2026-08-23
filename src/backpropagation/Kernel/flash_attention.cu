@@ -148,7 +148,6 @@ __device__ __forceinline__ void ParallelReducer(float &localSum)
     localSum = __shfl_sync(0xffffffff, localSum, 0);
 }
 
-
 // LayerNorm Backpropagation
 
 /*
@@ -157,6 +156,7 @@ __device__ __forceinline__ void ParallelReducer(float &localSum)
 */
 
 // C dimension > 32 we use shared memory here, if it was  < 32 then register could talk with each other in faster way, even if they are they wont because of this but its okay here.
+// Note:- I am not so sharp and smart so I am taking my time here to derive and understand.
 __global__ void LayerNormBackPropgationKernel(
     float *x, // (B, T, C)
     float *G, // (B, T, C)
@@ -173,32 +173,37 @@ __global__ void LayerNormBackPropgationKernel(
     const float *row = x + batch_idx * (T * C) + row_idx * C;
     float *out_row = x + batch_idx * (T * C) + row_idx * C;
 
-    int lane = threadIdx.x % 32;     // position within warp
+    int lane = threadIdx.x % 32;     // position within warp, basically "one" thread within a cuda wrap
     int warp_id = threadIdx.x / 32;  // position within block
     int num_warps = blockDim.x / 32; // total warps avalible
 
     __shared__ float shared_sum[32];
 
-    float sum  = 0.0f;
-
+    float sum = 0.0f;
+    // partial sum here, for each thread
     for (int i = threadIdx.x; i < C; i += blockDim.x)
     {
         sum += row[i];
     }
 
+    // reduce within each wrap
     ParallelReducer(sum);
 
+    // Now the sum is one single output of the sum within that wrap
+    // and if the lane = 0 then we will assign that sum value of that wrap
+    // to shared_sum by assigning wrap_id
     if (lane == 0)
     {
         shared_sum[warp_id] = sum;
     }
-    
+
     __syncthreads();
 
     if (warp_id == 0)
     {
         sum = (lane < num_warps) ? shared_sum[lane] : 0.0f;
-
+        // reduce that element within that shared memory
+        // when each wrap output is contributed
         ParallelReducer(sum);
 
         if (lane == 0)
@@ -206,6 +211,62 @@ __global__ void LayerNormBackPropgationKernel(
     }
 
     __syncthreads();
+
+    float mean = shared_sum[0] / C;
+
+    float var_sum = 0.0f;
+
+    for (int i = threadIdx.x; i < C; i += blockDim.x)
+    {
+        float diff = row[i] - mean;
+        var_sum += diff * diff;
+    } // this I like to call reduction in surface
+
+    ParallelReducer(var_sum);
+
+    if (lane == 0)
+    {
+        shared_sum[warp_id] = var_sum;
+    }
+
+    __syncthreads();
+
+    if (warp_id == 0)
+    {
+        var_sum = (lane < num_warps) ? shared_sum[lane] : 0.0f;
+        ParallelReducer(var_sum);
+
+        if (lane == 0)
+        {
+            shared_sum[0] = var_sum;
+        }
+    }
+
+    __syncthreads();
+
+    float variance = shared_sum[0] / C; // mean of that var * var
+    float std = sqrtf(variance + 1e-8f);
+
+    float epsilon = 1e-8f;
+
+    // Here we have var, std dev, and mean
+    // we just need to write the formula differently from that we derived in flashback.md
+
+    // each thread will be touching here,
+    for (int i = threadIdx.x; i < C; i += blockDim.x)
+    {
+        // lets do parts by pars, due to the fact that me being not so smart.
+        // flashattention.md documentation here I did the derivative in paper 
+        // and worte them into .md file
+
+        float first_comp = gamma[i] / D * sqrtf((std * std) + epsilon);
+
+        float x_u = row[i] - mean;
+
+        float second_comp = ((D - 1) - (x_u * x_u) / (std * std) + epsilon);
+
+        out_row[i] = first_comp * second_comp;
+    }
 }
 
 extern "C"
