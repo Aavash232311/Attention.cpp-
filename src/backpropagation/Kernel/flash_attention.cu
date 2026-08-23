@@ -265,12 +265,17 @@ __global__ void LayerNormBackPropgationKernel(
 
         float second_comp = ((D - 1) - (x_u * x_u) / (std * std) + epsilon);
 
-        out_row[i] = first_comp * second_comp;
+        out_row[i] = first_comp * second_comp * G[i];
     }
 }
 
 extern "C"
 {
+    void layerNormBackGradKerel()
+    {
+
+    }
+
     void softmaxBackGradKernel(
         float *P,
         float *dY,

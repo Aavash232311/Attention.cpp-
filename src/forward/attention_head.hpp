@@ -538,14 +538,14 @@ public:
         // we are re-using that tempX pointer here, it will write here.
         layerNorm->forward(tempX);
 
-        if (debug)
-        {
-            std::cout << " Resedual that got added " << std::endl;
-            this->utils->printFlatArray3D(tempX, batch_size, seq_len, d_model);
+        // if (debug)
+        // {
+        //     std::cout << " Resedual that got added " << std::endl;
+        //     this->utils->printFlatArray3D(tempX, batch_size, seq_len, d_model);
 
-            std::cout << " After adding the resedual " << std::endl;
-            this->utils->printFlatArray3D(BTCHost, batch_size, seq_len, d_model);
-        }
+        //     std::cout << " After adding the resedual " << std::endl;
+        //     this->utils->printFlatArray3D(BTCHost, batch_size, seq_len, d_model);
+        // }
 
         debug = false;
 
