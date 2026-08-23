@@ -11,9 +11,9 @@
 
 // we will experiement with tensor cors later on :)
 __global__ void matmulLastTwo4DKernel(
-    float *A,             // (a, b, c, d)
-    float *B,             // (a, b, d, e)
-    float *C,             // (a, b, c, e)
+    float *A,      // (a, b, c, d)
+    float *B,      // (a, b, d, e)
+    float *C,      // (a, b, c, e)
     float scaling, // to re-use this for something like attention sore, and backpropagation.
     int a,
     int b,
@@ -141,6 +141,73 @@ __global__ void softmaxBackTankKernel(
     }
 }
 
+__device__ __forceinline__ void ParallelReducer(float &localSum)
+{
+    for (int offset = 16; offset > 0; offset /= 2)
+        localSum += __shfl_down_sync(0xffffffff, localSum, offset);
+    localSum = __shfl_sync(0xffffffff, localSum, 0);
+}
+
+
+// LayerNorm Backpropagation
+
+/*
+    Eneginnering tradeoffs here, if we have that (x - u) from our forward pass kernel
+    then we will need to reserve our VRAM, lets re-compute that again here.
+*/
+
+// C dimension > 32 we use shared memory here, if it was  < 32 then register could talk with each other in faster way, even if they are they wont because of this but its okay here.
+__global__ void LayerNormBackPropgationKernel(
+    float *x, // (B, T, C)
+    float *G, // (B, T, C)
+    float *gamma,
+    float *sigma,
+    int D,
+    int B,
+    int T,
+    int C)
+{
+    int batch_idx = blockIdx.y;
+    int row_idx = blockIdx.x;
+
+    const float *row = x + batch_idx * (T * C) + row_idx * C;
+    float *out_row = x + batch_idx * (T * C) + row_idx * C;
+
+    int lane = threadIdx.x % 32;     // position within warp
+    int warp_id = threadIdx.x / 32;  // position within block
+    int num_warps = blockDim.x / 32; // total warps avalible
+
+    __shared__ float shared_sum[32];
+
+    float sum  = 0.0f;
+
+    for (int i = threadIdx.x; i < C; i += blockDim.x)
+    {
+        sum += row[i];
+    }
+
+    ParallelReducer(sum);
+
+    if (lane == 0)
+    {
+        shared_sum[warp_id] = sum;
+    }
+    
+    __syncthreads();
+
+    if (warp_id == 0)
+    {
+        sum = (lane < num_warps) ? shared_sum[lane] : 0.0f;
+
+        ParallelReducer(sum);
+
+        if (lane == 0)
+            shared_sum[0] = sum;
+    }
+
+    __syncthreads();
+}
+
 extern "C"
 {
     void softmaxBackGradKernel(
@@ -164,9 +231,9 @@ extern "C"
     }
 
     void MatMul4D(
-        float *A, // (a, b, c, d)
-        float *B, // (a, b, d, e)
-        float *C, // (a, b, c, e)
+        float *A,      // (a, b, c, d)
+        float *B,      // (a, b, d, e)
+        float *C,      // (a, b, c, e)
         float scaling, // pass 1.0f if not scaling
         int a,
         int b,

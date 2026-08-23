@@ -52,8 +52,94 @@ tensor([[[[-2.4759, -4.5910],
 
 ** Load Libraries and Data
 #+begin_src c++
+%%writefile kernel.cpp
+
+
 #include <iostream>
+#include <iterator>
+#include <math.h>
+#include <mma.h>
+#include <random>
+#include <vector>
+#include <cfloat>
+#include <cstdlib>
+
 #include <fstream>
+#include <stdexcept>
+#include <cuda_runtime.h>
+#include <curand_kernel.h>
+
+__device__ float warpReduceSum(float val)
+{
+    for (int offset = 16; offset > 0; offset >>= 1)
+        val += __shfl_down_sync(0xffffffff, val, offset);
+    return val;
+}
+
+__global__ void softmaxBackTankKernel(
+    float *P,  // (batch_size * num_heads * seq_len * seq_len )
+    float *dY, // Shape (batch_size, seq_len, num_head, head_dim)
+    float *out,
+    int N,
+    int batch_size,
+    int seq_len,
+    int n_head)
+{
+
+    int batch_idx = blockIdx.z;
+    int nhead_idx = blockIdx.y;
+    int seq_len_idx1 = blockIdx.x;
+    int seq_len_idx2 = threadIdx.x;
+
+    int lane = threadIdx.x % 32;     // position within warp
+    int warp_id = threadIdx.x / 32;  // position within block
+    int num_warps = blockDim.x / 32; // total warps avalible
+
+
+    int row_base = batch_idx * (n_head * seq_len * seq_len) + nhead_idx * (seq_len * seq_len) + seq_len_idx1 * seq_len;
+
+
+    __shared__ float smem_pdy[32];
+    __shared__ float s_shared;
+
+
+    float tempSum = 0.0f;
+    for (int i = seq_len_idx2; i < seq_len; i += blockDim.x)
+    {
+        tempSum += P[row_base + i] * dY[row_base + i];
+    }
+
+    tempSum = warpReduceSum(tempSum);
+
+    __syncthreads();
+
+    if (seq_len_idx2 == 0)
+    {
+        smem_pdy[warp_id] = tempSum;
+    }
+
+    __syncthreads();
+
+    float rowSum = (lane < num_warps) ? smem_pdy[lane] : 0.0f;
+    if (warp_id == 0)
+        rowSum = warpReduceSum(rowSum);
+
+    if (seq_len_idx2 == 0)
+        s_shared = rowSum;
+
+    __syncthreads();
+
+    float s = s_shared;
+
+    if (seq_len_idx2 < seq_len)
+    {
+        for (int i = seq_len_idx2; i < seq_len; i += blockDim.x)
+            out[row_base + i] = P[row_base + i] * (dY[row_base + i] - s);
+    }
+}
+
+// Binary loader from the utils of my project to flat float arr.
+
 
 float* load_bin(const std::string& path, size_t num_elements) {
     std::ifstream file(path, std::ios::binary);
@@ -72,19 +158,29 @@ float* load_bin(const std::string& path, size_t num_elements) {
     return data;
 }
 
-void print2DMatrixLastTwo(float* arr, int batch_size, int n_head, int dim_row, int dim_col) {
-    for (int b = 0; b < batch_size; b++) {
-        for (int h = 0; h < n_head; h++) {
-            std::cout << "Matrix [" << b << "][" << h << "]" << std::endl;
-            for (int row = 0; row < dim_row; row++) {
-                std::cout << "  [ ";
-                for (int col = 0; col < dim_col; col++) {
+void print2DMatrixLastTwo(
+    float *arr,
+    int batch_size,
+    int n_head,
+    int dim_row,
+    int dim_col)
+{
+    for (int b = 0; b < batch_size; b++)
+    {
+        for (int h = 0; h < n_head; h++)
+        {
+            printf("%s [%d][%d]\n", "Matrix", b, h);
+            for (int row = 0; row < dim_row; row++)
+            {
+                printf("  [ ");
+                for (int col = 0; col < dim_col; col++)
+                {
                     int idx = b * (n_head * dim_row * dim_col) + h * (dim_row * dim_col) + row * dim_col + col;
-                    std::cout << arr[idx] << "  ";
+                    printf("%10.4f  ", arr[idx]);
                 }
-                std::cout << "]" << std::endl;
+                printf("]\n");
             }
-            std::cout << std::endl;
+            printf("\n");
         }
     }
 }
@@ -96,13 +192,14 @@ int main() {
         int seq_len = 2;
         size_t total_elements = batch_size * num_head * seq_len * seq_len;
 
-        float* dP = load_bin("./dp.bin", total_elements);
-        float* P = load_bin("./p.bin", total_elements);
-        float* d_score = load_bin("./d_score.bin", total_elements);
+        float *dP = load_bin("./dp.bin", total_elements);
+        float *P = load_bin("./p.bin", total_elements);
+        float *d_score = load_bin("./d_score.bin", total_elements);
 
-        float* device_dp;
-        float* device_p;
-        float* device_dscore;
+        // check the kernel, its causing problem.
+        float *device_dp;
+        float *device_p;
+        float *device_dscore;
 
         cudaMalloc((void**)&device_dp, total_elements * sizeof(float));
         cudaMalloc((void**)&device_p, total_elements * sizeof(float));
@@ -122,11 +219,13 @@ int main() {
 
         cudaDeviceSynchronize();
 
-        float* d_score_host = (float *)malloc(total_elements * sizeof(float));
+        // host d_score
+        float *d_score_host = (float *)malloc(total_elements * sizeof(float));
         cudaMemcpy(d_score_host, device_dscore, total_elements * sizeof(float), cudaMemcpyDeviceToHost);
 
         print2DMatrixLastTwo(d_score_host, batch_size, num_head, seq_len, seq_len);
 
+        // Free memory when done
         delete[] dP;
         delete[] P;
 
@@ -135,7 +234,8 @@ int main() {
         cudaFree(device_dscore);
 
         free(d_score_host);
-    } catch (const std::exception& e) {
+    }
+    catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;
         return 1;
     }
