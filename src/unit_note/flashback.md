@@ -638,7 +638,7 @@ $$\frac{\partial \sigma}{\partial x_i} = \left[ \frac{x_i - \mu}{d} \right] \lef
 
 
 Using the chain rule of derivative lets aim towards $dx$
-$$\frac{dy}{dx} = \frac{\partial y}{\partial x} + \frac{\partial y}{\partial \mu} \frac{\partial \mu}{\partial x} + \frac{\partial y}{\partial \sigma} \frac{\partial \sigma}{\partial x}$$
+$$\left(\frac{\partial y_j}{\partial x_i}\right)_{\text{Total}} = \left.\frac{\partial y_j}{\partial x_i}\right|_{\mu, \sigma^2} + \frac{\partial y_j}{\partial \mu} \frac{\partial \mu}{\partial x_i} + \frac{\partial y_j}{\partial \sigma^2} \frac{\partial \sigma^2}{\partial x_i}$$
 
 $$ 
 dy/dx = \frac{\gamma}{\sqrt{\sigma^2 + \varepsilon}} - \frac{\gamma}{\sqrt{\sigma^2 + \varepsilon}} \frac{1}{d}  - \gamma(x - \mu)  \sigma (\sigma^2 + \varepsilon)^{-3/2} \left[ \frac{x_i - \mu}{d} \right] \left( \frac{1}{d} \sum_{i=1}^{d} (x_i - \mu)^2 + \varepsilon \right)^{-1/2}
@@ -662,7 +662,8 @@ $$
 = \frac{\gamma}{d \sqrt{\sigma^2 + \varepsilon}} \left[ (d - 1) - \frac{(x - \mu)^2}{\sigma^2 + \varepsilon} \right]
 $$
 
-Hope that make sense 
+Hope that make sense, not done yet I will get back here, my notation and indexing
+made this even more confusing, sick today but I will be back. 
 
 ### Backpropagation  Derivation and Implementation
 
