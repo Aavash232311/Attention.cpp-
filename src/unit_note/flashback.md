@@ -627,7 +627,7 @@ $$\frac{\partial u_j}{\partial x_i} = \frac{\partial (x_j - \mu)}{\partial x_i} 
 
 <hr/>
 
-<b>Third component $ \frac{\partial \hat{x}}{\partial \sigma} $: </b>
+**Third component:** $\frac{\partial \hat{x}}{\partial \sigma}$
 
 $$ \hat{x}_i = \frac{x_i - \mu}{\sqrt{\sigma^2 + \varepsilon}}  $$
 
@@ -642,7 +642,7 @@ $$\frac{\partial \hat{x}_i}{\partial \sigma} = -\frac{\sigma(x_i - \mu)}{(\sigma
 
 <hr />
 
-<b>Fourth component $ \frac{\partial \sigma}{\partial \sigma^2} $</b>
+**Fourth component:** $\frac{\partial \sigma}{\partial \sigma^2}$
 
 Note: 
 $$ 
@@ -656,7 +656,7 @@ $$\frac{\partial \sigma}{\partial \sigma^2} = \frac{\partial}{\partial \sigma^2}
 
 <hr />
 
-<b>Fifth component: $ \frac{\partial \sigma^2}{\partial x_i} $</b>
+**Fifth component:** $\frac{\partial \sigma^2}{\partial x_i}$
 
 $$\frac{\partial \sigma^2}{\partial x_i} = \frac{\partial}{\partial x_i} \left[ \frac{1}{d} \sum_{k=1}^{d} (x_k - \mu)^2 \right]$$
 
