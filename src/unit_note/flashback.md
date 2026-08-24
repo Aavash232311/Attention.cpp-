@@ -664,6 +664,48 @@ $$\frac{\partial \sigma^2}{\partial x_i} = \frac{1}{d} \sum_{k=1}^{d} 2(x_k - \m
 
 $$\frac{\partial \sigma^2}{\partial x_i} = \frac{2}{d}(x_i - \mu)$$
 
+<hr />
+
+Re-writing the chain rule:
+
+$$\frac{\partial L}{\partial x_i} = \sum_{j=1}^{d} \frac{\partial L}{\partial \hat{x}_j} \left[ \underbrace{\frac{\partial \hat{x}_j}{\partial u_j}}_{= 1/\sigma} \frac{\partial u_j}{\partial x_i} + \frac{\partial \hat{x}_j}{\partial \sigma} \frac{\partial \sigma}{\partial \sigma^2} \frac{\partial \sigma^2}{\partial x_i} \right]$$
+
+$$\frac{\partial L}{\partial x_i} = \sum_{j=1}^{d} \frac{\partial L}{\partial \hat{x}_j} \left[ \frac{1}{\sigma} \left( \delta_{ij} - \frac{1}{d} \right) + \left( -\frac{\sigma(x_j - \mu)}{(\sigma^2 + \varepsilon)^{3/2}} \right) \left( \frac{1}{2\sigma} \right) \left( \frac{2}{d}(x_i - \mu) \right) \right]$$
+
+$$\frac{\partial L}{\partial x_i} = \sum_{j=1}^{d} \frac{\partial L}{\partial \hat{x}_j} \left[ \frac{1}{\sigma} \left( \delta_{ij} - \frac{1}{d} \right) + \left( -\frac{\sigma(x_j - \mu)}{(\sigma^2 + \varepsilon)^{3/2}} \right) \left( \frac{1}{\sigma} \right) \left( \frac{1}{d}(x_i - \mu) \right) \right]$$
+
+$$\frac{\partial L}{\partial x_i} = \sum_{j=1}^{d} \frac{\partial L}{\partial \hat{x}_j} \left[ \frac{1}{\sigma} \left( \frac{d\delta_{ij} - 1}{d} \right) - \frac{(x_j - \mu)(x_i - \mu)}{d(\sigma^2 + \varepsilon)^{3/2}} \right]$$
+
+Recall:
+ $$
+u := x - \mu
+$$
+
+$$\frac{\partial L}{\partial x_i} = \sum_{j=1}^{d} \frac{\partial L}{\partial \hat{x}_j} \left[ \frac{1}{\sigma} \left( \frac{d\delta_{ij} - 1}{d} \right) - \frac{u_j u_i}{d(\sigma^2 + \varepsilon)^{3/2}} \right]$$
+
+Note:
+
+$$
+(\sigma^2 + \varepsilon)^{3/2} = \sigma^3
+$$
+
+$$\frac{\partial L}{\partial x_i} = \sum_{j=1}^{d} \frac{\partial L}{\partial \hat{x}_j} \left[ \frac{1}{\sigma} \left( \frac{d\delta_{ij} - 1}{d} \right) - \frac{u_j u_i}{d \sigma^3} \right]$$
+
+
+$$\frac{\partial L}{\partial x_i} = \frac{1}{d\sigma} \sum_{j=1}^{d} \frac{\partial L}{\partial \hat{x}_j} \left[ (d\delta_{ij} - 1) - \frac{u_j u_i}{\sigma^2} \right]$$
+
+$$\frac{\partial L}{\partial x_i} = \frac{1}{d\sigma} \left[ \sum_{j=1}^{d} \frac{\partial L}{\partial \hat{x}_j} (d\delta_{ij} - 1) - \sum_{j=1}^{d} \frac{\partial L}{\partial \hat{x}_j} \frac{u_j u_i}{\sigma^2} \right]$$
+
+$$\frac{\partial L}{\partial x_i} = \frac{1}{d\sigma} \left[ d \frac{\partial L}{\partial \hat{x}_i} - \sum_{j=1}^{d} \frac{\partial L}{\partial \hat{x}_j} - \frac{u_i}{\sigma} \sum_{j=1}^{d} \frac{\partial L}{\partial \hat{x}_j} \frac{u_j}{\sigma} \right]$$
+
+
+Now: 
+
+$$\frac{u_i}{\sigma} = \hat{x}_i \quad \text{and} \quad \frac{u_j}{\sigma} = \hat{x}_j$$
+
+$$\frac{\partial L}{\partial x_i} = \frac{1}{d\sigma} \left[ d \frac{\partial L}{\partial \hat{x}_i} - \sum_{j=1}^{d} \frac{\partial L}{\partial \hat{x}_j} - \hat{x}_i \sum_{j=1}^{d} \frac{\partial L}{\partial \hat{x}_j} \hat{x}_j \right]$$
+
+Hope that made sense, I may even not remember this after long but when I go through this again should make sense.
 
 
 
