@@ -368,6 +368,8 @@ public:
 
         float *x = embeddings->forward(currentBatch); // this brings us with the (B, T, C) batch because we added encoding and embeddings, encoding for our case fixed
 
+        layerNorm->forward(x);
+
         // -------- There is this number  8 what appeans after layer norm -----
         // ofcourse the layer norm is not learned yet.
 
@@ -535,8 +537,6 @@ public:
         // }
 
         addResidual(projectedBTC, tempX);
-        // we are re-using that tempX pointer here, it will write here.
-        layerNorm->forward(tempX);
 
         // if (debug)
         // {
