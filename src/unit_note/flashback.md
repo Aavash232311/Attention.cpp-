@@ -538,6 +538,14 @@ Let us consider a function
 
 $$f(x) = y = \gamma \frac{x - \mu}{\sqrt{\sigma^2 + \varepsilon}} + \beta$$
 
+Also expressed as,
+
+$$y = \gamma \hat{x} + \beta$$
+
+where
+
+$$\hat{x} = \frac{x - \mu}{\sqrt{\sigma^2 + \varepsilon}}$$
+
 where 
 
 $\varepsilon$ = constant  = 1e^-8 
@@ -551,119 +559,113 @@ $\mu$ is the mean
 
 $\sigma$ is the standard deviation
 
-Let let's do the differentation parts by parts.
-
-$$\frac{\partial y}{\partial x} = \frac{\gamma}{\sqrt{\sigma^2 + \varepsilon}} \frac{\partial}{\partial x}(x - \mu)$$
+For multi variable chain rule we will trace down the depencencies.
 
 
-$$ = \frac{\gamma}{\sqrt{\sigma^2 + \varepsilon}} (1 - 0)$$
+$$\hat{x}_i = \frac{x_i - \mu}{\sqrt{\sigma^2 + \varepsilon}} = \frac{x_i - \frac{1}{d}\sum_{m=1}^{d}x_m}{\sqrt{\frac{1}{d}\sum_{k=1}^{d}\left(x_k - \frac{1}{d}\sum_{m=1}^{d}x_m\right)^2 + \varepsilon}}$$
 
-$$ = \frac{\gamma}{\sqrt{\sigma^2 + \varepsilon}} $$
+where
 
-$$\frac{\partial y}{\partial \gamma} = \frac{\partial \gamma}{\partial \gamma} \frac{x - \mu}{\sqrt{\sigma^2 + \varepsilon}}$$
+$$\sigma = \sqrt{\frac{1}{d}\sum_{k=1}^{d}\left(x_k - \frac{1}{d}\sum_{m=1}^{d}x_m\right)^2}$$
 
-$$ = \frac{x - \mu}{\sqrt{\sigma^2 + \varepsilon}} $$
+$\sigma$ can also be defined as
 
-$$\frac{\partial y}{\partial \mu} = \frac{\gamma}{\sqrt{\sigma^2 + \varepsilon}} \frac{\partial}{\partial \mu}(x - \mu)$$
+$$\sigma = \sqrt{\sigma^2 + \varepsilon} $$
 
-$$ = \frac{\gamma}{\sqrt{\sigma^2 + \varepsilon}} (0 - 1)$$
+And, 
+$$\sigma^2 = \frac{1}{d}\sum_{k=1}^{d}\left(x_k - \frac{1}{d}\sum_{m=1}^{d}x_m\right)^2
+=var
+$$
 
-$$ = - \frac{\gamma}{\sqrt{\sigma^2 + \varepsilon}}$$
+$$
+u := x - \mu
+$$
 
-Now here I will subsitute this lengthy constant with something like K
+$$
+\hat{x}_i = \frac{u}{\sqrt{\sigma^2 + \varepsilon}}
+$$
 
-$$K = \gamma(x - \mu)$$
+using the multi variable chain rule we have
 
-$$\frac{\partial y}{\partial \sigma} = \frac{\partial}{\partial \sigma} \left( \frac{K}{\sqrt{\sigma^2 + \varepsilon}} \right)$$
-
-$$ = K \frac{\partial}{\partial \sigma} (\sigma^2 + \varepsilon)^{-1/2} $$
-
-$$= K \left(-\frac{1}{2}\right) (\sigma^2 + \varepsilon)^{-3/2} \frac{\partial}{\partial \sigma} (\sigma^2 + \varepsilon)$$
-
-$$= K \left(-\frac{1}{2}\right)^2 (\sigma^2 + \varepsilon)^{-3/2} (2\sigma + 0)$$
-
-$$= -K \sigma (\sigma^2 + \varepsilon)^{-3/2}$$
-
-$$= - \gamma(x - \mu)  \sigma (\sigma^2 + \varepsilon)^{-3/2}$$
-
-Now,
-
-$$\mu = \text{mean}(x) = \frac{1}{d} \sum_{i=1}^{d} x_i$$
-
-Ultimate goal is $dx$
+$$
+\frac{\partial L}{\partial x_i}
+=
+\sum_{j=1}^{d}
+\frac{\partial L}{\partial \hat{x}_j}
+\frac{\partial \hat{x}_j}{\partial x_i}
+$$
 
 
-$$ \frac{ \partial \mu}{\partial x} = \frac{1}{d} $$
+$$\frac{\partial L}{\partial x_i} = \sum_{j=1}^{d} \frac{\partial L}{\partial \hat{x}_j} \left[ \underbrace{\frac{\partial \hat{x}_j}{\partial u_j}}_{= 1/\sigma} \frac{\partial u_j}{\partial x_i} + \frac{\partial \hat{x}_j}{\partial \sigma} \frac{\partial \sigma}{\partial \sigma^2} \frac{\partial \sigma^2}{\partial x_i} \right]$$
 
-$\sigma$ also depends upon x
 
-$$\sigma = \sqrt{\frac{1}{d} \sum_{i=1}^{d} (x_i - \mu)^2 + \varepsilon}$$
+Now lets find the partial derivative of each compoenent above.
 
-The term inside of the sqrt is simply var
 
-$$ var = \frac{1}{d} \sum_{i=1}^{d} (x_i - \mu)^2 + \varepsilon $$
 
-Now
+<b>First:</b>
+$$
+\hat{x}_i = \frac{u}{\sqrt{\sigma^2 + \varepsilon}}
+$$
 
-$$ \frac{\partial var}{\partial x} = \frac{1}{d} \frac{\partial}{\partial x} \sum_{i=1}^{d} (x_i - \mu)^2 + \frac{\partial}{\partial x} (\varepsilon)$$
+$$\frac{\partial \hat{x}_j}{\partial u_j} = \frac{\partial u_j}{\partial u_j} \cdot \frac{1}{\sqrt{\sigma^2 + \varepsilon}} = \frac{1}{\sqrt{\sigma^2 + \varepsilon}} = \frac{1}{\sigma}$$
 
+<hr />
+
+Note: for $\mu$
+
+$$\frac{\partial \mu}{\partial x_i} = \frac{\partial}{\partial x_i} \left( \frac{1}{d} \sum_{k=1}^{d} x_k \right) = \frac{1}{d}$$
+
+where $\delta_{ij}$ is the Kronecker delta defined as:
+
+$$\delta_{ij} = \begin{cases} 1 & \text{if } i = j \\ 0 & \text{if } i \neq j \end{cases}$$
+<hr/>
+
+<b>Second component:</b>
+
+$$\frac{\partial u_j}{\partial x_i} = \frac{\partial (x_j - \mu)}{\partial x_i} = \delta_{ij} - \frac{1}{d}$$
+
+<hr/>
+
+<b>Third component $ \frac{\partial \hat{x}}{\partial \sigma} $: </b>
+
+$$ \hat{x}_i = \frac{x_i - \mu}{\sqrt{\sigma^2 + \varepsilon}}  $$
+
+$$\frac{\partial \hat{x}_i}{\partial \sigma} = \frac{\partial}{\partial \sigma} \left[ (x_i - \mu) (\sigma^2 + \varepsilon)^{-1/2} \right]$$
+
+$$\frac{\partial \hat{x}_i}{\partial \sigma} = (x_i - \mu) \frac{\partial}{\partial \sigma} \left[ (\sigma^2 + \varepsilon)^{-1/2} \right]$$
+
+$$\frac{\partial \hat{x}_i}{\partial \sigma} = (x_i - \mu) \left[ -\frac{1}{2} (\sigma^2 + \varepsilon)^{-3/2} \frac{\partial}{\partial \sigma} (\sigma^2 + \varepsilon) \right]$$
+
+$$\frac{\partial \hat{x}_i}{\partial \sigma} = -\frac{\sigma(x_i - \mu)}{(\sigma^2 + \varepsilon)^{3/2}}$$
+
+
+<hr />
+
+<b>Fourth component $ \frac{\partial \sigma}{\partial \sigma^2} $</b>
+
+Note: 
 $$ 
- = \frac{1}{d} \frac{\partial}{\partial x} \sum_{i=1}^{d} (x_i - \mu)^2 
-$$
 
-$$= \frac{1}{d} \cdot 2(x - \mu) \frac{\partial}{\partial x}(x - \mu)$$
-
-$$= \frac{1}{d} \cdot 2(x - \mu) $$
-
-Note:- Future me please don't be scared, just derivative broken down
-Remember nobody else is reading this. 
-
-$$\sigma = \sqrt{\text{Var}}$$
-
-$$\frac{\partial \sigma}{\partial x} = \frac{\partial}{\partial x} (\sqrt{\text{Var}})$$
-
-$$ 
-\frac{\partial \sigma}{\partial x} = \frac{\partial}{\partial x} (\sqrt{ \frac{1}{d} \sum_{i=1}^{d} (x_i - \mu)^2 + \varepsilon })
-$$
-
-$$\frac{\partial \sigma}{\partial x} = \frac{\partial}{\partial x} \left( \frac{1}{d} \sum_{i=1}^{d} (x_i - \mu)^2 + \varepsilon \right)^{1/2}$$
-
-
-$$= \frac{1}{2} \left( \frac{1}{d} \sum_{i=1}^{d} (x_i - \mu)^2 + \varepsilon \right)^{-1/2} \frac{\partial}{\partial x} \left( \frac{1}{d} \sum_{i=1}^{d} (x_i - \mu)^2 + \varepsilon \right)$$
-
-$$= \frac{1}{2} \left( \frac{1}{d} \sum_{i=1}^{d} (x_i - \mu)^2 + \varepsilon \right)^{-1/2} \left( \frac{1}{d} \frac{\partial}{\partial x} \sum_{i=1}^{d} (x_i - \mu)^2 + \frac{\partial \varepsilon}{\partial x} \right)$$
-
-
-$$\frac{\partial \sigma}{\partial x_i} = \left[ \frac{x_i - \mu}{d} \right] \left( \frac{1}{d} \sum_{i=1}^{d} (x_i - \mu)^2 + \varepsilon \right)^{-1/2}$$
-
-
-Using the chain rule of derivative lets aim towards $dx$
-$$\left(\frac{\partial y_j}{\partial x_i}\right)_{\text{Total}} = \left.\frac{\partial y_j}{\partial x_i}\right|_{\mu, \sigma^2} + \frac{\partial y_j}{\partial \mu} \frac{\partial \mu}{\partial x_i} + \frac{\partial y_j}{\partial \sigma^2} \frac{\partial \sigma^2}{\partial x_i}$$
-
-$$ 
-dy/dx = \frac{\gamma}{\sqrt{\sigma^2 + \varepsilon}} - \frac{\gamma}{\sqrt{\sigma^2 + \varepsilon}} \frac{1}{d}  - \gamma(x - \mu)  \sigma (\sigma^2 + \varepsilon)^{-3/2} \left[ \frac{x_i - \mu}{d} \right] \left( \frac{1}{d} \sum_{i=1}^{d} (x_i - \mu)^2 + \varepsilon \right)^{-1/2}
-$$
-
-$$ = \frac{\gamma}{\sqrt{\sigma^2 + \varepsilon}} \left[ \frac{d - 1}{d} \right] - \gamma \sigma (x - \mu)^2 (\sigma^2 + \varepsilon)^{-3/2} \left( \frac{1}{d} \right) \left[ \frac{1}{d} (x - \mu)^2 + \varepsilon \right]^{-1/2}$$
-
-$$ = \frac{\gamma}{\sqrt{\sigma^2 + \varepsilon}} \left[ \frac{d - 1}{d} \right] - \gamma \sigma (x - \mu)^2 (\sigma^2 + \varepsilon)^{-3/2} \left( \frac{1}{d} \right) \frac{1}{\sigma}$$
-
-$$ = \frac{\gamma}{\sqrt{\sigma^2 + \varepsilon}} \left[ \frac{d - 1}{d} \right] - \gamma  (x - \mu)^2 (\sigma^2 + \varepsilon)^{-3/2} \left( \frac{1}{d} \right) $$
+\sigma = \sqrt{\frac{1}{d}\sum_{k=1}^{d}\left(x_k - \frac{1}{d}\sum_{m=1}^{d}x_m\right)^2}
 
 $$
-= \frac{\gamma}{\sqrt{\sigma^2 + \varepsilon}} \left[ \frac{d - 1}{d} \right] - \frac{\gamma (x - \mu)^2}{d (\sigma^2 + \varepsilon)^{3/2}}
-$$
 
-$$
-= \frac{\gamma}{\sqrt{\sigma^2 + \varepsilon}} \left[ \frac{d - 1}{d} \right] - \frac{\gamma (x - \mu)^2}{d (\sigma^2 + \varepsilon)^1 (\sigma^2 + \varepsilon)^{1/2}}
-$$
 
-$$
-= \frac{\gamma}{d \sqrt{\sigma^2 + \varepsilon}} \left[ (d - 1) - \frac{(x - \mu)^2}{\sigma^2 + \varepsilon} \right]
-$$
+$$\frac{\partial \sigma}{\partial \sigma^2} = \frac{\partial}{\partial \sigma^2} \left[ (\sigma^2)^{1/2} \right] = \frac{1}{2}(\sigma^2)^{-1/2} = \frac{1}{2\sigma}$$
 
-Hope that make sense, not done yet I will get back here, my notation and indexing
-made this even more confusing, sick today but I will be back. 
+<hr />
+
+<b>Fifth component: $ \frac{\partial \sigma^2}{\partial x_i} $</b>
+
+$$\frac{\partial \sigma^2}{\partial x_i} = \frac{\partial}{\partial x_i} \left[ \frac{1}{d} \sum_{k=1}^{d} (x_k - \mu)^2 \right]$$
+
+$$\frac{\partial \sigma^2}{\partial x_i} = \frac{1}{d} \sum_{k=1}^{d} 2(x_k - \mu)^{2-1} \cdot \frac{\partial}{\partial x_i}(x_k - \mu)$$
+
+$$\frac{\partial \sigma^2}{\partial x_i} = \frac{2}{d}(x_i - \mu)$$
+
+
+
 
 ### Backpropagation  Derivation and Implementation
 
