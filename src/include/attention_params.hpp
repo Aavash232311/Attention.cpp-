@@ -26,4 +26,8 @@ struct AttentionParamaters
 
     float* Q_cache;
     float* K_cache;
+
+    // shape (B, T, C) after
+    // embedding out
+    float *x;
 };

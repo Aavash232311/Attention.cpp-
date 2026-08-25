@@ -158,7 +158,7 @@ __device__ __forceinline__ void ParallelReducer(float &localSum)
 // C dimension > 32 we use shared memory here, if it was  < 32 then register could talk with each other in faster way, even if they are they wont because of this but its okay here.
 // Note:- I am not so sharp and smart so I am taking my time here to derive and understand.
 __global__ void LayerNormBackPropgationKernel(
-    float *x, // (B, T, C)
+    float *x, // (B, T, C) after input shape
     float *G, // (B, T, C)
     float *gamma,
     float *sigma,
@@ -244,36 +244,33 @@ __global__ void LayerNormBackPropgationKernel(
 
     __syncthreads();
 
-    float variance = shared_sum[0] / C; // mean of that var * var
-    float std = sqrtf(variance + 1e-8f);
-
     float epsilon = 1e-8f;
+
+    float variance = shared_sum[0] / C; // mean of that var * var
+    // by the def, we have std dev,
+    float std = sqrtf(variance + epsilon);
 
     // Here we have var, std dev, and mean
     // we just need to write the formula differently from that we derived in flashback.md
 
+    // we can store x_hat i from the forward kernel or re-compute
+    // enginnerring tradeoffs.
+
     // each thread will be touching here,
     for (int i = threadIdx.x; i < C; i += blockDim.x)
     {
-        // lets do parts by pars, due to the fact that me being not so smart.
-        // flashattention.md documentation here I did the derivative in paper 
-        // and worte them into .md file
-
-        float first_comp = gamma[i] / D * sqrtf((std * std) + epsilon);
-
         float x_u = row[i] - mean;
+        // one xi computed, not re-using from the layer norm kerenl
+        float x_i  = x_u / sqrtf((std * std) + epsilon);
 
-        float second_comp = ((D - 1) - (x_u * x_u) / (std * std) + epsilon);
-
-        out_row[i] = first_comp * second_comp * G[i];
     }
+
 }
 
 extern "C"
 {
     void layerNormBackGradKerel()
     {
-
     }
 
     void softmaxBackGradKernel(
