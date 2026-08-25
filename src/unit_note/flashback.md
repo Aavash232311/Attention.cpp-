@@ -180,7 +180,7 @@ Using the total derivative chain rule, we must sum the gradient contributions fl
 In this case, we have $\frac{\partial L}{\partial P}$ as our **upstream gradient** and $\frac{\partial P}{\partial S_{11}}$ as our **local gradient**. Therefore,
 
 $$
-\frac{\partial L}{\partial S_{11}} 
+\frac{\partial L}{\partial S_{11}}
 =
 \frac{\partial L}{\partial P}
 \cdot
