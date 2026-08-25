@@ -705,6 +705,22 @@ $$\frac{u_i}{\sigma} = \hat{x}_i \quad \text{and} \quad \frac{u_j}{\sigma} = \ha
 
 $$\frac{\partial L}{\partial x_i} = \frac{1}{d\sigma} \left[ d \frac{\partial L}{\partial \hat{x}_i} - \sum_{j=1}^{d} \frac{\partial L}{\partial \hat{x}_j} - \hat{x}_i \sum_{j=1}^{d} \frac{\partial L}{\partial \hat{x}_j} \hat{x}_j \right]$$
 
+Let's keep track on few things
+
+
+$$y = \gamma \hat{x} + \beta$$
+
+$$\frac{\partial y_i}{\partial \hat{x}_i} = \gamma$$
+
+$$\frac{\partial L}{\partial \hat{x}_i} = \frac{\partial L}{\partial y_i} \cdot \frac{\partial y_i}{\partial \hat{x}_i}$$
+
+$$\frac{\partial L}{\partial \hat{x}_i} = \frac{\partial L}{\partial y_i} \cdot \gamma$$
+
+$$\frac{\partial L}{\partial \hat{x}_i} = G \cdot \gamma$$
+
+Where G is the upstream gradient.
+
+
 Hope that made sense, I may even not remember this after long but when I go through this again should make sense.
 
 

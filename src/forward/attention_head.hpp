@@ -536,6 +536,9 @@ public:
         //     this->utils->printFlatArray3D(BTCHost, batch_size, seq_len, d_model);
         // }
 
+        // Note: Please I beg you, projectedBTC
+        // pointer is written not tempX
+        // so tempX is re-useable
         addResidual(projectedBTC, tempX);
 
         // if (debug)
@@ -606,7 +609,9 @@ public:
             BATCH_NEAD_TIME_HEADDIM_DEVICE,
 
             Q_cache,
-            K_cache
+            K_cache,
+
+            tempX
 
         };
     }
