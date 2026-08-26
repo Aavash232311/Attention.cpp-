@@ -8,8 +8,7 @@
 #include <cstdio>
 #include <chrono>
 
-
-extern "C" void layerNormalization(float *x, float *gamma, float *beta, int batch_size, int seq_len, int d_model);
+extern "C" void layerNormalization(float *x, float *gamma, float *beta, float *std_dev_cache, float *mean_cache, int batch_size, int seq_len, int d_model);
 
 class LayerNorm
 {
@@ -25,6 +24,9 @@ class LayerNorm
     int batch_size;
     int seq_len;
     int d_model;
+
+    float *std_dev_cache;
+    float *mean_cache;
 
 public:
     LayerNorm(int batch_size, int seq_len, int d_model) // LayerNorm(x) = γ . (x - μ) / √(σ² + ε) + β
@@ -51,6 +53,10 @@ public:
         // H2D copy
         cudaMemcpy(d_gamma, h_gamma, d_model * sizeof(float), cudaMemcpyHostToDevice);
         cudaMemcpy(d_beta, h_beta, d_model * sizeof(float), cudaMemcpyHostToDevice);
+
+        cudaMalloc((void **)&std_dev_cache, batch_size * seq_len * sizeof(float));
+
+        cudaMalloc((void **)&mean_cache, batch_size * seq_len * sizeof(float));
     }
 
     ~LayerNorm()
@@ -61,6 +67,9 @@ public:
         cudaFree(d_beta);
         cudaFree(d_gamma);
         cudaFree(d_x);
+
+        cudaFree(std_dev_cache);
+        cudaFree(mean_cache);
     }
 
     void forward(float *x) // after adding the embeddings we have (B, T, C) shape
@@ -74,7 +83,7 @@ public:
 
         // copy x to device
         cudaMemcpy(d_x, x, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyHostToDevice);
-        layerNormalization(d_x, d_gamma, d_beta, batch_size, seq_len, d_model);
+        layerNormalization(d_x, d_gamma, d_beta, std_dev_cache, mean_cache, batch_size, seq_len, d_model);
         cudaMemcpy(x, d_x, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
     }
 
@@ -86,5 +95,15 @@ public:
     float *getBetta()
     {
         return this->h_beta;
+    }
+
+    float *getStdDev()
+    {
+        return this->std_dev_cache;
+    }
+
+    float *getMean()
+    {
+        return this->mean_cache;
     }
 };
