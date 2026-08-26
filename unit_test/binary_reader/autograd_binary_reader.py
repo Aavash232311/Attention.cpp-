@@ -87,5 +87,12 @@ def Reader(
 
     dl_dh = load_tensor('./src/cache/cpp_out/dl_dh.bin', shape=(batch_size, seq_len, d_model), dtype=np.float32).to(device)
 
+    # LayerNorm's mean and std dev cache
+
+    mean_cache = load_tensor("./src/cache/cpp_out/mean_cache.bin", shape=(batch_size * seq_len, d_model), dtype=np.float32).to(device)
+    std_dev_cache = load_tensor("./src/cache/cpp_out/std_dev_cache.bin", shape=(batch_size * seq_len, d_model),
+                             dtype=np.float32).to(device)
+    print(mean_cache)
+    print(std_dev_cache)
     return delta, y_predicted, y_actual, h, dl_dw_kernel, h_t, wt, w, dl_dh
 

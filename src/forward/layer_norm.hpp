@@ -8,6 +8,9 @@
 #include <cstdio>
 #include <chrono>
 
+
+using namespace std;
+
 extern "C" void layerNormalization(float *x, float *gamma, float *beta, float *std_dev_cache, float *mean_cache, int batch_size, int seq_len, int d_model);
 
 class LayerNorm
@@ -28,6 +31,10 @@ class LayerNorm
     float *std_dev_cache;
     float *mean_cache;
 
+    bool debug = true;
+
+    unique_ptr<Utility> utils;
+
 public:
     LayerNorm(int batch_size, int seq_len, int d_model) // LayerNorm(x) = γ . (x - μ) / √(σ² + ε) + β
     {
@@ -37,6 +44,8 @@ public:
         this->batch_size = batch_size;
         this->seq_len = seq_len;
         this->d_model = d_model;
+
+        utils = make_unique<Utility>();
 
         for (int i = 0; i < d_model; ++i)
         {
@@ -54,9 +63,9 @@ public:
         cudaMemcpy(d_gamma, h_gamma, d_model * sizeof(float), cudaMemcpyHostToDevice);
         cudaMemcpy(d_beta, h_beta, d_model * sizeof(float), cudaMemcpyHostToDevice);
 
-        cudaMalloc((void **)&std_dev_cache, batch_size * seq_len * sizeof(float));
+        cudaMalloc((void **)&std_dev_cache, batch_size * seq_len * d_model * sizeof(float));
 
-        cudaMalloc((void **)&mean_cache, batch_size * seq_len * sizeof(float));
+        cudaMalloc((void **)&mean_cache, batch_size * seq_len * d_model * sizeof(float));
     }
 
     ~LayerNorm()
@@ -85,6 +94,23 @@ public:
         cudaMemcpy(d_x, x, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyHostToDevice);
         layerNormalization(d_x, d_gamma, d_beta, std_dev_cache, mean_cache, batch_size, seq_len, d_model);
         cudaMemcpy(x, d_x, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+
+        // if (debug)
+        // {
+        //     float *mean_host = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
+        //     float *std_dev_host = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
+
+        //     cudaMemcpy(mean_host, mean_cache, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        //     cudaMemcpy(std_dev_host, std_dev_cache, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+            
+        //     utils->printFlatArray2D(mean_host, batch_size * seq_len, d_model);
+        //     utils->printFlatArray2D(std_dev_host, batch_size * seq_len, d_model);
+
+        //     free(mean_host);
+        //     free(std_dev_cache);
+        // }
+
+        debug = false;
     }
 
     float *getGamma()

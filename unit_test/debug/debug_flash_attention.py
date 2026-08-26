@@ -88,6 +88,7 @@ class DebugFlashAttention(torch.nn.Module):
 
         check_dk = torch.allclose(dk_torch, self.dK, atol=1e-4, rtol=1e-4)
 
+
         if not check_dp:
             print(f"Checking dp kernel, status:{RED} {check_dp} {RESET}")
         else:
