@@ -173,6 +173,7 @@ __global__ void layerNormKernel(
     float std = sqrtf(variance + 1e-8f);
     x[idx] = gamma[e] * ((val - mean) / std) + beta[e]; // fingers crossed no race condition.
 
+
     std_dev_cache[idx] = std;
     mean_cache[idx] = mean;
 }

@@ -30,4 +30,9 @@ struct AttentionParamaters
     // shape (B, T, C) after
     // embedding out
     float *x;
+
+    // cache the mean and std-dev shape
+    // LayerNorm forward pass cache.
+    float *mean_cache;
+    float *std_dev_cache;
 };

@@ -614,7 +614,10 @@ public:
             Q_cache,
             K_cache,
 
-            tempX
+            tempX,
+
+            layerNorm->getMean(),
+            layerNorm->getStdDev()
 
         };
     }

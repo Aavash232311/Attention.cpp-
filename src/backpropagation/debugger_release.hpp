@@ -224,6 +224,7 @@ public:
     /**
  * @class pyDebuggerReleaseStage7
  * @brief Releases (1/sqrt(dk) GK) (1/sqrt(dk)) G^T Q d_score_t for the dK = N G^T Q part.
+ * std dev and mean from the forward pass
 
 
  * @note Call this after all the 1, 2, 3, 4, 5, 6 and 7 are called stage are released
@@ -238,17 +239,25 @@ public:
         float *K_host = (float *)malloc(batch_size * seq_len * num_heads * head_dim * sizeof(float));
         float *d_score_t = (float *)malloc(batch_size * num_heads * seq_len * seq_len * sizeof(float));
 
+        float *mean_host = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
+        float *std_dev_host = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
+
         cudaMemcpy(dQ_host, model_paramaters.dQ, batch_size * seq_len * num_heads * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
         cudaMemcpy(dK_host, model_paramaters.dK, batch_size * seq_len * num_heads * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
         cudaMemcpy(Q_host, model_paramaters.attention_head.Q_cache, batch_size * seq_len * num_heads * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
         cudaMemcpy(K_host, model_paramaters.attention_head.K_cache, batch_size * seq_len * num_heads * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
         cudaMemcpy(d_score_t, model_paramaters.d_score_t, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
 
+        cudaMemcpy(mean_host, model_paramaters.attention_head.mean_cache, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(std_dev_host, model_paramaters.attention_head.std_dev_cache, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+
         bulkRelease<float>(
             {{dQ_host, batch_size * seq_len * num_heads * head_dim, "dq.bin"},
              {dK_host, batch_size * seq_len * num_heads * head_dim, "dk.bin"},
              {Q_host, batch_size * seq_len * num_heads * head_dim, "q.bin"},
              {K_host, batch_size * seq_len * num_heads * head_dim, "k.bin"},
+             {mean_host, batch_size * seq_len * d_model, "mean_cache.bin"},
+             {std_dev_host, batch_size * seq_len * d_model, "std_dev_cache.bin"},
              {d_score_t, batch_size * num_heads * seq_len * seq_len, "d_score_t.bin"}});
 
         free(d_score_t);
@@ -256,5 +265,8 @@ public:
         free(Q_host);
         free(K_host);
         free(dK_host);
+
+        free(mean_host);
+        free(std_dev_host);
     }
 };
