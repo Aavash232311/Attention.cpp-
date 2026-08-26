@@ -289,10 +289,6 @@ __device__ __forceinline__ void ParallelReducer(float &localSum)
 
 extern "C"
 {
-    void layerNormBackGradKerel()
-    {
-    }
-
     void softmaxBackGradKernel(
         float *P,
         float *dY,
