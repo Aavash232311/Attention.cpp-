@@ -720,6 +720,23 @@ $$\frac{\partial L}{\partial \hat{x}_i} = G \cdot \gamma$$
 
 Where G is the upstream gradient.
 
+That G is not something that simple here I just realized we need to account for Linear Transformation that goes in when we have Key, Query and Value and turns out G is:
+
+Recall formula from linear layer,
+This is when we have a linear equation:
+
+$$
+z = Wh + b
+$$
+
+$$
+\frac{\partial L}{\partial h} = W^T \frac{\partial L}{\partial z}
+$$
+
+$$G_{\hat{x}_0} = \left( \frac{1}{\sqrt{d_k}} G_S K \right) W_Q^T + \left( \frac{1}{\sqrt{d_k}} G_S^T Q \right) W_K^T + (P^T G_O) W_V^T$$
+
+
+
 
 Hope that made sense, I may even not remember this after long but when I go through this again should make sense.
 
