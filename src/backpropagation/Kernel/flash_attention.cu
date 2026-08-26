@@ -161,7 +161,6 @@ __device__ __forceinline__ void ParallelReducer(float &localSum)
     localSum = __shfl_sync(0xffffffff, localSum, 0);
 }
 
-
 // LayerNorm Backpropagation
 
 /*
@@ -171,124 +170,115 @@ __device__ __forceinline__ void ParallelReducer(float &localSum)
 
 // C dimension > 32 we use shared memory here, if it was  < 32 then register could talk with each other in faster way, even if they are they wont because of this but its okay here.
 // Note:- I am not so sharp and smart so I am taking my time here to derive and understand.
-// __global__ void LayerNormBackPropgationKernel(
-//     float *x, // (B, T, C) after input shape
-//     float *G, // (B, T, C)
-//     float *gamma,
-//     float *sigma,
-//     int D,
-//     int B,
-//     int T,
-//     int C)
-// {
-//     int batch_idx = blockIdx.y;
-//     int row_idx = blockIdx.x;
 
-//     const float *row = x + batch_idx * (T * C) + row_idx * C;
-//     float *out_row = x + batch_idx * (T * C) + row_idx * C;
+__global__ void LayerNormBackPropgationKernel(
+    float *x,   // (B, T, C) after input shape
+    float *G,   // (B, T, C)
+    float *mc,  // mean cache (B*T, C)
+    float *sdc, // std dev cache (B*T, C)
+    float *gamma,
+    int D,
+    int B,
+    int T,
+    int C)
+{
+    int batch_idx = blockIdx.y;
+    int row_idx = blockIdx.x;
 
-//     int lane = threadIdx.x % 32;     // position within warp, basically "one" thread within a cuda wrap
-//     int warp_id = threadIdx.x / 32;  // position within block
-//     int num_warps = blockDim.x / 32; // total warps avalible
+    float *out_row = x + batch_idx * (T * C) + row_idx * C;
 
-//     __shared__ float shared_sum_1[32];
-//     __shared__ float shared_sum_2[32];
+    int lane = threadIdx.x % 32;     // position within warp, basically "one" thread within a cuda wrap
+    int warp_id = threadIdx.x / 32;  // position within block
+    int num_warps = blockDim.x / 32; // total warps avalible
 
-//     float sum_term_1 = 0.0f;
-//     float sum_term_2 = 0.0f;
-//     // partial sum here, for each thread
-//     for (int i = threadIdx.x; i < C; i += blockDim.x)
-//     {
+    __shared__ float shared_sum_1[32];
+    __shared__ float shared_sum_2[32];
 
-//         sum_term_1 += row[i];
-//         sum_term_2 += row[i] * gamma[i] * G[i];
-//     }
+    float epsilon = 1e-8f;
 
-//     // reduce within each wrap
-//     ParallelReducerMultiple(sum_term_1, sum_term_2);
+    float sum_term_1 = 0.0f;
+    float sum_term_2 = 0.0f;
+    // partial sum here, for each thread
+    for (int i = threadIdx.x; i < C; i += blockDim.x)
+    {
+        float x_hat = (x[i] - mc[i]) / sqrtf(sdc[i] * sdc[i] + epsilon);
 
-//     // Now the sum is one single output of the sum within that wrap
-//     // and if the lane = 0 then we will assign that sum value of that wrap
-//     // to shared_sum by assigning wrap_id
-//     if (lane == 0)
-//     {
-//         shared_sum_1[warp_id] = sum_term_1;
-//         shared_sum_2[warp_id] = sum_term_2;
-//     }
+        sum_term_1 += G[i] * gamma[i];
+        sum_term_2 += G[i] * gamma[i] * x_hat;
+    }
 
-//     __syncthreads();
+    // reduce within each wrap
+    ParallelReducerMultiple(sum_term_1, sum_term_2);
 
-//     if (warp_id == 0)
-//     {
-//         sum_term_1 = (lane < num_warps) ? shared_sum_1[lane] : 0.0f;
-//         sum_term_2 = (lane < num_warps) ? shared_sum_2[lane] : 0.0f;
-//         // reduce that element within that shared memory
-//         // when each wrap output is contributed
-//         ParallelReducerMultiple(sum_term_1, sum_term_2);
+    // Now the sum is one single output of the sum within that wrap
+    // and if the lane = 0 then we will assign that sum value of that wrap
+    // to shared_sum by assigning wrap_id
+    if (lane == 0)
+    {
+        shared_sum_1[warp_id] = sum_term_1;
+        shared_sum_2[warp_id] = sum_term_2;
+    }
 
-//         if (lane == 0)
-//             shared_sum_1[0] = sum_term_1;
-//             shared_sum_2[0] = sum_term_2;
-//     }
+    __syncthreads();
 
-//     __syncthreads();
+    if (warp_id == 0)
+    {
+        sum_term_1 = (lane < num_warps) ? shared_sum_1[lane] : 0.0f;
+        sum_term_2 = (lane < num_warps) ? shared_sum_2[lane] : 0.0f;
+        // reduce that element within that shared memory
+        // when each wrap output is contributed
+        ParallelReducerMultiple(sum_term_1, sum_term_2);
 
-//     // float mean = shared_sum_1[0] / C;
+        if (lane == 0)
+            shared_sum_1[0] = sum_term_1;
+        shared_sum_2[0] = sum_term_2;
+    }
 
-//     // float var_sum = 0.0f;
+    __syncthreads();
+    // The above code should complete the one level of parallel reduction
+    // we accounted for the two sum part.
 
-//     // for (int i = threadIdx.x; i < C; i += blockDim.x)
-//     // {
-//     //     float diff = row[i] - mean;
-//     //     var_sum += diff * diff;
-//     // } // this I like to call reduction in surface
+    for (int i = threadIdx.x; i < C; i += blockDim.x)
+    {
+        float first_compoenent = 1 / D * sdc[i];
 
-//     // ParallelReducer(var_sum);
+        float dl_x_hat = (G[i] * gamma[i]) * D;
 
-//     // if (lane == 0)
-//     // {
-//     //     shared_sum[warp_id] = var_sum;
-//     // }
+        float curr_xhat = (x[i] - mc[i]) / sqrtf(sdc[i] * sdc[i] + epsilon);
 
-//     // __syncthreads();
-
-//     // if (warp_id == 0)
-//     // {
-//     //     var_sum = (lane < num_warps) ? shared_sum[lane] : 0.0f;
-//     //     ParallelReducer(var_sum);
-
-//     //     if (lane == 0)
-//     //     {
-//     //         shared_sum[0] = var_sum;
-//     //     }
-//     // }
-
-//     // __syncthreads();
-
-//     // float epsilon = 1e-8f;
-
-//     // float variance = shared_sum[0] / C; // mean of that var * var
-//     // // by the def, we have std dev,
-//     // float std = sqrtf(variance + epsilon);
-
-//     // // Here we have var, std dev, and mean
-//     // // we just need to write the formula differently from that we derived in flashback.md
-
-//     // // we can store x_hat i from the forward kernel or re-compute
-//     // // enginnerring tradeoffs.
-
-//     // // each thread will be touching here,
-//     // for (int i = threadIdx.x; i < C; i += blockDim.x)
-//     // {
-//     //     float x_u = row[i] - mean;
-//     //     // one xi computed, not re-using from the layer norm kerenl
-//     //     float x_i  = x_u / sqrtf((std * std) + epsilon);
-
-//     // }
-// }
+        float final_comp = first_compoenent * (dl_x_hat - sum_term_1 - curr_xhat * sum_term_2);
+        // write in that same array, threads are synced, reading part is done here shouldn't be a race condition.
+        out_row[i] = final_comp;
+        // Note:- something is not right here, will get back 
+        // after finding the net upstream gradient.
+    }
+}
 
 extern "C"
 {
+    void layerNormBackGrad(
+        float *x,     // (B, T, C) input from forward pass
+        float *G,     // (B, T, C) upstream gradient dL/dy
+        float *mc,    // mean cache (B*T,)    ONE float per row, not per channel
+        float *sdc,   // std dev cache (B*T,) ONE float per row, not per channel
+        float *gamma, // (C,)  learnable scale
+        int D,
+        int B,
+        int T,
+        int C)
+    {
+        int row_count = B * T;                            // one row per (batch, token) pair
+        int threads_per_block = ((C + 31) / 32) * 32;     // round C up to nearest warp (32)
+        threads_per_block = min(threads_per_block, 1024); // cap at CUDA's max threads/block
+
+        dim3 blockSize(threads_per_block, 1, 1);
+        dim3 gridSize(row_count, 1, 1); // one block per row, simple 1D grid
+
+        LayerNormBackPropgationKernel<<<gridSize, blockSize>>>(
+            x, G, mc, sdc, gamma, D, B, T, C);
+
+        cudaDeviceSynchronize();
+    }
     void softmaxBackGradKernel(
         float *P,
         float *dY,
