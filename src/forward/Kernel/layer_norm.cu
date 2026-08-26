@@ -9,9 +9,6 @@
 #include <cuda_runtime.h>
 #include <curand_kernel.h>
 
-
-
-
 __device__ __forceinline__ void ParallelReducer(float &localSum)
 {
     for (int offset = 16; offset > 0; offset /= 2)
@@ -19,13 +16,14 @@ __device__ __forceinline__ void ParallelReducer(float &localSum)
     localSum = __shfl_sync(0xffffffff, localSum, 0);
 }
 
-
 // We need to optimize this tomorrow it wont work if the d_model > 32
 // True level of optimization without very much to loose takes more time probally thousnads of line and insanely complicated code.
 __global__ void layerNormKernelSlow( // not "slow" but slower than which utilizes registers
     float *x,                        // (B, T, C)
     float *gamma,
     float *beta,
+    float *std_dev_cache,
+    float *mean_cache,
     int batch_size,
     int seq_len,
     int d_model)
@@ -122,6 +120,9 @@ __global__ void layerNormKernelSlow( // not "slow" but slower than which utilize
     {
         out_row[i] = gamma[i] * ((row[i] - mean) / std) + beta[i];
     }
+
+    std_dev_cache[row_idx] = std;
+    mean_cache[row_idx] = mean;
 }
 
 // ------------ We forgoet to account for d_model > 32 ------------- we need to do it all the time whenever using memory from the register.
@@ -129,6 +130,8 @@ __global__ void layerNormKernel(
     float *x, // (batch_size, seq_len, d_model)
     float *gamma,
     float *beta,
+    float *std_dev_cache,
+    float *mean_cache,
     int batch_size,
     int seq_len,
     int d_model)
@@ -169,10 +172,13 @@ __global__ void layerNormKernel(
     // like in the Columb's law.
     float std = sqrtf(variance + 1e-8f);
     x[idx] = gamma[e] * ((val - mean) / std) + beta[e]; // fingers crossed no race condition.
+
+    std_dev_cache[idx] = std;
+    mean_cache[idx] = mean;
 }
 
 // I must have forgotten something here,
-// its been long since summer internship so we have warp level reduction here. 
+// its been long since summer internship so we have warp level reduction here.
 // if the thread is < 32, again I wont remeber in an instance just by looking at it.
 
 extern "C"
@@ -181,6 +187,8 @@ extern "C"
         float *x, // (batch_size, seq_len, d_model)
         float *gamma,
         float *beta,
+        float *std_dev_cache,
+        float *mean_cache,
         int batch_size,
         int seq_len,
         int d_model)
@@ -192,14 +200,14 @@ extern "C"
             dim3 grid(seq_len, batch_size);
             dim3 block(min(1024, d_model));
 
-            layerNormKernelSlow<<<grid, block>>>(x, gamma, beta, batch_size, seq_len, d_model);
+            layerNormKernelSlow<<<grid, block>>>(x, gamma, beta, std_dev_cache, mean_cache, batch_size, seq_len, d_model);
         }
         else
         {
             dim3 grid(seq_len, batch_size);
             dim3 block(d_model);
 
-            layerNormKernel<<<grid, block>>>(x, gamma, beta, batch_size, seq_len, d_model);
+            layerNormKernel<<<grid, block>>>(x, gamma, beta, std_dev_cache, mean_cache, batch_size, seq_len, d_model);
         }
 
         cudaDeviceSynchronize();
