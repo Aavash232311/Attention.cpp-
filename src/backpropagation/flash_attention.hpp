@@ -425,7 +425,7 @@ public:
 
         */
 
-        invoke();
+        NormLinearNet();
 
 
 

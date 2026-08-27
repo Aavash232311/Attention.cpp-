@@ -3,6 +3,9 @@
 #include "../include/utils.hpp"
 #include "single_embeddings.hpp"
 
+// I am afraid that I manage memory like I have no common sense at all
+// but anyway right now we just want it to work.
+
 struct AttentionParamaters
 {
     LinearParams Q_params;
@@ -35,4 +38,13 @@ struct AttentionParamaters
     // LayerNorm forward pass cache.
     float *mean_cache;
     float *std_dev_cache;
+
+    // weights of Q, K and V
+    // These are in device from linear
+    float *Wq; // Shape (d_model, vocab_size) 
+    float *Wk;
+    float *Wv;
+
+    // Correctness first optimization layer, already very very complicated
+
 };

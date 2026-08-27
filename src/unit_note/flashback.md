@@ -566,11 +566,8 @@ $$\hat{x}_i = \frac{x_i - \mu}{\sqrt{\sigma^2 + \varepsilon}} = \frac{x_i - \fra
 
 where
 
-$$\sigma = \sqrt{\frac{1}{d}\sum_{k=1}^{d}\left(x_k - \frac{1}{d}\sum_{m=1}^{d}x_m\right)^2}$$
+$$\sigma = \sqrt{\frac{1}{d}\sum_{k=1}^{d}\left(x_k - \frac{1}{d}\sum_{m=1}^{d}x_m\right)^2 + \epsilon}$$
 
-$\sigma$ can also be defined as
-
-$$\sigma = \sqrt{\sigma^2 + \varepsilon} $$
 
 And, 
 $$\sigma^2 = \frac{1}{d}\sum_{k=1}^{d}\left(x_k - \frac{1}{d}\sum_{m=1}^{d}x_m\right)^2
@@ -586,6 +583,11 @@ $$
 $$
 
 using the multi variable chain rule we have
+
+<b>Derived at the very end</b>
+$$\frac{\partial L}{\partial \hat{x}_i} = G \cdot \gamma$$
+
+Where G is the upstream gradient.
 
 $$
 \frac{\partial L}{\partial x_i}
