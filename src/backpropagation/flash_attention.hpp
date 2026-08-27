@@ -35,7 +35,7 @@ extern "C" void MatMul4D(float *A, float *B, float *C, float scale, int a, int b
 extern "C" void softmaxBackGradKernel(float *P, float *dY, float *out, int N, int batch_size, int seq_len, int n_head);
 extern "C" void layerNormBackGrad(float *x, float *G, float *mc, float *sdc, float *gamma, int D, int B, int T, int C);
 
-class FlashAttention : public AutoGradEngine
+class FlashAttention : virtual public AutoGradEngine
 {
 public:
     float *d_scores_device;
@@ -419,9 +419,14 @@ public:
 
             Mathematical intuntion: We have currently not accounted for
             linear transformation that goes into QKV now
-            we have already derviced the formula 
+            we have already derviced the formula.
+
+            Gonna use 1 kernel re-peact the opreation 
 
         */
+
+        invoke();
+
 
 
         if (debug)

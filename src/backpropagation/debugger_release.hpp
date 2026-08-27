@@ -9,6 +9,7 @@
 
 #include "./interface_back.hpp"
 #include "./flash_attention.hpp"
+#include "./flash_attention_linear.hpp"
 
 #include "../include/utils.hpp"
 #include "../include/linear.hpp"
@@ -24,12 +25,14 @@ using namespace std;
 // Releases debugger script for python project to check
 // Autograd class and its child classes are getting messy
 
-class AutogradEngineDebuggerRelease : public FlashAttention
+class AutogradEngineDebuggerRelease : public FlashAttention, public FlashAttentionLinear
 {
 public:
     AutogradEngineDebuggerRelease(int d_model, int vocab_size, int num_heads,
                                   int seq_len, int batch_size, bool debug)
-        : FlashAttention(d_model, vocab_size, num_heads, seq_len, batch_size, debug)
+        : AutoGradEngine(d_model, vocab_size, num_heads, seq_len, batch_size, debug),
+          FlashAttention(d_model, vocab_size, num_heads, seq_len, batch_size, debug),
+          FlashAttentionLinear(d_model, vocab_size, num_heads, seq_len, batch_size, debug)
     {
     }
 
