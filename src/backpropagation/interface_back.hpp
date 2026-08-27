@@ -238,7 +238,10 @@ public:
     virtual void pyDebuggerReleaseStage6() {}
     virtual void pyDebuggerReleaseStage7() {}
 
-    virtual void invoke() {}
+
+    // Backpropagation along Linear layer, Normalization 
+    virtual void NormLinearNet() {}
+    virtual void weightTransposeAttn() {}
 
     void backprop(
         const FlashAttentionPointers &paramaters)

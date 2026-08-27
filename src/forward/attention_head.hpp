@@ -89,6 +89,8 @@ public:
     float *K_cache;
 
 
+
+
     Attention(
         int d_model,
         int vocab_size,
@@ -617,7 +619,11 @@ public:
             tempX,
 
             layerNorm->getMean(),
-            layerNorm->getStdDev()
+            layerNorm->getStdDev(),
+
+            query->getWeight(),
+            key->getWeight(),
+            value->getWeight()
 
         };
     }
