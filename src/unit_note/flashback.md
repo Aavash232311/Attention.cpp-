@@ -568,6 +568,9 @@ where
 
 $$\sigma = \sqrt{\frac{1}{d}\sum_{k=1}^{d}\left(x_k - \frac{1}{d}\sum_{m=1}^{d}x_m\right)^2 + \epsilon}$$
 
+$\sigma$ can also be defined as
+
+$$\sigma = \sqrt{\sigma^2 + \varepsilon} $$
 
 And, 
 $$\sigma^2 = \frac{1}{d}\sum_{k=1}^{d}\left(x_k - \frac{1}{d}\sum_{m=1}^{d}x_m\right)^2
