@@ -16,7 +16,7 @@ class DebugFlashAttention(torch.nn.Module):
         self.dl_dw = dl_dw # Upstream gradient G
 
         # looks like ideal gas equation, but it's not
-        self.P, self.V, self.PT, self.VT, self.G_unc, self.G, self.dp, self.dv, self.softmax_upstream, self.dQ, self.K, self.Q, self.d_score_t, self.dK, self.mean_cache, self.std_dev_cache = ReaderFlashAttention(batch_size, seq_len, vocab_size, d_model, num_heads, head_dim)
+        self.P, self.V, self.PT, self.VT, self.G_unc, self.G, self.dp, self.dv, self.softmax_upstream, self.dQ, self.K, self.Q, self.d_score_t, self.dK = ReaderFlashAttention(batch_size, seq_len, vocab_size, d_model, num_heads, head_dim)
 
     # dV = P^T G
     # dP = GV^T

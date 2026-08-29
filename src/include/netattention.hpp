@@ -12,7 +12,6 @@ struct NetAttentionParamaters
 
     // --------- Variables needed for upstream gradient --------------
 
-
     // MAKE SURE THAT THSE ARE VARIABLES FROM THE DEVICE
     float *y_actual;
     float *y_predicted;
@@ -36,14 +35,14 @@ struct NetAttentionParamaters
     float *dl_dh_out_d;
 };
 
-struct FlashAttentionPointers : NetAttentionParamaters 
+struct FlashAttentionPointers : NetAttentionParamaters
 {
     // normal opreation like transpose is checked by the python debugger.
     // we will create a temporary variable when we want to release these.
     float *P_T_device;
     float *V_T_device;
 
-    // wewe P_T and V_T to be output such that we can consume the passed arr 
+    // wewe P_T and V_T to be output such that we can consume the passed arr
     float *P_T_device_out;
     float *V_T_device_out;
 
@@ -59,4 +58,15 @@ struct FlashAttentionPointers : NetAttentionParamaters
     float *dK;
 
     float *d_score_t;
+
+    // weights of Q, K and V
+    // These are in device from linear
+
+    float *WkT;
+    float *WvT;
+
+    float *Wk;
+    float *WV;
+
+    // Correctness first optimization layer, already very very complicated
 };

@@ -27,8 +27,8 @@ struct AttentionParamaters
     float *DEVCIE_BUFFER_BTC;
     float *DEVICE_BUFFER_MULTIHEAD;
 
-    float* Q_cache;
-    float* K_cache;
+    float *Q_cache;
+    float *K_cache;
 
     // shape (B, T, C) after
     // embedding out
@@ -39,12 +39,11 @@ struct AttentionParamaters
     float *mean_cache;
     float *std_dev_cache;
 
-    // weights of Q, K and V
-    // These are in device from linear
-    float *Wq; // Shape (d_model, vocab_size) 
-    float *Wk;
-    float *Wv;
 
-    // Correctness first optimization layer, already very very complicated
+    // Pass Host reference to linear layer of weights of QKV
+
+    float *host_WQ;
+    float *host_WK;
+    float *host_WV;
 
 };
