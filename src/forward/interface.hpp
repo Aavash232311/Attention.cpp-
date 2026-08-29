@@ -127,6 +127,15 @@ class AttentionInterface
 
     float *d_score_t;
 
+    /*
+        Net G for layer norm very end formula in 
+        flashback.md
+    */
+
+    float *qUp;
+    float *kUp;
+    float *vUp;
+
 private:
     // ----------- TEMPORARY DEBUGGER SCRIPT ---------------------
 
@@ -259,6 +268,10 @@ public:
         cudaMalloc((void **)&Wk, d_model * d_model * sizeof(float));
         cudaMalloc((void **)&WV, d_model * d_model * sizeof(float));
         cudaMalloc((void **)&WQ, d_model * d_model * sizeof(float));
+
+        cudaMalloc((void **)&qUp, batch_size * seq_len * d_model * sizeof(float));
+        cudaMalloc((void **)&kUp, batch_size * seq_len * d_model * sizeof(float));
+        cudaMalloc((void **)&vUp, batch_size * seq_len * d_model * sizeof(float));
     }
 
     ~AttentionInterface()
@@ -317,6 +330,10 @@ public:
         cudaFree(Wk);
         cudaFree(WV);
         cudaFree(WQ);
+
+        cudaFree(qUp);
+        cudaFree(kUp);
+        cudaFree(vUp);
     }
 
     LinearParams getLmHeadParams()
@@ -474,6 +491,10 @@ public:
                 modelParamaters.Wk = Wk;
                 modelParamaters.WV = WV;
                 modelParamaters.WQ = WQ;
+
+                modelParamaters.qUp = qUp;
+                modelParamaters.kUp = kUp;
+                modelParamaters.vUp = vUp;
 
                 // because the backprops needs to be done for each epoch.
                 // we need to keep in mind that the things hurting performace like cuda malloc and everything declared
