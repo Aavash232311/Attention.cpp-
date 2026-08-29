@@ -93,9 +93,11 @@ class AttentionInterface
 
     float *WkT;
     float *WvT;
+    float *WqT;
 
     float *Wk;
     float *WV;
+    float *WQ;
 
     // ------------ Allocation fhas attention class ---------------------
 
@@ -250,11 +252,13 @@ public:
 
         cudaMalloc((void **)&d_score_t, batch_size * num_heads * seq_len * seq_len * sizeof(float));
 
-        cudaMalloc((void **)&WkT, d_model * vocab_size * sizeof(float));
-        cudaMalloc((void **)&WvT, d_model * vocab_size * sizeof(float));
+        cudaMalloc((void **)&WkT, d_model * d_model * sizeof(float));
+        cudaMalloc((void **)&WvT, d_model * d_model * sizeof(float));
+        cudaMalloc((void **)&WqT, d_model * d_model * sizeof(float));
 
-        cudaMalloc((void **)&Wk, d_model * vocab_size * sizeof(float));
-        cudaMalloc((void **)&WV, d_model * vocab_size * sizeof(float));
+        cudaMalloc((void **)&Wk, d_model * d_model * sizeof(float));
+        cudaMalloc((void **)&WV, d_model * d_model * sizeof(float));
+        cudaMalloc((void **)&WQ, d_model * d_model * sizeof(float));
     }
 
     ~AttentionInterface()
@@ -308,9 +312,11 @@ public:
 
         cudaFree(WkT);
         cudaFree(WvT);
+        cudaFree(WqT);
 
         cudaFree(Wk);
         cudaFree(WV);
+        cudaFree(WQ);
     }
 
     LinearParams getLmHeadParams()
@@ -463,9 +469,11 @@ public:
 
                 modelParamaters.WkT = WkT;
                 modelParamaters.WvT = WvT;
+                modelParamaters.WqT = WqT;
                 
                 modelParamaters.Wk = Wk;
                 modelParamaters.WV = WV;
+                modelParamaters.WQ = WQ;
 
                 // because the backprops needs to be done for each epoch.
                 // we need to keep in mind that the things hurting performace like cuda malloc and everything declared

@@ -64,9 +64,11 @@ struct FlashAttentionPointers : NetAttentionParamaters
 
     float *WkT;
     float *WvT;
+    float *WqT; // shape in LM head and shape of in attention head is not the same I got confused
 
     float *Wk;
     float *WV;
+    float *WQ;
 
     // Correctness first optimization layer, already very very complicated
 };
