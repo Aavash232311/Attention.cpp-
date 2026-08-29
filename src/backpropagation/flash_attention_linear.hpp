@@ -29,8 +29,6 @@ private:
 
         // K and V are allocated elsewhere just re-using this pointer
 
-
-
         cudaMemcpy(model_paramaters.Wk, model_paramaters.attention_head.host_WK, d_model * d_model * sizeof(float), cudaMemcpyHostToDevice);
         cudaMemcpy(model_paramaters.WQ, model_paramaters.attention_head.host_WQ, d_model * d_model * sizeof(float), cudaMemcpyHostToDevice);
         cudaMemcpy(model_paramaters.WV, model_paramaters.attention_head.host_WV, d_model * d_model * sizeof(float), cudaMemcpyHostToDevice);
@@ -39,10 +37,8 @@ private:
         wt_upstream(model_paramaters.WQ, model_paramaters.WqT, d_model, d_model);
         wt_upstream(model_paramaters.WV, model_paramaters.WvT, d_model, d_model);
 
-        // if (debug)
-        // {
-        //     utils->printFlatArray2D(model_paramaters.attention_head.host_WK, d_model, d_model);
-        // }
+        if (debug)
+            pyDebuggerReleaseStage8();
     }
 
 public:
