@@ -14,6 +14,7 @@ using namespace std;
 
 extern "C" void wt_upstream(float *w, float *wt, int a, int b);
 extern "C" void matmul3d2d(float *A, float *B, float *C, int a, int b, int c, int d);
+extern "C" void ReformBNTH_BTC(float *arr, float *out, int batch_size, int seq_len, int d_model, int num_head, int head_dim);
 // G_kx0 total upstream gradient and Linear Layer, add-residual back propagation here.
 class FlashAttentionLinear : virtual public AutoGradEngine
 {
@@ -36,6 +37,19 @@ private:
         wt_upstream(model_paramaters.Wk, model_paramaters.WkT, d_model, d_model);
         wt_upstream(model_paramaters.WQ, model_paramaters.WqT, d_model, d_model);
         wt_upstream(model_paramaters.WV, model_paramaters.WvT, d_model, d_model);
+
+        // recalling the shape here
+
+        // dQ = 1/sqrt(dk) GK       shape=(batch_size, num_heads, seq_len, head_dim)
+        // dK = 1/sqrt(dk) G^T Q    shape=(batch_size, num_heads, seq_len, head_dim)
+        // dV =  P^T G              shape=(batch_size, num_heads, seq_len, head_dim)
+
+        // lets re-arrange the shape of those gradient which came by certian matrix opreation during forward pass of the attention
+        // mechanism, re-shape them to BTC
+
+        ReformBNTH_BTC(model_paramaters.dV, model_paramaters.vUp, batch_size, seq_len, d_model, num_heads, head_dim);
+        ReformBNTH_BTC(model_paramaters.dQ, model_paramaters.qUp, batch_size, seq_len, d_model, num_heads, head_dim);
+        ReformBNTH_BTC(model_paramaters.dK, model_paramaters.kUp, batch_size, seq_len, d_model, num_heads, head_dim);
 
         if (debug)
             pyDebuggerReleaseStage8();

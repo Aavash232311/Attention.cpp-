@@ -249,13 +249,60 @@ __global__ void LayerNormBackPropgationKernel(
         float final_comp = first_compoenent * (dl_x_hat - sum_term_1 - curr_xhat * sum_term_2);
         // write in that same array, threads are synced, reading part is done here shouldn't be a race condition.
         out_row[i] = final_comp;
-        // Note:- something is not right here, will get back 
+        // Note:- something is not right here, will get back
         // after finding the net upstream gradient.
+    }
+}
+
+
+__global__ void ReformBNTH_BTC_Kernel(
+    float *arr, // [batch_size, num_head, seq_len, head_dim]
+    float *out, // (B, T, C)
+    int batch_size,
+    int seq_len,
+    int d_model,
+    int num_head,
+    int head_dim)
+{
+    int batch_idx = blockIdx.z;
+    int num_head_idx = blockIdx.y;
+    int seq_idx = blockIdx.x;
+
+    // blockDim.x is just 256 in our case
+    // here each thread will touch one hd_idx if smaller tensor
+    for (int hd_idx = threadIdx.x; hd_idx < head_dim; hd_idx += blockDim.x)
+    {
+        int idx = batch_idx * (num_head * seq_len * head_dim) +
+                  num_head_idx * (seq_len * head_dim) +
+                  seq_idx * (head_dim) + hd_idx;
+        // d_model = num_head * seq_len
+        int c_idx = num_head_idx * head_dim + hd_idx;
+        int outIdx = batch_idx * (seq_len * d_model) + seq_idx * (d_model) + c_idx;
+
+        out[outIdx] = arr[idx];
     }
 }
 
 extern "C"
 {
+
+    void ReformBNTH_BTC(
+        float *arr, // [batch_size, num_head, seq_len, d_head]
+        float *out, // (B, T, C)
+        int batch_size,
+        int seq_len,
+        int d_model,
+        int num_head,
+        int head_dim)
+    {
+        int threads_per_block = 256; 
+        dim3 grid(seq_len, num_head, batch_size);
+        dim3 block(threads_per_block);
+
+        ReformBNTH_BTC_Kernel<<<grid, block>>>(arr, out, batch_size, seq_len, d_model, num_head, head_dim);
+
+        cudaDeviceSynchronize();
+    }
     void layerNormBackGrad(
         float *x,     // (B, T, C) input from forward pass
         float *G,     // (B, T, C) upstream gradient dL/dy

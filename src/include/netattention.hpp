@@ -71,4 +71,9 @@ struct FlashAttentionPointers : NetAttentionParamaters
     float *WQ;
 
     // Correctness first optimization layer, already very very complicated
+
+    // G_x_hat
+    float *qUp;
+    float *kUp;
+    float *vUp;
 };
