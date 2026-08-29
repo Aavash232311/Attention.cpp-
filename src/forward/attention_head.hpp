@@ -88,9 +88,6 @@ public:
     float *Q_cache;
     float *K_cache;
 
-
-
-
     Attention(
         int d_model,
         int vocab_size,
@@ -177,7 +174,6 @@ public:
 
         // (B, n_head, T, head_dim) s
         value_mat = (float *)malloc(batch_size * num_heads * seq_len * head_dim * sizeof(float));
-        
     };
 
     ~Attention()
@@ -213,7 +209,6 @@ public:
         free(P);
         free(O);
         free(value_mat);
-
     }
 
 public:

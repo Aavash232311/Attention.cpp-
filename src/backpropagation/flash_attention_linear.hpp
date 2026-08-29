@@ -15,11 +15,30 @@ using namespace std;
 // G_kx0 total upstream gradient and Linear Layer, add-residual back propagation here.
 class FlashAttentionLinear : virtual public AutoGradEngine
 {
+
+private:
+
+    void copyWeightQKVtoDevice()
+    {
+        // These data are in host automatically from the Linear class
+        // we have the buffer from interface class now we need to copy that
+
+        // from attention pointer has the thing inside of CPU
+        // copy them all to GPU
+
+        
+        if (debug)
+        {
+            utils->printFlatArray2D(model_paramaters.attention_head.host_WK, d_model, d_model);
+        }
+    }
+
 public:
     FlashAttentionLinear(int d_model, int vocab_size, int num_heads,
                          int seq_len, int batch_size, bool debug)
         : AutoGradEngine(d_model, vocab_size, num_heads, seq_len, batch_size, debug)
     {
+        
     }
 
 
@@ -31,8 +50,8 @@ public:
         Shape dQ: (batch_size, num_heads, seq_len, head_dim)
         Shape dV: (batch_size, num_heads, seq_len, head_dim)
 
-        Shape W's   : (d_model, vocab_size) 
-        Shape W'ts  : (voab_size, d_model)
+        Shape W's   : (d_model, d_model) 
+        Shape W'ts  : (d_model, d_model)
 
         We aready have the transpose kernel here. 
         Not sure to re-use that kerenl or write a new one reading in a transpose way, too old for that.
@@ -43,16 +62,16 @@ public:
 
     void weightTransposeAttn()
     {
+        // K and V are allocated elsewhere just re-using this pointer
+        float* WqT = model_paramaters.w_device;
+
+        this->copyWeightQKVtoDevice();
         
     }
 
 
     void NormLinearNet()
     {
-        //
-        if (debug)
-        {
-            cout << "Invoked method" << endl;
-        }
+        this->weightTransposeAttn();
     }
 };

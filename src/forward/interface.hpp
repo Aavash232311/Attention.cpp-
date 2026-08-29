@@ -88,6 +88,15 @@ class AttentionInterface
     float *w_device;
     float *w_out_d;
 
+    // For the net gradient we also want to allocate for
+    // WkT and WvT
+
+    float *WkT;
+    float *WvT;
+
+    float *Wk;
+    float *WV;
+
     // ------------ Allocation fhas attention class ---------------------
 
     float *S_device;
@@ -110,7 +119,7 @@ class AttentionInterface
     float *dQ;
     float *dK;
 
-    // softmax activation derivative terms. 
+    // softmax activation derivative terms.
 
     float *ppt;
 
@@ -135,6 +144,8 @@ private:
 
         free(h_arr);
     }
+
+
 
 public:
     AttentionInterface(
@@ -231,13 +242,19 @@ public:
         cudaMalloc((void **)&dV, batch_size * num_heads * seq_len * head_dim * sizeof(float));
         cudaMalloc((void **)&dP, batch_size * num_heads * seq_len * seq_len * sizeof(float));
 
-        cudaMalloc((void **)&ppt, batch_size *  num_heads * seq_len * seq_len * sizeof(float));
+        cudaMalloc((void **)&ppt, batch_size * num_heads * seq_len * seq_len * sizeof(float));
 
         // dQ and dK for the QK^T backpropagation
         cudaMalloc((void **)&dQ, batch_size * seq_len * num_heads * head_dim * sizeof(float));
         cudaMalloc((void **)&dK, batch_size * seq_len * num_heads * head_dim * sizeof(float));
 
         cudaMalloc((void **)&d_score_t, batch_size * num_heads * seq_len * seq_len * sizeof(float));
+
+        cudaMalloc((void **)&WkT, d_model * vocab_size * sizeof(float));
+        cudaMalloc((void **)&WvT, d_model * vocab_size * sizeof(float));
+
+        cudaMalloc((void **)&Wk, d_model * vocab_size * sizeof(float));
+        cudaMalloc((void **)&WV, d_model * vocab_size * sizeof(float));
     }
 
     ~AttentionInterface()
@@ -288,6 +305,12 @@ public:
         cudaFree(dK);
 
         cudaFree(d_score_t);
+
+        cudaFree(WkT);
+        cudaFree(WvT);
+
+        cudaFree(Wk);
+        cudaFree(WV);
     }
 
     LinearParams getLmHeadParams()
@@ -389,6 +412,7 @@ public:
 
                 softmaxAcrossProballityCrossEntropyLoss(prob, batch.y);
 
+
                 // if (debug)
                 // {
                 //     std::cout << " After sfotmax last two dimension " << std::endl;
@@ -436,6 +460,12 @@ public:
                 modelParamaters.dK = dK;
 
                 modelParamaters.d_score_t = d_score_t;
+
+                modelParamaters.WkT = WkT;
+                modelParamaters.WvT = WvT;
+                
+                modelParamaters.Wk = Wk;
+                modelParamaters.WV = WV;
 
                 // because the backprops needs to be done for each epoch.
                 // we need to keep in mind that the things hurting performace like cuda malloc and everything declared

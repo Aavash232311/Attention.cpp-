@@ -20,8 +20,7 @@ class Linear
 {
     bool dLinear = true;
     float *ws = nullptr; // weighted sum
-    float *weight = nullptr;
-    float *bias = nullptr;
+
     float *x = nullptr;
 
     float *h_mha;
@@ -48,7 +47,16 @@ class Linear
 
     float *deviceArrInTranspose;
 
+    float *device_weight;
+    float *device_bias;
+    curandState *d_state_weight;
+    curandState *d_state_bias;
+
 public:
+    float *weight = nullptr;
+    float *bias = nullptr;
+
+    
     Linear(int feature_in, int feature_out, int seq_len, int batch_size, int n_head, bool debug)
     {
         this->seq_len = seq_len;
@@ -87,9 +95,9 @@ public:
 
     ~Linear()
     {
-        (ws != nullptr ? free(ws) : void());
-        (weight != nullptr ? free(weight) : void());
-        (bias != nullptr ? free(bias) : void());
+        free(ws);
+        free(weight);
+        free(bias);
 
         (mhead_out_host != nullptr ? free(mhead_out_host) : void());
 
@@ -101,17 +109,19 @@ public:
         cudaFree(deviceArrInTranspose);
 
         cudaFree(mhead_out_device);
+
+        cudaFree(device_weight);
+        cudaFree(device_bias);
+        cudaFree(d_state_weight);
+        cudaFree(d_state_bias);
     }
 
+    // this is the exntension of the constructor dont know why this way but
     void LinearParams(int fan_in, int fan_out)
     {
+
         weight = (float *)malloc(fan_in * fan_out * sizeof(float)); // these are out for both weight and biases.
         bias = (float *)malloc(fan_out * sizeof(float));
-
-        float *device_weight;
-        float *device_bias;
-        curandState *d_state_weight;
-        curandState *d_state_bias;
 
         cudaMalloc((void **)&device_weight, fan_in * fan_out * sizeof(float));
         cudaMalloc(&d_state_weight, fan_in * fan_out * sizeof(curandState));
@@ -125,19 +135,14 @@ public:
         cudaMemcpy(weight, device_weight, fan_in * fan_out * sizeof(float), cudaMemcpyDeviceToHost);
         cudaMemcpy(bias, device_bias, fan_out * sizeof(float), cudaMemcpyDeviceToHost);
 
-        cudaFree(device_weight);
-        cudaFree(device_bias);
-        cudaFree(d_state_weight);
-        cudaFree(d_state_bias);
-
-        if (!(debug))
-        {
-            std::cout << "Weight" << std::endl;
-            utils->printFlatArray2D(weight, fan_in, fan_out);
-            std::cout << "Bias" << std::endl;
-            utils->printFlatArray2D(this->bias, fan_out, 1);
-            std::cout << "Fan in: " << fan_in << " Fan out: " << fan_out << std::endl;
-        }
+        // if (!(debug))
+        // {
+        //     std::cout << "Weight" << std::endl;
+        //     utils->printFlatArray2D(weight, fan_in, fan_out);
+        //     std::cout << "Bias" << std::endl;
+        //     utils->printFlatArray2D(this->bias, fan_out, 1);
+        //     std::cout << "Fan in: " << fan_in << " Fan out: " << fan_out << std::endl;
+        // }
     }
 
     float *getBias()
