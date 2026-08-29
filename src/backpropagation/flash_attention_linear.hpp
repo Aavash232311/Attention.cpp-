@@ -40,7 +40,7 @@ private:
 
         // recalling the shape here
 
-        // dQ = 1/sqrt(dk) GK       shape=(batch_size, num_heads, seq_len, head_dim)
+        // dQ = 1/sqrt(dk) G K       shape=(batch_size, num_heads, seq_len, head_dim)
         // dK = 1/sqrt(dk) G^T Q    shape=(batch_size, num_heads, seq_len, head_dim)
         // dV =  P^T G              shape=(batch_size, num_heads, seq_len, head_dim)
 
