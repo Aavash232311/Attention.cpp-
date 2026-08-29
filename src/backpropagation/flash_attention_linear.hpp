@@ -13,7 +13,7 @@
 using namespace std;
 
 extern "C" void wt_upstream(float *w, float *wt, int a, int b);
-
+extern "C" void matmul3d2d(float *A, float *B, float *C, int a, int b, int c, int d);
 // G_kx0 total upstream gradient and Linear Layer, add-residual back propagation here.
 class FlashAttentionLinear : virtual public AutoGradEngine
 {

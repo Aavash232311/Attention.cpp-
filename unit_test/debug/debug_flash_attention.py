@@ -88,6 +88,11 @@ class DebugFlashAttention(torch.nn.Module):
 
         check_dk = torch.allclose(dk_torch, self.dK, atol=1e-4, rtol=1e-4)
 
+        # I will refactor this later, or let a young college student take on the job.
+        # Hopefully, we will learn something from the process.
+        # I know this approach is repetitive, but it works and helps me identify
+        # kernel-related problems. This is just a small sanity check.
+
 
         if not check_dp:
             print(f"Checking dp kernel, status:{RED} {check_dp} {RESET}")
@@ -123,6 +128,24 @@ class DebugFlashAttention(torch.nn.Module):
             print(f"Checking dk kernel, status:{RED} {check_dk} {RESET}")
         else:
             print(f"Checking dk kernel, status:{GREEN} {check_dk} {RESET}")
+
+        check_wqt = torch.allclose(self.wq.T, self.wqt)
+        if not check_wqt:
+            print(f"Checking wqt kernel, status:{RED} {check_wqt} {RESET}")
+        else:
+            print(f"Checking wqt kernel, status:{GREEN} {check_wqt} {RESET}")
+
+        check_wkt = torch.allclose(self.wk.T, self.wkt)
+        if not check_wkt:
+            print(f"Checking wkt kernel, status:{RED} {check_wkt} {RESET}")
+        else:
+            print(f"Checking wkt kernel, status:{GREEN} {check_wkt} {RESET}")
+
+        check_wvt = torch.allclose(self.wv.T, self.wvt)
+        if not check_wvt:
+            print(f"Checking wvt kernel, status:{RED} {check_wvt} {RESET}")
+        else:
+            print(f"Checking wvt kernel, status:{GREEN} {check_wvt} {RESET}")
 
     def debug_pv(self):
         pass

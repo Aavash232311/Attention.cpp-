@@ -185,8 +185,8 @@ private:
     }
 
     void dl_dh_upstream_gradient(
-        float *delta,        //  (vocab_size, d_model)
-        float *wt,     //  (B, T, vocab_size)
+        float *delta,     //  (vocab_size, d_model)
+        float *wt,        //  (vocab_size, d_model)
         float *out_dl_dh, // the real upstream gradient G, I accidently thought its dl_dw
         int batch_size,
         int seq_len,
@@ -239,8 +239,7 @@ public:
     virtual void pyDebuggerReleaseStage7() {}
     virtual void pyDebuggerReleaseStage8() {}
 
-
-    // Backpropagation along Linear layer, Normalization 
+    // Backpropagation along Linear layer, Normalization
     virtual void NormLinearNet() {}
     virtual void weightTransposeAttn() {}
 
