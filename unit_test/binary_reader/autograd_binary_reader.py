@@ -66,13 +66,40 @@ def ReaderFlashAttention(
                      dtype=np.float32
                      ).to(device)
 
-    # LayerNorm's mean and std dev cache
+    # LayerNorm's mean and std dev cache, Note: just to check if the data is healthy
+    # mean_cache = load_tensor("./src/cache/cpp_out/mean_cache.bin", shape=(batch_size * seq_len, d_model), dtype=np.float32).to(device)
+    # std_dev_cache = load_tensor("./src/cache/cpp_out/std_dev_cache.bin", shape=(batch_size * seq_len, d_model),
+    #                          dtype=np.float32).to(device)
 
-    mean_cache = load_tensor("./src/cache/cpp_out/mean_cache.bin", shape=(batch_size * seq_len, d_model), dtype=np.float32).to(device)
-    std_dev_cache = load_tensor("./src/cache/cpp_out/std_dev_cache.bin", shape=(batch_size * seq_len, d_model),
-                             dtype=np.float32).to(device)
+    wqt = load_tensor("./src/cache/cpp_out/wqt.bin",
+                      shape=(d_model, d_model),
+                      dtype=np.float32
+                      ).to(device)
 
-    return P, V, PT, VT, G_unc, dl_dh, dp, dV, softmax_upstream, dQ, k, q, d_score_t, dK
+    wkt = load_tensor("./src/cache/cpp_out/wkt.bin",
+                      shape=(d_model, d_model),
+                      dtype=np.float32
+                      ).to(device)
+
+    wvt = load_tensor("./src/cache/cpp_out/wvt.bin",
+                      shape=(d_model, d_model),
+                      dtype=np.float32
+                      ).to(device)
+
+    wq = load_tensor("./src/cache/cpp_out/wq.bin",
+                      shape=(d_model, d_model),
+                      dtype=np.float32
+                      ).to(device)
+    wk = load_tensor("./src/cache/cpp_out/wk.bin",
+                      shape=(d_model, d_model),
+                      dtype=np.float32
+                      ).to(device)
+    wv = load_tensor("./src/cache/cpp_out/wv.bin",
+                      shape=(d_model, d_model),
+                      dtype=np.float32
+                      ).to(device)
+
+    return P, V, PT, VT, G_unc, dl_dh, dp, dV, softmax_upstream, dQ, k, q, d_score_t, dK, wqt, wkt, wvt, wq, wk, wv
 
 def Reader(
         batch_size: int,

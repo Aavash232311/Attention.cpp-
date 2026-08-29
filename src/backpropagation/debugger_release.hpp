@@ -225,13 +225,13 @@ public:
     }
 
     /**
- * @class pyDebuggerReleaseStage7
- * @brief Releases (1/sqrt(dk) GK) (1/sqrt(dk)) G^T Q d_score_t for the dK = N G^T Q part.
- * std dev and mean from the forward pass
+     * @class pyDebuggerReleaseStage7
+     * @brief Releases (1/sqrt(dk) GK) (1/sqrt(dk)) G^T Q d_score_t for the dK = N G^T Q part.
+     * std dev and mean from the forward pass
 
 
- * @note Call this after all the 1, 2, 3, 4, 5, 6 and 7 are called stage are released
- */
+    * @note Call this after all the 1, 2, 3, 4, 5, 6 and 7 are called stage are released
+    */
 
     void pyDebuggerReleaseStage7()
     {
@@ -271,5 +271,41 @@ public:
 
         free(mean_host);
         free(std_dev_host);
+    }
+
+    /**
+     * @class pyDebuggerReleaseStage8
+     * @brief Releases Weights of QKT transposed
+
+
+    * @note Releases Weights of QKT transposed
+    */
+
+    void pyDebuggerReleaseStage8()
+    {
+        float *WQT = (float *)malloc(d_model * d_model * sizeof(float));
+        float *WKT = (float *)malloc(d_model * d_model * sizeof(float));
+        float *WVT = (float *)malloc(d_model * d_model * sizeof(float));
+
+        cudaMemcpy(WQT, model_paramaters.WqT, d_model * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(WKT, model_paramaters.WkT, d_model * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(WVT, model_paramaters.WvT, d_model * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+
+        // Also release the weight should be on host from Linear class, Later we will think of a way to
+        // reduce memory copy on PCIe BUS which is costly under each epoch.
+
+        bulkRelease<float>(
+            {
+                {WQT, d_model * d_model, "wqt.bin"},
+                {WKT, d_model * d_model, "wkt.bin"},
+                {WVT, d_model * d_model, "wvt.bin"},
+                {model_paramaters.attention_head.host_WK, d_model * d_model, "wq.bin"},
+                {model_paramaters.attention_head.host_WQ, d_model * d_model, "wk.bin"},
+                {model_paramaters.attention_head.host_WV, d_model * d_model, "wv.bin"},
+            });
+
+        free(WQT);
+        free(WKT);
+        free(WVT);
     }
 };

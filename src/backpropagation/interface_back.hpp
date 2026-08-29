@@ -237,6 +237,7 @@ public:
     virtual void pyDebuggerReleaseStage5() {}
     virtual void pyDebuggerReleaseStage6() {}
     virtual void pyDebuggerReleaseStage7() {}
+    virtual void pyDebuggerReleaseStage8() {}
 
 
     // Backpropagation along Linear layer, Normalization 
