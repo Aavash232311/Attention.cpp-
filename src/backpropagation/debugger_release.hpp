@@ -275,7 +275,7 @@ public:
 
     /**
      * @class pyDebuggerReleaseStage8
-     * @brief Releases Weights of QKT transposed
+     * @brief Releases Weights of QKT transposed, shape of upstream dQ, dK, dV into BTC
 
 
     * @note Releases Weights of QKT transposed
@@ -287,9 +287,21 @@ public:
         float *WKT = (float *)malloc(d_model * d_model * sizeof(float));
         float *WVT = (float *)malloc(d_model * d_model * sizeof(float));
 
+        float *upQ;
+        float *upK;
+        float *upV;
+
+        upQ = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
+        upK = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
+        upV = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
+
         cudaMemcpy(WQT, model_paramaters.WqT, d_model * d_model * sizeof(float), cudaMemcpyDeviceToHost);
         cudaMemcpy(WKT, model_paramaters.WkT, d_model * d_model * sizeof(float), cudaMemcpyDeviceToHost);
         cudaMemcpy(WVT, model_paramaters.WvT, d_model * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+
+        cudaMemcpy(upQ, model_paramaters.qUp, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(upK, model_paramaters.kUp, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(upV, model_paramaters.vUp, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
 
         // Also release the weight should be on host from Linear class, Later we will think of a way to
         // reduce memory copy on PCIe BUS which is costly under each epoch.
@@ -302,10 +314,17 @@ public:
                 {model_paramaters.attention_head.host_WK, d_model * d_model, "wq.bin"},
                 {model_paramaters.attention_head.host_WQ, d_model * d_model, "wk.bin"},
                 {model_paramaters.attention_head.host_WV, d_model * d_model, "wv.bin"},
+                {upQ, batch_size * seq_len * d_model, "upQ.bin"},
+                {upK, batch_size * seq_len * d_model, "upK.bin"},
+                {upV, batch_size * seq_len * d_model, "upV.bin"}
             });
 
         free(WQT);
         free(WKT);
         free(WVT);
+
+        free(upQ);
+        free(upK);
+        free(upV);
     }
 };

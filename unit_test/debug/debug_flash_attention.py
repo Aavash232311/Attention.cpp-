@@ -16,7 +16,7 @@ class DebugFlashAttention(torch.nn.Module):
         self.dl_dw = dl_dw # Upstream gradient G
 
         # looks like ideal gas equation, but it's not
-        self.P, self.V, self.PT, self.VT, self.G_unc, self.G, self.dp, self.dv, self.softmax_upstream, self.dQ, self.K, self.Q, self.d_score_t, self.dK, self.wqt, self.wkt, self.wvt, self.wq, self.wk, self.wv = ReaderFlashAttention(batch_size, seq_len, vocab_size, d_model, num_heads, head_dim)
+        self.P, self.V, self.PT, self.VT, self.G_unc, self.G, self.dp, self.dv, self.softmax_upstream, self.dQ, self.K, self.Q, self.d_score_t, self.dK, self.wqt, self.wkt, self.wvt, self.wq, self.wk, self.wv, self.upq, self.upk, self.upv = ReaderFlashAttention(batch_size, seq_len, vocab_size, d_model, num_heads, head_dim)
 
     # dV = P^T G
     # dP = GV^T
@@ -94,6 +94,12 @@ class DebugFlashAttention(torch.nn.Module):
         # kernel-related problems. This is just a small sanity check.
 
 
+        # Now lets check the contact of these qkv weights
+
+        print(self.dK)
+        print(self.dK.shape)
+
+
         if not check_dp:
             print(f"Checking dp kernel, status:{RED} {check_dp} {RESET}")
         else:
@@ -146,6 +152,24 @@ class DebugFlashAttention(torch.nn.Module):
             print(f"Checking wvt kernel, status:{RED} {check_wvt} {RESET}")
         else:
             print(f"Checking wvt kernel, status:{GREEN} {check_wvt} {RESET}")
+
+        check_dQ = torch.allclose(self.dQ.transpose(1, 2).reshape(self.batch_size, self.seq_len, self.d_model), self.upq)
+        if not check_dQ:
+            print(f"Checking dQ reshape kernel, status:{RED} {check_dQ} {RESET}")
+        else:
+            print(f"Checking dQ reshape kernel, status:{GREEN} {check_dQ} {RESET}")
+
+        check_dK = torch.allclose(self.dK.transpose(1, 2).reshape(self.batch_size, self.seq_len, self.d_model), self.upk)
+        if not check_dK:
+            print(f"Checking dK reshape kernel, status:{RED} {check_dK} {RESET}")
+        else:
+            print(f"Checking dK reshape kernel, status:{GREEN} {check_dK} {RESET}")
+
+        check_dV = torch.allclose(self.dv.transpose(1, 2).reshape(self.batch_size, self.seq_len, self.d_model), self.upv)
+        if not check_dV:
+            print(f"Checking dV reshape kernel, status:{RED} {check_dV} {RESET}")
+        else:
+            print(f"Checking dV reshape kernel, status:{GREEN} {check_dV} {RESET}")
 
     def debug_pv(self):
         pass
