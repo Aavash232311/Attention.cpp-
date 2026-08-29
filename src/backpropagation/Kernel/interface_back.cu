@@ -159,6 +159,7 @@ extern "C"
 
         cudaDeviceSynchronize();
     }
+    constexpr auto& matmul3d2d = dl_dh_upstream;
 
     void wt_upstream(
         float *w,
