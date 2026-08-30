@@ -283,6 +283,9 @@ __global__ void ReformBNTH_BTC_Kernel(
     }
 }
 
+
+
+
 extern "C"
 {
 
