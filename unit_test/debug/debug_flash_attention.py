@@ -170,6 +170,3 @@ class DebugFlashAttention(torch.nn.Module):
             print(f"Checking dV reshape kernel, status:{RED} {check_dV} {RESET}")
         else:
             print(f"Checking dV reshape kernel, status:{GREEN} {check_dV} {RESET}")
-
-    def debug_pv(self):
-        pass
