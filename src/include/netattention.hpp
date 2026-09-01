@@ -76,4 +76,7 @@ struct FlashAttentionPointers : NetAttentionParamaters
     float *qUp;
     float *kUp;
     float *vUp;
+
+    // G_x_hat
+    float *G_x_hat;
 };

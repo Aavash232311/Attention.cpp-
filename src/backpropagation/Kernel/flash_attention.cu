@@ -251,7 +251,6 @@ __global__ void LayerNormBackPropgationKernel(
     }
 }
 
-
 __global__ void ReformBNTH_BTC_Kernel(
     float *arr, // [batch_size, num_head, seq_len, head_dim]
     float *out, // (B, T, C)
@@ -280,11 +279,43 @@ __global__ void ReformBNTH_BTC_Kernel(
     }
 }
 
+__global__ void sumBTC3TensorKernel(
+    float *A, // Shape (B, T, C)
+    float *B,
+    float *C,
+    float *Out,
+    int batch_size,
+    int seq_len,
+    int d_model,
+    int N)
+{
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
-
+    if (idx < N)
+    {
+        Out[idx] = A[idx] + B[idx] + C[idx];
+    }
+}
 
 extern "C"
 {
+    void addThreeTensor(
+        float *A,
+        float *B,
+        float *C,
+        float *Out,
+        int batch_size,
+        int seq_len,
+        int d_model)
+    {
+        int threads = 256;
+        int N = batch_size * seq_len * d_model;
+        int blocks = (N + threads - 1) / threads;
+
+        sumBTC3TensorKernel<<<blocks, threads>>>(A, B, C, Out, batch_size, seq_len, d_model, N);
+
+        cudaDeviceSynchronize();
+    }
 
     void ReformBNTH_BTC(
         float *arr, // [batch_size, num_head, seq_len, d_head]
@@ -295,7 +326,7 @@ extern "C"
         int num_head,
         int head_dim)
     {
-        int threads_per_block = 256; 
+        int threads_per_block = 256;
         dim3 grid(seq_len, num_head, batch_size);
         dim3 block(threads_per_block);
 
