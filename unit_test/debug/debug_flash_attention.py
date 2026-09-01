@@ -1,4 +1,6 @@
 import math
+from pprint import pprint
+
 import torch
 from debug.static import RESET, RED, GREEN
 from binary_reader.autograd_binary_reader import ReaderFlashAttention
@@ -94,10 +96,6 @@ class DebugFlashAttention(torch.nn.Module):
         # kernel-related problems. This is just a small sanity check.
 
 
-        # Now lets check the contact of these qkv weights
-
-
-
         if not check_dp:
             print(f"Checking dp kernel, status:{RED} {check_dp} {RESET}")
         else:
@@ -151,20 +149,32 @@ class DebugFlashAttention(torch.nn.Module):
         else:
             print(f"Checking wvt kernel, status:{GREEN} {check_wvt} {RESET}")
 
-        check_dQ = torch.allclose(self.dQ.transpose(1, 2).reshape(self.batch_size, self.seq_len, self.d_model), self.upq)
+        dQ_compact = self.dQ.transpose(1, 2).reshape(self.batch_size, self.seq_len, self.d_model)
+        check_dQ = torch.allclose(dQ_compact, self.upq)
         if not check_dQ:
             print(f"Checking dQ reshape kernel, status:{RED} {check_dQ} {RESET}")
         else:
             print(f"Checking dQ reshape kernel, status:{GREEN} {check_dQ} {RESET}")
 
-        check_dK = torch.allclose(self.dK.transpose(1, 2).reshape(self.batch_size, self.seq_len, self.d_model), self.upk)
+        dK_compact = self.dK.transpose(1, 2).reshape(self.batch_size, self.seq_len, self.d_model)
+        check_dK = torch.allclose(dK_compact, self.upk)
         if not check_dK:
             print(f"Checking dK reshape kernel, status:{RED} {check_dK} {RESET}")
         else:
             print(f"Checking dK reshape kernel, status:{GREEN} {check_dK} {RESET}")
 
-        check_dV = torch.allclose(self.dv.transpose(1, 2).reshape(self.batch_size, self.seq_len, self.d_model), self.upv)
+        dV_compact = self.dv.transpose(1, 2).reshape(self.batch_size, self.seq_len, self.d_model)
+        check_dV = torch.allclose(dV_compact, self.upv)
         if not check_dV:
             print(f"Checking dV reshape kernel, status:{RED} {check_dV} {RESET}")
         else:
             print(f"Checking dV reshape kernel, status:{GREEN} {check_dV} {RESET}")
+
+        # Now lets check the contact of these qkv weights
+
+        dQ_Wq = dQ_compact @ self.wq.T
+        dK_Wk = dK_compact @ self.wk.T
+        dV_Wv = dV_compact @ self.wv.T
+
+        G_hat_net = dQ_Wq + dK_Wk + dV_Wv
+        pprint(torch.allclose(G_hat_net, self.G_x_hat,atol=1e-4, rtol=1e-4))
