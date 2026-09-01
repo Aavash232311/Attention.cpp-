@@ -15,6 +15,7 @@ using namespace std;
 extern "C" void wt_upstream(float *w, float *wt, int a, int b);
 extern "C" void matmul3d2d(float *A, float *B, float *C, int a, int b, int c, int d);
 extern "C" void ReformBNTH_BTC(float *arr, float *out, int batch_size, int seq_len, int d_model, int num_head, int head_dim);
+extern "C" void addThreeTensor(float *A, float *B, float *C, float *Out, int batch_size, int seq_len, int d_model);
 // G_kx0 total upstream gradient and Linear Layer, add-residual back propagation here.
 class FlashAttentionLinear : virtual public AutoGradEngine
 {
@@ -50,6 +51,8 @@ private:
         ReformBNTH_BTC(model_paramaters.dV, model_paramaters.vUp, batch_size, seq_len, d_model, num_heads, head_dim);
         ReformBNTH_BTC(model_paramaters.dQ, model_paramaters.qUp, batch_size, seq_len, d_model, num_heads, head_dim);
         ReformBNTH_BTC(model_paramaters.dK, model_paramaters.kUp, batch_size, seq_len, d_model, num_heads, head_dim);
+
+        addThreeTensor(model_paramaters.dV, model_paramaters.dQ, model_paramaters.dV, model_paramaters.G_x_hat, batch_size, seq_len, d_model);
 
         if (debug)
             pyDebuggerReleaseStage8();

@@ -114,7 +114,12 @@ def ReaderFlashAttention(
                       dtype=np.float32
                       ).to(device)
 
-    return P, V, PT, VT, G_unc, dl_dh, dp, dV, softmax_upstream, dQ, k, q, d_score_t, dK, wqt, wkt, wvt, wq, wk, wv, upq, upk, upv
+    G_x_hat = load_tensor("./src/cache/cpp_out/G_x_hat.bin",
+                          shape=(batch_size, seq_len, d_model),
+                          dtype=np.float32
+                          ).to(device)
+
+    return P, V, PT, VT, G_unc, dl_dh, dp, dV, softmax_upstream, dQ, k, q, d_score_t, dK, wqt, wkt, wvt, wq, wk, wv, upq, upk, upv, G_x_hat
 
 def Reader(
         batch_size: int,

@@ -136,6 +136,8 @@ class AttentionInterface
     float *kUp;
     float *vUp;
 
+    float *G_x_hat; // total added up tensor
+
 private:
     // ----------- TEMPORARY DEBUGGER SCRIPT ---------------------
 
@@ -272,6 +274,8 @@ public:
         cudaMalloc((void **)&qUp, batch_size * seq_len * d_model * sizeof(float));
         cudaMalloc((void **)&kUp, batch_size * seq_len * d_model * sizeof(float));
         cudaMalloc((void **)&vUp, batch_size * seq_len * d_model * sizeof(float));
+
+        cudaMalloc((void **)&G_x_hat, batch_size * seq_len * d_model * sizeof(float));
     }
 
     ~AttentionInterface()
@@ -334,6 +338,8 @@ public:
         cudaFree(qUp);
         cudaFree(kUp);
         cudaFree(vUp);
+
+        cudaFree(G_x_hat);
     }
 
     LinearParams getLmHeadParams()
@@ -495,6 +501,8 @@ public:
                 modelParamaters.qUp = qUp;
                 modelParamaters.kUp = kUp;
                 modelParamaters.vUp = vUp;
+
+                modelParamaters.G_x_hat = G_x_hat; // net G_hat from the derivation 
 
                 // because the backprops needs to be done for each epoch.
                 // we need to keep in mind that the things hurting performace like cuda malloc and everything declared

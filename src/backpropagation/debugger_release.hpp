@@ -275,7 +275,7 @@ public:
 
     /**
      * @class pyDebuggerReleaseStage8
-     * @brief Releases Weights of QKT transposed, shape of upstream dQ, dK, dV into BTC
+     * @brief Releases Weights of QKT transposed, shape of upstream dQ, dK, dV into BTC, G_x_hat
 
 
     * @note Releases Weights of QKT transposed
@@ -291,9 +291,13 @@ public:
         float *upK;
         float *upV;
 
+        float *G_x_hat_host;
+
         upQ = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
         upK = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
         upV = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
+
+        G_x_hat_host = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
 
         cudaMemcpy(WQT, model_paramaters.WqT, d_model * d_model * sizeof(float), cudaMemcpyDeviceToHost);
         cudaMemcpy(WKT, model_paramaters.WkT, d_model * d_model * sizeof(float), cudaMemcpyDeviceToHost);
@@ -302,6 +306,8 @@ public:
         cudaMemcpy(upQ, model_paramaters.qUp, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
         cudaMemcpy(upK, model_paramaters.kUp, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
         cudaMemcpy(upV, model_paramaters.vUp, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+
+        cudaMemcpy(G_x_hat_host, model_paramaters.G_x_hat, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
 
         // Also release the weight should be on host from Linear class, Later we will think of a way to
         // reduce memory copy on PCIe BUS which is costly under each epoch.
@@ -316,7 +322,8 @@ public:
                 {model_paramaters.attention_head.host_WV, d_model * d_model, "wv.bin"},
                 {upQ, batch_size * seq_len * d_model, "upQ.bin"},
                 {upK, batch_size * seq_len * d_model, "upK.bin"},
-                {upV, batch_size * seq_len * d_model, "upV.bin"}
+                {upV, batch_size * seq_len * d_model, "upV.bin"},
+                {G_x_hat_host, batch_size * seq_len * d_model, "G_x_hat.bin"}
             });
 
         free(WQT);
@@ -326,5 +333,7 @@ public:
         free(upQ);
         free(upK);
         free(upV);
+
+        free(G_x_hat_host);
     }
 };
