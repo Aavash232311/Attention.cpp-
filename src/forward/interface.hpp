@@ -128,13 +128,17 @@ class AttentionInterface
     float *d_score_t;
 
     /*
-        Net G for layer norm very end formula in 
+        Net G for layer norm very end formula in
         flashback.md
     */
 
     float *qUp;
     float *kUp;
     float *vUp;
+
+    float *dqWt;
+    float *dkWt;
+    float *dvWt;
 
     float *G_x_hat; // total added up tensor
 
@@ -157,8 +161,6 @@ private:
 
         free(h_arr);
     }
-
-
 
 public:
     AttentionInterface(
@@ -276,6 +278,10 @@ public:
         cudaMalloc((void **)&vUp, batch_size * seq_len * d_model * sizeof(float));
 
         cudaMalloc((void **)&G_x_hat, batch_size * seq_len * d_model * sizeof(float));
+
+        cudaMalloc((void **)&dqWt, batch_size * seq_len * d_model * sizeof(float));
+        cudaMalloc((void **)&dkWt, batch_size * seq_len * d_model * sizeof(float));
+        cudaMalloc((void **)&dkWt, batch_size * seq_len * d_model * sizeof(float));
     }
 
     ~AttentionInterface()
@@ -338,6 +344,10 @@ public:
         cudaFree(qUp);
         cudaFree(kUp);
         cudaFree(vUp);
+
+        cudaFree(dkWt);
+        cudaFree(dqWt);
+        cudaFree(dkWt);
 
         cudaFree(G_x_hat);
     }
@@ -441,7 +451,6 @@ public:
 
                 softmaxAcrossProballityCrossEntropyLoss(prob, batch.y);
 
-
                 // if (debug)
                 // {
                 //     std::cout << " After sfotmax last two dimension " << std::endl;
@@ -493,7 +502,7 @@ public:
                 modelParamaters.WkT = WkT;
                 modelParamaters.WvT = WvT;
                 modelParamaters.WqT = WqT;
-                
+
                 modelParamaters.Wk = Wk;
                 modelParamaters.WV = WV;
                 modelParamaters.WQ = WQ;
@@ -502,7 +511,11 @@ public:
                 modelParamaters.kUp = kUp;
                 modelParamaters.vUp = vUp;
 
-                modelParamaters.G_x_hat = G_x_hat; // net G_hat from the derivation 
+                modelParamaters.dqWt = dqWt;
+                modelParamaters.dkWt = dkWt;
+                modelParamaters.dvWt = dvWt;
+
+                modelParamaters.G_x_hat = G_x_hat; // net G_hat from the derivation
 
                 // because the backprops needs to be done for each epoch.
                 // we need to keep in mind that the things hurting performace like cuda malloc and everything declared

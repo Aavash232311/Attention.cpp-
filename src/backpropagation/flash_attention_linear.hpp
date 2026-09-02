@@ -51,6 +51,12 @@ private:
         ReformBNTH_BTC(model_paramaters.dV, model_paramaters.vUp, batch_size, seq_len, d_model, num_heads, head_dim);
         ReformBNTH_BTC(model_paramaters.dQ, model_paramaters.qUp, batch_size, seq_len, d_model, num_heads, head_dim);
         ReformBNTH_BTC(model_paramaters.dK, model_paramaters.kUp, batch_size, seq_len, d_model, num_heads, head_dim);
+        // Problem with this matmul kernel but I will look at it, its been a rough week
+
+        // matirx multiplication 
+        // matmul3d2d(model_paramaters.dQ, model_paramaters.WqT, model_paramaters.dqWt, batch_size, seq_len, d_model, d_model);
+        // matmul3d2d(model_paramaters.dK, model_paramaters.WkT, model_paramaters.dkWt, batch_size, seq_len, d_model, d_model);
+        // matmul3d2d(model_paramaters.dV, model_paramaters.WvT, model_paramaters.dvWt, batch_size, seq_len, d_model, d_model);
 
         addThreeTensor(model_paramaters.dV, model_paramaters.dQ, model_paramaters.dV, model_paramaters.G_x_hat, batch_size, seq_len, d_model);
 

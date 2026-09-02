@@ -172,9 +172,13 @@ class DebugFlashAttention(torch.nn.Module):
 
         # Now lets check the contact of these qkv weights
 
-        dQ_Wq = dQ_compact @ self.wq.T
-        dK_Wk = dK_compact @ self.wk.T
-        dV_Wv = dV_compact @ self.wv.T
+        dQ_Wq = self.upq @ self.wq.T
+        dK_Wk = self.upk @ self.wk.T
+        dV_Wv = self.upv @ self.wv.T
 
         G_hat_net = dQ_Wq + dK_Wk + dV_Wv
-        pprint(torch.allclose(G_hat_net, self.G_x_hat,atol=1e-4, rtol=1e-4))
+        # print(torch.allclose(G_hat_net, self.G_x_hat,atol=1e-4, rtol=1e-4))
+        # print(G_hat_net)
+        # print(self.G_x_hat)
+        print(self.upk.shape)
+        print(self.upk)

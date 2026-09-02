@@ -73,9 +73,18 @@ struct FlashAttentionPointers : NetAttentionParamaters
     // Correctness first optimization layer, already very very complicated
 
     // G_x_hat
+
+    // compact values pointers
     float *qUp;
     float *kUp;
     float *vUp;
+
+    // resultant value of
+    // dV wT, dQ wT, dK wT you get it.
+
+    float *dqWt;
+    float *dkWt;
+    float *dvWt;
 
     // G_x_hat
     float *G_x_hat;
