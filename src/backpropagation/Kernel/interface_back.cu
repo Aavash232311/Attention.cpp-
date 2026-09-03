@@ -133,9 +133,9 @@ __global__ void dl_dh_kernel(
 extern "C"
 {
     void dl_dh_upstream(
-        float *delta,
-        float *wt,
-        float *out,
+        float *delta, // (B, T, vocab_size)
+        float *wt, // (vocab_size, C)
+        float *out, // (B, T, C)
         int B,
         int T,
         int C,
@@ -159,7 +159,6 @@ extern "C"
 
         cudaDeviceSynchronize();
     }
-    constexpr auto& matmul3d2d = dl_dh_upstream;
 
     void wt_upstream(
         float *w,
