@@ -1,5 +1,4 @@
 import math
-from pprint import pprint
 
 import torch
 from debug.static import RESET, RED, GREEN
@@ -172,13 +171,13 @@ class DebugFlashAttention(torch.nn.Module):
 
         # Now lets check the contact of these qkv weights
 
-        dQ_Wq = self.upq @ self.wq.T
-        dK_Wk = self.upk @ self.wk.T
-        dV_Wv = self.upv @ self.wv.T
+        # dQ_Wq = self.upq @ self.wq.T
+        # dK_Wk = self.upk @ self.wk.T
+        # dV_Wv = self.upv @ self.wv.T
 
-        G_hat_net = dQ_Wq + dK_Wk + dV_Wv
+        # G_hat_net = dQ_Wq + dK_Wk + dV_Wv
         # print(torch.allclose(G_hat_net, self.G_x_hat,atol=1e-4, rtol=1e-4))
         # print(G_hat_net)
         # print(self.G_x_hat)
-        print(self.upk.shape)
-        print(self.upk)
+        # print(self.upk.shape)
+        # print(self.upk)

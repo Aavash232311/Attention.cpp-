@@ -185,7 +185,7 @@ private:
     }
 
     void dl_dh_upstream_gradient(
-        float *delta,     //  (vocab_size, d_model)
+        float *delta,     //  (B, T, vocab_size)
         float *wt,        //  (vocab_size, d_model)
         float *out_dl_dh, // the real upstream gradient G, I accidently thought its dl_dw
         int batch_size,
