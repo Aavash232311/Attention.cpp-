@@ -1,43 +1,43 @@
-# # .github/workflows/ci.yml
-# name: CI
+# .github/workflows/ci.yml
+name: CI
 
-# on:
-#   push:
-#     branches: [main, develop]
-#   pull_request:
-#     branches: [main]
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
 
-# jobs:
-#   build:
-#     runs-on: ubuntu-latest
-#     steps:
-#       - name: Checkout code
-#         uses: actions/checkout@v4
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-#       - name: Install CUDA Toolkit
-#         uses: Jimver/cuda-toolkit@v0.2.19
-#         id: cuda-toolkit
-#         with:
-#           cuda: '12.4.0'
-#           use-github-cache: true
+      - name: Install CUDA Toolkit
+        uses: Jimver/cuda-toolkit@v0.2.19
+        id: cuda-toolkit
+        with:
+          cuda: '12.4.0'
+          use-github-cache: true
 
-#       - name: Install dependencies
-#         run: sudo apt-get update && sudo apt-get install -y nlohmann-json3-dev
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y nlohmann-json3-dev
 
-#       - name: Verify nvcc
-#         run: nvcc -V
+      - name: Verify nvcc
+        run: nvcc -V
 
-#       - name: Create output directory
-#         run: mkdir -p src/bin
+      - name: Create output directory
+        run: mkdir -p src/bin
 
-#       - name: Build
-#         run: |
-#           nvcc src/main.cpp src/kernel/utils.cu \
-#             src/forward/Kernel/layer_norm.cu \
-#             src/forward/Kernel/embedding.cu \
-#             src/forward/Kernel/linear.cu \
-#             src/forward/Kernel/attention_head.cu \
-#             src/forward/Kernel/interface.cu \
-#             src/backpropagation/Kernel/interface_back.cu \
-#             src/backpropagation/Kernel/flash_attention.cu \
-#             -o src/bin/attention
+      - name: Build
+        run: |
+          nvcc src/main.cpp src/kernel/utils.cu \
+            src/forward/Kernel/layer_norm.cu \
+            src/forward/Kernel/embedding.cu \
+            src/forward/Kernel/linear.cu \
+            src/forward/Kernel/attention_head.cu \
+            src/forward/Kernel/interface.cu \
+            src/backpropagation/Kernel/interface_back.cu \
+            src/backpropagation/Kernel/flash_attention.cu \
+            -o src/bin/attention
