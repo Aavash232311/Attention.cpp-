@@ -55,7 +55,8 @@ private:
         
         dl_dh_upstream(model_paramaters.vUp, model_paramaters.WvT, model_paramaters.dvWt, batch_size, seq_len, d_model, d_model);
 
-        // addThreeTensor(model_paramaters.dV, model_paramaters.dQ, model_paramaters.dV, model_paramaters.G_x_hat, batch_size, seq_len, d_model);
+        // pass in the compact shape (B,T,C)
+        addThreeTensor(model_paramaters.dqWt, model_paramaters.dkWt, model_paramaters.dvWt, model_paramaters.G_x_hat, batch_size, seq_len, d_model);
 
         if (debug)
             pyDebuggerReleaseStage8();
