@@ -23,9 +23,6 @@ class FlashAttentionLinear : virtual public AutoGradEngine
 private:
     void copyWeightQKVtoDevice()
     {
-        // These data are in host automatically from the Linear class
-        // we have the buffer from interface class now we need to copy that
-
         // from attention pointer has the thing inside of CPU
         // copy them all to GPU
 
