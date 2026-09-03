@@ -281,7 +281,7 @@ public:
 
         cudaMalloc((void **)&dqWt, batch_size * seq_len * d_model * sizeof(float));
         cudaMalloc((void **)&dkWt, batch_size * seq_len * d_model * sizeof(float));
-        cudaMalloc((void **)&dkWt, batch_size * seq_len * d_model * sizeof(float));
+        cudaMalloc((void **)&dvWt, batch_size * seq_len * d_model * sizeof(float));
     }
 
     ~AttentionInterface()

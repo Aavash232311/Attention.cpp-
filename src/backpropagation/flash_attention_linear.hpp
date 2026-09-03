@@ -43,20 +43,19 @@ private:
         // dK = 1/sqrt(dk) G^T Q    shape=(batch_size, num_heads, seq_len, head_dim)
         // dV =  P^T G              shape=(batch_size, num_heads, seq_len, head_dim)
 
-
         // dQ, dK, dV shape of (batch_size, num_head, seq_len, head_dim) to (batch_size, seq_len, d_model) output vUp, qUp, kUp
         ReformBNTH_BTC(model_paramaters.dV, model_paramaters.vUp, batch_size, seq_len, d_model, num_heads, head_dim);
         ReformBNTH_BTC(model_paramaters.dQ, model_paramaters.qUp, batch_size, seq_len, d_model, num_heads, head_dim);
         ReformBNTH_BTC(model_paramaters.dK, model_paramaters.kUp, batch_size, seq_len, d_model, num_heads, head_dim);
         // Problem with this matmul kernel but I will look at it, its been a rough week
 
-        // matirx multiplication 
-        dl_dh_upstream(model_paramaters.qUp, model_paramaters.WqT, model_paramaters.dqWt,batch_size,seq_len,d_model,d_model);
+        // matirx multiplication
+        dl_dh_upstream(model_paramaters.qUp, model_paramaters.WqT, model_paramaters.dqWt, batch_size, seq_len, d_model, d_model);
         dl_dh_upstream(model_paramaters.kUp, model_paramaters.WkT, model_paramaters.dkWt, batch_size, seq_len, d_model, d_model);
-        dl_dh_upstream(model_paramaters.vUp, model_paramaters.kUp, model_paramaters.dvWt, batch_size, seq_len, d_model, d_model);
+        
+        dl_dh_upstream(model_paramaters.vUp, model_paramaters.WvT, model_paramaters.dvWt, batch_size, seq_len, d_model, d_model);
 
-
-        addThreeTensor(model_paramaters.dV, model_paramaters.dQ, model_paramaters.dV, model_paramaters.G_x_hat, batch_size, seq_len, d_model);
+        // addThreeTensor(model_paramaters.dV, model_paramaters.dQ, model_paramaters.dV, model_paramaters.G_x_hat, batch_size, seq_len, d_model);
 
         if (debug)
             pyDebuggerReleaseStage8();
