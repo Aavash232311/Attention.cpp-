@@ -176,8 +176,8 @@ class DebugFlashAttention(torch.nn.Module):
         dV_Wv = self.upv @ self.wv.T
 
         G_hat_net = dQ_Wq + dK_Wk + dV_Wv
-        print(torch.allclose(G_hat_net, self.G_x_hat,atol=1e-4, rtol=1e-4))
-        # print(G_hat_net)
-        # print(self.G_x_hat)
-        # print(self.upk.shape)
-        # print(self.upk)
+        check_G_x_hat = torch.allclose(G_hat_net, self.G_x_hat,atol=1e-4, rtol=1e-4)
+        if not check_G_x_hat:
+            print(f"Checking G_x_hat (total upstream for layer norm), status: {RED} {check_G_x_hat} {RESET}")
+        else:
+            print(f"Checking G_x_hat (total upstream for layer norm), status: {GREEN} {check_G_x_hat} {RESET}")
