@@ -169,12 +169,12 @@ __device__ __forceinline__ void ParallelReducer(float &localSum)
 // Note:- I am not so sharp and smart so I am taking my time here to derive and understand.
 
 __global__ void LayerNormBackPropgationKernel(
-    float *x,   // (B, T, C) after input shape
-    float *G,   // (B, T, C)
-    float *mc,  // mean cache (B*T, C)
-    float *sdc, // std dev cache (B*T, C)
-    float *gamma,
-    int D,
+    float *x,     // Shape (B, T, C)
+    float *G,     // Shape (B, T, C) aftermath shape is this
+    float *mc,    // mean cache (B*T, C)
+    float *sdc,   // sdc cache (B*T,)
+    float *gamma, // (C)
+    int D,        // num elements
     int B,
     int T,
     int C)
@@ -182,72 +182,87 @@ __global__ void LayerNormBackPropgationKernel(
     int batch_idx = blockIdx.y;
     int row_idx = blockIdx.x;
 
-    float *out_row = x + batch_idx * (T * C) + row_idx * C;
+    // skipping index formula
+    float *x_row = x + batch_idx * (T * C) + row_idx * C;
+    float *G_row = G + batch_idx * (T * C) + row_idx * C;
+    float *mc_row = mc + (batch_idx * T + row_idx) * C;
+    float *sdc_row = sdc + (batch_idx * T + row_idx) * C;
 
-    int lane = threadIdx.x % 32;     // position within warp, basically "one" thread within a cuda wrap
-    int warp_id = threadIdx.x / 32;  // position within block
-    int num_warps = blockDim.x / 32; // total warps avalible
+    int lane = threadIdx.x % 32;
+    int warp_id = threadIdx.x / 32;
+    int num_warps = blockDim.x / 32;
 
     __shared__ float shared_sum_1[32];
     __shared__ float shared_sum_2[32];
-
     float epsilon = 1e-8f;
 
-    float sum_term_1 = 0.0f;
-    float sum_term_2 = 0.0f;
-    // partial sum here, for each thread
+    // I like to call temp reduction
+    float sum_term_1 = 0.0f, sum_term_2 = 0.0f;
     for (int i = threadIdx.x; i < C; i += blockDim.x)
     {
-        float x_hat = (x[i] - mc[i]) / sqrtf(sdc[i] * sdc[i] + epsilon);
-
-        sum_term_1 += G[i] * gamma[i];
-        sum_term_2 += G[i] * gamma[i] * x_hat;
+        float x_hat = (x_row[i] - mc_row[i]) / sqrtf(sdc_row[i] * sdc_row[i] + epsilon);
+        sum_term_1 += G_row[i] * gamma[i];
+        sum_term_2 += G_row[i] * gamma[i] * x_hat;
     }
 
     // reduce within each wrap
     ParallelReducerMultiple(sum_term_1, sum_term_2);
 
-    // Now the sum is one single output of the sum within that wrap
-    // and if the lane = 0 then we will assign that sum value of that wrap
-    // to shared_sum by assigning wrap_id
     if (lane == 0)
     {
         shared_sum_1[warp_id] = sum_term_1;
         shared_sum_2[warp_id] = sum_term_2;
     }
-
     __syncthreads();
 
     if (warp_id == 0)
     {
         sum_term_1 = (lane < num_warps) ? shared_sum_1[lane] : 0.0f;
         sum_term_2 = (lane < num_warps) ? shared_sum_2[lane] : 0.0f;
+
         // reduce that element within that shared memory
         // when each wrap output is contributed
         ParallelReducerMultiple(sum_term_1, sum_term_2);
 
         if (lane == 0)
+        {
             shared_sum_1[0] = sum_term_1;
-        shared_sum_2[0] = sum_term_2;
+            shared_sum_2[0] = sum_term_2;
+        }
     }
-
     __syncthreads();
+
     // The above code should complete the one level of parallel reduction
     // we accounted for the two sum part.
 
+    sum_term_1 = shared_sum_1[0];
+    sum_term_2 = shared_sum_2[0];
+
     for (int i = threadIdx.x; i < C; i += blockDim.x)
     {
-        float first_compoenent = 1 / D * sdc[i];
+        float first_component = 1.0f / (D * sqrtf(sdc_row[i] * sdc_row[i] + epsilon));
+        float dl_x_hat = G_row[i] * gamma[i] * D;
+        float curr_xhat = (x_row[i] - mc_row[i]) / sqrtf(sdc_row[i] * sdc_row[i] + epsilon);
 
-        float dl_x_hat = (G[i] * gamma[i]) * D;
+        float final_comp = first_component * (dl_x_hat - sum_term_1 - curr_xhat * sum_term_2);
+        x_row[i] = final_comp;
+    }
+}
+__global__ void sumBTC3TensorKernel(
+    float *A, // Shape (B, T, C)
+    float *B,
+    float *C,
+    float *Out,
+    int batch_size,
+    int seq_len,
+    int d_model,
+    int N)
+{
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
-        float curr_xhat = (x[i] - mc[i]) / sqrtf(sdc[i] * sdc[i] + epsilon);
-
-        float final_comp = first_compoenent * (dl_x_hat - sum_term_1 - curr_xhat * sum_term_2);
-        // write in that same array, threads are synced, reading part is done here shouldn't be a race condition.
-        out_row[i] = final_comp;
-        // Note:- something is not right here, will get back
-        // after finding the net upstream gradient.
+    if (idx < N)
+    {
+        Out[idx] = A[idx] + B[idx] + C[idx];
     }
 }
 
@@ -279,26 +294,22 @@ __global__ void ReformBNTH_BTC_Kernel(
     }
 }
 
-__global__ void sumBTC3TensorKernel(
-    float *A, // Shape (B, T, C)
-    float *B,
-    float *C,
-    float *Out,
-    int batch_size,
-    int seq_len,
-    int d_model,
-    int N)
-{
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-
-    if (idx < N)
-    {
-        Out[idx] = A[idx] + B[idx] + C[idx];
-    }
-}
-
 extern "C"
 {
+    void layernorm_backward(
+        float *x, float *G, float *mc, float *sdc, float *gamma,
+        int D, int B, int T, int C)
+    {
+        dim3 blockDim(256, 1, 1);
+        dim3 gridDim(T, B, 1);    // one block per (batch, row)
+
+        LayerNormBackPropgationKernel<<<gridDim, blockDim>>>(
+            x, G, mc, sdc, gamma, D, B, T, C);
+
+        cudaDeviceSynchronize();
+    }
+
+
     void addThreeTensor(
         float *A,
         float *B,
