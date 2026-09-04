@@ -18,7 +18,7 @@ colab new --gpu t4
 import torch
 if __name__ == "__main__":
     current_device = torch.cuda.current_device()
-    print(f"GPU Model Name: {torch.cuda.get_device_name(current_device)}")i
+    print(f"GPU Model Name: {torch.cuda.get_device_name(current_device)}")
 
 #+END_SRC
 
@@ -27,6 +27,12 @@ Example:- executing script named main.py
 #+BEGIN_SRC BASH
 colab exec -f main.py
 #+END_SRC
+
+Expected output
+
+#+BEGIN_EXAMPLE
+GPU Model Name: Tesla T4
+#+END_EXAMPLE
 
 *** Stopping the runtime
 
