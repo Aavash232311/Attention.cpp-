@@ -113,9 +113,19 @@ public:
         debug = false;
     }
 
-    float *getGamma()
+    float *getGammaHost()
     {
         return this->h_gamma; // of course these are tuneable.
+    }
+
+    float *getGammaDevice() // for the most part we only care about whats insdie of the GPU
+    {
+        return this->d_gamma;
+    }
+
+    float *getGamma()
+    {
+        return this->h_gamma;
     }
 
     float *getBetta()

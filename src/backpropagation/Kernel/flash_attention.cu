@@ -297,8 +297,16 @@ __global__ void ReformBNTH_BTC_Kernel(
 extern "C"
 {
     void layernorm_backward(
-        float *x, float *G, float *mc, float *sdc, float *gamma,
-        int D, int B, int T, int C)
+        float *x,
+        float *G,
+        float *mc, 
+        float *sdc, 
+        float *gamma,
+        int D,
+        int B, 
+        int T, 
+        int C
+    )
     {
         dim3 blockDim(256, 1, 1);
         dim3 gridDim(T, B, 1);    // one block per (batch, row)

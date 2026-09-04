@@ -119,7 +119,12 @@ def ReaderFlashAttention(
                           dtype=np.float32
                           ).to(device)
 
-    return P, V, PT, VT, G_unc, dl_dh, dp, dV, softmax_upstream, dQ, k, q, d_score_t, dK, wqt, wkt, wvt, wq, wk, wv, upq, upk, upv, G_x_hat
+    layer_norm_gamma = load_tensor("./src/cache/cpp_out/gamma_host.bin",
+                        shape=(batch_size, 1, 1),
+                        dtype=np.float32
+                        ).to(device)
+
+    return P, V, PT, VT, G_unc, dl_dh, dp, dV, softmax_upstream, dQ, k, q, d_score_t, dK, wqt, wkt, wvt, wq, wk, wv, upq, upk, upv, G_x_hat, layer_norm_gamma
 
 def Reader(
         batch_size: int,
