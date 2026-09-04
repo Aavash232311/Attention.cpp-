@@ -182,4 +182,4 @@ class DebugFlashAttention(torch.nn.Module):
         else:
             print(f"Checking G_x_hat (total upstream for layer norm), status: {GREEN} {check_G_x_hat} {RESET}")
 
-        print(self.layer_norm_gamma)
+  
