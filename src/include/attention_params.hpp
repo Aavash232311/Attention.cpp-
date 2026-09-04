@@ -38,6 +38,7 @@ struct AttentionParamaters
     // LayerNorm forward pass cache.
     float *mean_cache;
     float *std_dev_cache;
+    float *d_gamma;
 
 
     // Pass Host reference to linear layer of weights of QKV

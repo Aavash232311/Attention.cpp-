@@ -17,7 +17,7 @@ class DebugFlashAttention(torch.nn.Module):
         self.dl_dw = dl_dw # Upstream gradient G
 
         # looks like ideal gas equation, but it's not
-        self.P, self.V, self.PT, self.VT, self.G_unc, self.G, self.dp, self.dv, self.softmax_upstream, self.dQ, self.K, self.Q, self.d_score_t, self.dK, self.wqt, self.wkt, self.wvt, self.wq, self.wk, self.wv, self.upq, self.upk, self.upv, self.G_x_hat = ReaderFlashAttention(batch_size, seq_len, vocab_size, d_model, num_heads, head_dim)
+        self.P, self.V, self.PT, self.VT, self.G_unc, self.G, self.dp, self.dv, self.softmax_upstream, self.dQ, self.K, self.Q, self.d_score_t, self.dK, self.wqt, self.wkt, self.wvt, self.wq, self.wk, self.wv, self.upq, self.upk, self.upv, self.G_x_hat, self.layer_norm_gamma = ReaderFlashAttention(batch_size, seq_len, vocab_size, d_model, num_heads, head_dim)
 
     # dV = P^T G
     # dP = GV^T
@@ -181,3 +181,5 @@ class DebugFlashAttention(torch.nn.Module):
             print(f"Checking G_x_hat (total upstream for layer norm), status: {RED} {check_G_x_hat} {RESET}")
         else:
             print(f"Checking G_x_hat (total upstream for layer norm), status: {GREEN} {check_G_x_hat} {RESET}")
+
+        print(self.layer_norm_gamma)

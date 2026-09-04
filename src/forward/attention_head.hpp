@@ -615,6 +615,7 @@ public:
 
             layerNorm->getMean(),
             layerNorm->getStdDev(),
+            layerNorm->getGammaDevice(),
 
             query->getWeight(),
             key->getWeight(),

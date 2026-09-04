@@ -88,4 +88,8 @@ struct FlashAttentionPointers : NetAttentionParamaters
 
     // G_x_hat
     float *G_x_hat;
+
+    // x after embedding is shape (B, T,C)
+    // which we need for the layer norm backpropagation kernel
+    float *device_x; // wont want to write something as generic as dx
 };
