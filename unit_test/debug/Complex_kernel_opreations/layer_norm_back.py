@@ -27,8 +27,7 @@ import torch
 #     dx = (1.0 / (C * std)) * (C * dxhat - sum1 - x_hat * sum2)  # (B, T, C)
 #
 #     return dx
-
+import torch
 if __name__ == "__main__":
-    print("Executed")
     current_device = torch.cuda.current_device()
     print(f"GPU Model Name: {torch.cuda.get_device_name(current_device)}")
