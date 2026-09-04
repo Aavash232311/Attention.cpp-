@@ -3,6 +3,7 @@ import math
 import torch
 from debug.static import RESET, RED, GREEN
 from binary_reader.autograd_binary_reader import ReaderFlashAttention
+from Complex_kernel_opreations.layer_norm_back import layer_norm_back
 ''' This will debug the mathematical operation in flash attention class '''
 
 class DebugFlashAttention(torch.nn.Module):
@@ -17,7 +18,7 @@ class DebugFlashAttention(torch.nn.Module):
         self.dl_dw = dl_dw # Upstream gradient G
 
         # looks like ideal gas equation, but it's not
-        self.P, self.V, self.PT, self.VT, self.G_unc, self.G, self.dp, self.dv, self.softmax_upstream, self.dQ, self.K, self.Q, self.d_score_t, self.dK, self.wqt, self.wkt, self.wvt, self.wq, self.wk, self.wv, self.upq, self.upk, self.upv, self.G_x_hat, self.layer_norm_gamma = ReaderFlashAttention(batch_size, seq_len, vocab_size, d_model, num_heads, head_dim)
+        self.P, self.V, self.PT, self.VT, self.G_unc, self.G, self.dp, self.dv, self.softmax_upstream, self.dQ, self.K, self.Q, self.d_score_t, self.dK, self.wqt, self.wkt, self.wvt, self.wq, self.wk, self.wv, self.upq, self.upk, self.upv, self.G_x_hat, self.layer_norm_gamma, self.mc, self.stdc = ReaderFlashAttention(batch_size, seq_len, vocab_size, d_model, num_heads, head_dim)
 
     # dV = P^T G
     # dP = GV^T

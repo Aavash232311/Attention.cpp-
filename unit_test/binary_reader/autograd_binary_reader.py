@@ -127,7 +127,7 @@ def ReaderFlashAttention(
 
 
 
-    return P, V, PT, VT, G_unc, dl_dh, dp, dV, softmax_upstream, dQ, k, q, d_score_t, dK, wqt, wkt, wvt, wq, wk, wv, upq, upk, upv, G_x_hat, layer_norm_gamma
+    return P, V, PT, VT, G_unc, dl_dh, dp, dV, softmax_upstream, dQ, k, q, d_score_t, dK, wqt, wkt, wvt, wq, wk, wv, upq, upk, upv, G_x_hat, layer_norm_gamma, mean_cache, std_dev_cache
 
 def Reader(
         batch_size: int,
