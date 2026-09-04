@@ -174,13 +174,15 @@ __global__ void LayerNormBackPropgationKernel(
     float *mc,    // mean cache (B*T, C)
     float *sdc,   // sdc cache (B*T,)
     float *gamma, // (C)
-    int D,        // num elements
     int B,
     int T,
     int C)
 {
     int batch_idx = blockIdx.y;
     int row_idx = blockIdx.x;
+
+    int D = B * T * C;
+
 
     // skipping index formula
     float *x_row = x + batch_idx * (T * C) + row_idx * C;
@@ -240,7 +242,11 @@ __global__ void LayerNormBackPropgationKernel(
 
     for (int i = threadIdx.x; i < C; i += blockDim.x)
     {
+        // by the def sigma = sqrt(sigma + e)
         float first_component = 1.0f / (D * sqrtf(sdc_row[i] * sdc_row[i] + epsilon));
+
+        // printf("First componenet: %f epsilon: %.9g sigma^2 %f sqrt(d_head) %f \n", first_component, epsilon, sdc_row[i] * sdc_row[i], D);
+
         float dl_x_hat = G_row[i] * gamma[i] * D;
         float curr_xhat = (x_row[i] - mc_row[i]) / sqrtf(sdc_row[i] * sdc_row[i] + epsilon);
 
@@ -302,7 +308,7 @@ extern "C"
         float *mc, 
         float *sdc, 
         float *gamma,
-        int D,
+        float D,
         int B, 
         int T, 
         int C
@@ -312,7 +318,7 @@ extern "C"
         dim3 gridDim(T, B, 1);    // one block per (batch, row)
 
         LayerNormBackPropgationKernel<<<gridDim, blockDim>>>(
-            x, G, mc, sdc, gamma, D, B, T, C);
+            x, G, mc, sdc, gamma, B, T, C);
 
         cudaDeviceSynchronize();
     }
@@ -359,7 +365,6 @@ extern "C"
         float *mc,    // mean cache (B*T,)    ONE float per row, not per channel
         float *sdc,   // std dev cache (B*T,) ONE float per row, not per channel
         float *gamma, // (C,)  learnable scale
-        int D,
         int B,
         int T,
         int C)
@@ -371,8 +376,10 @@ extern "C"
         dim3 blockSize(threads_per_block, 1, 1);
         dim3 gridSize(row_count, 1, 1); // one block per row, simple 1D grid
 
+        // according to my common sense and schooling D is the total number of element 
+
         LayerNormBackPropgationKernel<<<gridSize, blockSize>>>(
-            x, G, mc, sdc, gamma, D, B, T, C);
+            x, G, mc, sdc, gamma, B, T, C);
 
         cudaDeviceSynchronize();
     }
