@@ -87,7 +87,6 @@ public:
 
     void weightTransposeAttn()
     {
-
         this->copyWeightQKVtoDevice();
     }
 
