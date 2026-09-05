@@ -181,7 +181,7 @@ __global__ void LayerNormBackPropgationKernel(
     int batch_idx = blockIdx.y;
     int row_idx = blockIdx.x;
 
-    int D = B * T * C;
+    int D = C;
 
 
     // skipping index formula
