@@ -369,11 +369,12 @@ public:
         float *x = embeddings->forward(currentBatch); // this brings us with the (B, T, C) batch because we added encoding and embeddings, encoding for our case fixed
                                                       // we need to store something here in order to add the resudal, a temporary variable
         std::memcpy(tempX, x, batch_size * seq_len * d_model * sizeof(float));
-        if (debug)
-        {
-            std::cout << "Tensor from c++" << std::endl;
-            utils->printFlatArray3D(tempX, batch_size, seq_len, d_model);
-        }
+        
+        // if (debug)
+        // {
+        //     std::cout << "Tensor from c++" << std::endl;
+        //     utils->printFlatArray3D(tempX, batch_size, seq_len, d_model);
+        // }
 
         layerNorm->forward(x);
 
