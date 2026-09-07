@@ -10,6 +10,7 @@
 #include "./interface_back.hpp"
 #include "./flash_attention.hpp"
 #include "./flash_attention_linear.hpp"
+#include "./contact_residual_back.hpp"
 
 #include "../include/utils.hpp"
 #include "../include/linear.hpp"
@@ -25,13 +26,14 @@ using namespace std;
 // Releases debugger script for python project to check
 // Autograd class and its child classes are getting messy
 
-class AutogradEngineDebuggerRelease : public FlashAttention, public FlashAttentionLinear
+class AutogradEngineDebuggerRelease : public FlashAttention, public FlashAttentionLinear, public ContactResidualBack
 {
 public:
     AutogradEngineDebuggerRelease(int d_model, int vocab_size, int num_heads,
                                   int seq_len, int batch_size, bool debug)
         : AutoGradEngine(d_model, vocab_size, num_heads, seq_len, batch_size, debug),
           FlashAttention(d_model, vocab_size, num_heads, seq_len, batch_size, debug),
+          ContactResidualBack(d_model, vocab_size, num_heads, seq_len, batch_size, debug),
           FlashAttentionLinear(d_model, vocab_size, num_heads, seq_len, batch_size, debug)
     {
     }
@@ -299,7 +301,7 @@ public:
 
         float *layer_norm_x;
 
-        float *d_beta;  
+        float *d_beta;
 
         upQ = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
         upK = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
@@ -309,7 +311,8 @@ public:
 
         G_x_hat_host = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
 
-        layer_norm_x = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));;
+        layer_norm_x = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
+        ;
 
         float *d_delta_beta;
         float *d_delta_gamma;
@@ -337,21 +340,19 @@ public:
         // reduce memory copy on PCIe BUS which is costly under each epoch.
 
         bulkRelease<float>(
-            {
-                {WQT, d_model * d_model, "wqt.bin"},
-                {WKT, d_model * d_model, "wkt.bin"},
-                {WVT, d_model * d_model, "wvt.bin"},
-                {model_paramaters.attention_head.host_WK, d_model * d_model, "wq.bin"},
-                {model_paramaters.attention_head.host_WQ, d_model * d_model, "wk.bin"},
-                {model_paramaters.attention_head.host_WV, d_model * d_model, "wv.bin"},
-                {upQ, batch_size * seq_len * d_model, "upQ.bin"},
-                {upK, batch_size * seq_len * d_model, "upK.bin"},
-                {upV, batch_size * seq_len * d_model, "upV.bin"},
-                {G_x_hat_host, batch_size * seq_len * d_model, "G_x_hat.bin"},
-                {layer_norm_x, batch_size * seq_len * d_model, "layer_norm_x.bin"},
-                {d_delta_beta, d_model, "d_beta.bin"},
-                {d_delta_gamma, d_model, "d_gamma.bin"}
-            });
+            {{WQT, d_model * d_model, "wqt.bin"},
+             {WKT, d_model * d_model, "wkt.bin"},
+             {WVT, d_model * d_model, "wvt.bin"},
+             {model_paramaters.attention_head.host_WK, d_model * d_model, "wq.bin"},
+             {model_paramaters.attention_head.host_WQ, d_model * d_model, "wk.bin"},
+             {model_paramaters.attention_head.host_WV, d_model * d_model, "wv.bin"},
+             {upQ, batch_size * seq_len * d_model, "upQ.bin"},
+             {upK, batch_size * seq_len * d_model, "upK.bin"},
+             {upV, batch_size * seq_len * d_model, "upV.bin"},
+             {G_x_hat_host, batch_size * seq_len * d_model, "G_x_hat.bin"},
+             {layer_norm_x, batch_size * seq_len * d_model, "layer_norm_x.bin"},
+             {d_delta_beta, d_model, "d_beta.bin"},
+             {d_delta_gamma, d_model, "d_gamma.bin"}});
 
         free(WQT);
         free(WKT);
