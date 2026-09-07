@@ -238,6 +238,7 @@ public:
     virtual void pyDebuggerReleaseStage6() {}
     virtual void pyDebuggerReleaseStage7() {}
     virtual void pyDebuggerReleaseStage8() {}
+    virtual void pyDebuggerReleaseStage9() {}
 
     // Backpropagation along Linear layer, Normalization
     virtual void NormLinearNet() {}
@@ -256,8 +257,6 @@ public:
         //         d_model,
         //         vocab_size);
         // }
-
-        outputProj();
 
         dl_dz_upstream_gradient(
             paramaters.y_actual, // Note:- these are on device
@@ -336,6 +335,13 @@ public:
         if (debug)
             pyDebuggerReleaseStage3();
 
+        
+        // Now we will take care about the output_proj
+        // Contact_G_Upstream = upstream gradient from the interface
+    
+        outputProj();
+
+        // Calls the backpropagation for the attention head items
         opv_upstream_gradient({batch_size, seq_len, vocab_size});
         // Ignoring the FFN for now we will call the flash attention layer.
 

@@ -28,6 +28,7 @@ def ReaderFlashAttention(
         device)
 
 
+
     dp = load_tensor("./src/cache/cpp_out/dp.bin",
                      shape=(batch_size, num_heads, seq_len, seq_len),
                      dtype=np.float32).to(device)

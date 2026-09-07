@@ -130,12 +130,66 @@ __global__ void dl_dh_kernel(
     out[idx_out] = sum;
 }
 
+__global__ void dbiasKernel(
+    float *G,
+    float *dbias,
+    int B,
+    int T,
+    int C)
+{
+    int batch_idx = blockIdx.y;
+    int row_idx = blockIdx.x;
+
+    float *G_row = G + batch_idx * (T * C) + row_idx * C;
+
+    for (int i = threadIdx.x; i < C; i += blockDim.x)
+    {
+        atomicAdd(&dbias[i], G_row[i]);
+    }
+}
+
 extern "C"
 {
+    /**
+     * @class dbias
+     * @brief gradient of bias in a linear layer
+     *
+     * @param G     Shape (B, T, C)
+     * @param dbias Shape (C)
+     * @param B     batch_size
+     * @param T     seq_len
+     * @param C     d_model
+     *
+     * @note Calculates the gradients along bias. Sum along B and T in a 3D tensor resulting in a "C" shape
+     *
+     */
+
+    void dbias(
+        float *G,
+        float *dbias,
+        int B,
+        int T,
+        int C)
+    {
+        cudaMemset(dbias, 0, C * sizeof(float));
+
+        dim3 blockDim(256, 1, 1);
+        dim3 gridDim(T, B, 1);
+        dbiasKernel<<<gridDim, blockDim>>>(G, dbias, B, T, C);
+
+        // cudaError_t err = cudaGetLastError();
+        // if (err != cudaSuccess)
+        // {
+        //     printf("Kernel launch failed: %s\n", cudaGetErrorString(err));
+        // }
+
+        cudaDeviceSynchronize();
+    }
+
     void dl_dh_upstream(
         float *delta, // (B, T, vocab_size)
-        float *wt, // (vocab_size, C)
-        float *out, // (B, T, C)
+        float *wt,    // (vocab_size, C)
+        float *out,   // (B, T, C)
         int B,
         int T,
         int C,
