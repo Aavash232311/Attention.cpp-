@@ -242,6 +242,7 @@ public:
     // Backpropagation along Linear layer, Normalization
     virtual void NormLinearNet() {}
     virtual void weightTransposeAttn() {}
+    virtual void outputProj() {}
 
     void backprop(
         const FlashAttentionPointers &paramaters)
@@ -255,6 +256,8 @@ public:
         //         d_model,
         //         vocab_size);
         // }
+
+        outputProj();
 
         dl_dz_upstream_gradient(
             paramaters.y_actual, // Note:- these are on device
