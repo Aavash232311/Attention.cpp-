@@ -22,6 +22,7 @@ extern "C" void lm_head_transpose_h(float *h, float *out, int B, int T, int C);
 extern "C" void dl_dw_upstream(float *h_t, float *delta, float *out, int B, int T, int C, int vocab_size);
 extern "C" void wt_upstream(float *w, float *wt, int d_model, int vocab_size);
 extern "C" void dl_dh_upstream(float *detla, float *wt, float *out, int B, int T, int C, int vocab_size);
+extern "C" void dbias(float *G, float *dbias, int B, int T, int C);
 // ---- Paramaters for our custom backgrad engine -----
 
 /*
@@ -332,9 +333,23 @@ public:
             d_model,
             vocab_size);
 
+        // now for the bias term, 
+        // Adam or AdamW needs these terms 
+
+        // Note:- bias shape is vocab_size
+        dbias(
+            model_paramaters.bias_lm_head,
+            model_paramaters.dbias_lm_head,
+            batch_size,
+            seq_len,
+            vocab_size
+        );
+
+
         if (debug)
             pyDebuggerReleaseStage3();
 
+        
         
         // Now we will take care about the output_proj
         // Contact_G_Upstream = upstream gradient from the interface

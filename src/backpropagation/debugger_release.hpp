@@ -111,9 +111,11 @@ public:
 
         float *wt_host = (float *)malloc(d_model * vocab_size * sizeof(float));
         float *dl_dh_host = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
+        float *bias_lm_head_host = (float *)malloc(vocab_size * sizeof(float));
 
         cudaMemcpy(wt_host, model_paramaters.wt_out_d, d_model * vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
         cudaMemcpy(dl_dh_host, model_paramaters.Contact_G_Upstream, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(bias_lm_head_host, model_paramaters.dbias_lm_head, vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
 
         bulkRelease<float>(
             {
@@ -121,6 +123,7 @@ public:
                 {model_paramaters.w_host, d_model * vocab_size, "w.bin"},
                 // for now this is the G shape (B, T, C)
                 {dl_dh_host, batch_size * seq_len * d_model, "dl_dh.bin"},
+                {bias_lm_head_host, vocab_size, "dbias_lm_head.bin"}
             });
 
         // if (debug)
@@ -130,6 +133,7 @@ public:
         // }
         free(dl_dh_host);
         free(wt_host);
+        free(bias_lm_head_host);
     }
 
     /**
