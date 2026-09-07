@@ -147,7 +147,8 @@ public:
 
     float *getBias()
     {
-        return this->bias;
+        // get bias from derive
+        return this->d_b;
     }
 
     float *getWeight()

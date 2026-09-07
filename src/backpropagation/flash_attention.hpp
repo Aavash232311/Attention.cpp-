@@ -248,6 +248,7 @@ public:
         : AutoGradEngine(d_model, vocab_size, num_heads, seq_len, batch_size, debug)
     {
     }
+
     // G = gradient from the interface (that's what I like to call even though it may not be std)
     // O = PV is there.
     // p = softmax(x)
@@ -258,6 +259,7 @@ public:
     void opv_upstream_gradient(
         Tensor4 shape) override
     {
+
         // Transposing P^T and V^T because they share common kernel logic.
 
         if (debug) // release the default pointer.

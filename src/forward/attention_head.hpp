@@ -88,6 +88,10 @@ public:
     float *Q_cache;
     float *K_cache;
 
+    float *dattn_out;
+    float *doutput_bias;
+    float *woT; // contact weight transpose
+
     Attention(
         int d_model,
         int vocab_size,
@@ -174,6 +178,10 @@ public:
 
         // (B, n_head, T, head_dim) s
         value_mat = (float *)malloc(batch_size * num_heads * seq_len * head_dim * sizeof(float));
+
+        cudaMalloc((void **)&dattn_out, batch_size * seq_len * d_model * sizeof(float));
+        cudaMalloc((void **)&doutput_bias, d_model * sizeof(float));
+        cudaMalloc((void **)&woT, d_model * d_model * sizeof(float));
     };
 
     ~Attention()
@@ -201,6 +209,11 @@ public:
 
         cudaFree(BTCdevice);
         cudaFree(resedualOutDevice);
+
+        cudaFree(dattn_out);
+        cudaFree(doutput_bias);
+
+        cudaFree(woT);
 
         free(B_NUMHEAD_T_T);
         free(B_NUMHEAD_SEQLEN_HEADDIM);
@@ -369,7 +382,7 @@ public:
         float *x = embeddings->forward(currentBatch); // this brings us with the (B, T, C) batch because we added encoding and embeddings, encoding for our case fixed
                                                       // we need to store something here in order to add the resudal, a temporary variable
         std::memcpy(tempX, x, batch_size * seq_len * d_model * sizeof(float));
-        
+
         // if (debug)
         // {
         //     std::cout << "Tensor from c++" << std::endl;
@@ -625,7 +638,14 @@ public:
 
             query->getWeight(),
             key->getWeight(),
-            value->getWeight()
+            value->getWeight(),
+
+            outputProj->getWeight(),
+            woT,
+            outputProj->getBias(),
+
+            dattn_out,
+            doutput_bias
 
         };
     }

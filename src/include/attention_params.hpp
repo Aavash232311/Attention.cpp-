@@ -50,4 +50,12 @@ struct AttentionParamaters
     float *host_WK;
     float *host_WV;
 
+    // for contact paramater linear
+    float *wo;
+    float *woT;
+    float *wo_bias;
+
+    float *dattn_out; // [B, T, C]
+    float *doutput_bias; // [C]
+
 };

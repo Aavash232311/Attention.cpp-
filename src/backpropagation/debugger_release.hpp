@@ -369,4 +369,55 @@ public:
         free(d_delta_beta);
         free(d_delta_gamma);
     }
+
+    /**
+     * @class pyDebuggerReleaseStage9
+     * @brief Releases the linear gradients of the contact, output project
+
+
+    * @note Releases the output param contact paramater
+    */
+
+    void pyDebuggerReleaseStage9()
+    {
+        // output projection wieght transpose check
+        // release weight and then transpose of that weight
+
+        float *weight = (float *)malloc(d_model * d_model * sizeof(float));
+        float *weight_transpose = (float *)malloc(d_model * d_model * sizeof(float));
+        float *dattention = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
+        float *dcontact_bias = (float *)malloc(d_model * sizeof(float));
+
+        cudaMemcpy(weight, model_paramaters.attention_head.wo, d_model * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaError_t err1 = cudaGetLastError();
+        if (err1 != cudaSuccess)
+            printf("After wo copy: %s\n", cudaGetErrorString(err1));
+
+        cudaMemcpy(weight_transpose, model_paramaters.attention_head.woT, d_model * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaError_t err2 = cudaGetLastError();
+        if (err2 != cudaSuccess)
+            printf("After woT copy: %s\n", cudaGetErrorString(err2));
+
+        cudaMemcpy(dattention, model_paramaters.attention_head.dattn_out, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaError_t err3 = cudaGetLastError();
+        if (err3 != cudaSuccess)
+            printf("After dattn_out copy: %s\n", cudaGetErrorString(err3));
+
+        cudaMemcpy(dcontact_bias, model_paramaters.attention_head.wo_bias, d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaError_t err4 = cudaGetLastError();
+        if (err4 != cudaSuccess)
+            printf("After wo_bias copy: %s\n", cudaGetErrorString(err4));
+
+        // bulkRelease<float>(
+        //     {{weight, d_model * d_model, "weight_contact.bin"},
+        //      {weight_transpose, d_model * d_model, "weight_contact_transpose.bin"},
+        //      {dattention, batch_size * seq_len * d_model, "dattention_contact.bin"},
+        //      {dcontact_bias, d_model, "dcontact_bias.bin"}
+        //     });
+
+        free(weight);
+        free(weight_transpose);
+        free(dattention);
+        free(dcontact_bias);
+    }
 };
