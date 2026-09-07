@@ -408,12 +408,12 @@ public:
         if (err4 != cudaSuccess)
             printf("After wo_bias copy: %s\n", cudaGetErrorString(err4));
 
-        // bulkRelease<float>(
-        //     {{weight, d_model * d_model, "weight_contact.bin"},
-        //      {weight_transpose, d_model * d_model, "weight_contact_transpose.bin"},
-        //      {dattention, batch_size * seq_len * d_model, "dattention_contact.bin"},
-        //      {dcontact_bias, d_model, "dcontact_bias.bin"}
-        //     });
+        bulkRelease<float>(
+            {{weight, d_model * d_model, "weight_contact.bin"},
+             {weight_transpose, d_model * d_model, "weight_contact_transpose.bin"},
+             {dattention, batch_size * seq_len * d_model, "dattention_contact.bin"},
+             {dcontact_bias, d_model, "dcontact_bias.bin"}
+            });
 
         free(weight);
         free(weight_transpose);
