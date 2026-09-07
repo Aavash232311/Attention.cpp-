@@ -9,7 +9,7 @@
 #include <cuda_runtime.h>
 #include <curand_kernel.h>
 
-// we will experiement with tensor cors later on :)
+
 __global__ void matmulLastTwo4DKernel(
     float *A,      // (a, b, c, d)
     float *B,      // (a, b, d, e)
