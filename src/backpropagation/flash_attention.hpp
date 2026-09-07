@@ -33,7 +33,6 @@ extern "C" void TransposeKey(float *arr, float *out, int num_heads, int head_dim
 extern "C" void multiHeadedAttention(float *ws, float *out, int num_head, int head_dimension, int batch_size, int d_model, int seq_len);
 extern "C" void MatMul4D(float *A, float *B, float *C, float scale, int a, int b, int c, int d, int e);
 extern "C" void softmaxBackGradKernel(float *P, float *dY, float *out, int N, int batch_size, int seq_len, int n_head);
-extern "C" void layerNormBackGrad(float *x, float *G, float *mc, float *sdc, float *gamma, int D, int B, int T, int C);
 
 class FlashAttention : virtual public AutoGradEngine
 {
@@ -241,18 +240,6 @@ private: // Note-: very limied kernel opreations here so for readability I am pa
             seq_len,
             seq_len,
             head_dim);
-    }
-
-    void GolfQubecBackGrad(
-        float N,
-        float *G, // (batch_size, num_head, seq_len, seq_len)
-        float *Q, //  (batch_size, num_head, seq_len, head_dim)
-        float *out,
-        int batch_size,
-        int num_head,
-        int seq_len,
-        int head_dim)
-    {
     }
 
 public:
