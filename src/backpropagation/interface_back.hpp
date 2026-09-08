@@ -327,7 +327,7 @@ public:
         dl_dh_upstream_gradient(
             paramaters.dl_dz_out_device,         // delta
             paramaters.wt_out_d,                 // w^t
-            model_paramaters.Contact_G_Upstream, // (B, T, C)
+            model_paramaters.dl_dh_output, // (B, T, C)
             batch_size,
             seq_len,
             d_model,

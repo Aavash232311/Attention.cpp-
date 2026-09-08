@@ -41,30 +41,39 @@ public:
      *     If these are gradients then no, AdamW or Adam later will need these values
      *
      * @warning This should always be called right after we get gradients from FFN or LM head. Right now we are igonoring FNN so its LM head.
+     * 
+     * @warning This method was added layer previously dl_dh was considered upstream gradient because I forgot this
+     * contact projection. Now what I have done is make the Contact_G and gradient flowing deep in the attention head
+     * as the gradient from this method of output project. Debugger flags green but remember debugger cannot debug
+     * just everything just check the mathematical kernel opreations.
+     * 
+     * For now I think this works but in future if we got the accuracy that is in the random threshold then we might need to check this out
+     * adf035f06eb37c1312bea700bc41b334a62d2b4f
      */
     void outputProj()
     {
-        // wt_upstream(model_paramaters.attention_head.wo,
-        //             model_paramaters.WoT,
-        //             d_model,
-        //             d_model);
+        wt_upstream(model_paramaters.attention_head.wo,
+                    model_paramaters.WoT,
+                    d_model,
+                    d_model);
 
-        // dl_dh_upstream(model_paramaters.Contact_G_Upstream,
-        //                model_paramaters.WoT,
-        //                model_paramaters.attention_head.dattn_out,
-        //                batch_size,
-        //                seq_len,
-        //                d_model,
-        //                d_model);
+        // This now releases what we call the G I am cooked but it is what it is hold tight.
+        dl_dh_upstream(model_paramaters.dl_dh_output,
+                       model_paramaters.WoT,
+                       model_paramaters.Contact_G_Upstream,
+                       batch_size,
+                       seq_len,
+                       d_model,
+                       d_model);
 
-        // // for testing what I want to do is, copy that 
+        // for testing what I want to do is, copy that 
 
 
-        // dbias(model_paramaters.attention_head.wo_bias,
-        //       model_paramaters.attention_head.doutput_bias,
-        //       batch_size,
-        //       seq_len,
-        //       d_model);
+        dbias(model_paramaters.attention_head.wo_bias,
+              model_paramaters.attention_head.doutput_bias,
+              batch_size,
+              seq_len,
+              d_model);
 
         if (debug)
         {

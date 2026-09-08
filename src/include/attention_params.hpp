@@ -53,8 +53,6 @@ struct AttentionParamaters
     // for contact paramater linear
     float *wo;
     float *wo_bias;
-
-    float *dattn_out; // [B, T, C]
     float *doutput_bias; // [C]
 
 };
