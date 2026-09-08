@@ -44,24 +44,27 @@ public:
      */
     void outputProj()
     {
-        wt_upstream(model_paramaters.attention_head.wo,
-                    model_paramaters.WoT,
-                    d_model,
-                    d_model);
+        // wt_upstream(model_paramaters.attention_head.wo,
+        //             model_paramaters.WoT,
+        //             d_model,
+        //             d_model);
 
-        dl_dh_upstream(model_paramaters.Contact_G_Upstream,
-                       model_paramaters.WoT,
-                       model_paramaters.attention_head.dattn_out,
-                       batch_size,
-                       seq_len,
-                       d_model,
-                       d_model);
+        // dl_dh_upstream(model_paramaters.Contact_G_Upstream,
+        //                model_paramaters.WoT,
+        //                model_paramaters.attention_head.dattn_out,
+        //                batch_size,
+        //                seq_len,
+        //                d_model,
+        //                d_model);
 
-        dbias(model_paramaters.attention_head.wo_bias,
-              model_paramaters.attention_head.doutput_bias,
-              batch_size,
-              seq_len,
-              d_model);
+        // // for testing what I want to do is, copy that 
+
+
+        // dbias(model_paramaters.attention_head.wo_bias,
+        //       model_paramaters.attention_head.doutput_bias,
+        //       batch_size,
+        //       seq_len,
+        //       d_model);
 
         if (debug)
         {

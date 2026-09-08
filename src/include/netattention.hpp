@@ -30,9 +30,6 @@ struct NetAttentionParamaters
     float *w_device;
     float *wt_out_d; // copy to CPU if the debugger is on and see.
 
-    float *dl_dh_host;
-    float *dl_dh_device;
-    float *dl_dh_out_d;
 };
 
 struct FlashAttentionPointers : NetAttentionParamaters
@@ -101,4 +98,6 @@ struct FlashAttentionPointers : NetAttentionParamaters
     float *bias_lm_head;
 
     float *WoT;
+
+
 };
