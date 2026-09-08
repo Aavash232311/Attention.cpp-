@@ -154,6 +154,10 @@ def ReaderFlashAttention(
                                             shape=(d_model, d_model),
                                             dtype=np.float32).to(device)
 
+    d_attention_contact = load_tensor("./src/cache/cpp_out/dattention_contact.bin",
+                                      shape=(batch_size, seq_len, d_model),
+                                      dtype=np.float32).to(device)
+
     # print(f"Weight contact: {weight_contact} \n Weight transposed: {weight_contact_transposed}")
 
     return (P, V, PT, VT, G_unc, dl_dh, dp, dV,
@@ -161,7 +165,8 @@ def ReaderFlashAttention(
             dK, wqt, wkt, wvt, wq, wk, wv, upq, upk,
             upv, G_x_hat, layer_norm_gamma, mean_cache,
             std_dev_cache, x, layer_norm_back_x, beta,
-            d_gamma, d_beta, weight_contact, weight_contact_transposed)
+            d_gamma, d_beta, weight_contact, weight_contact_transposed,
+            d_attention_contact)
 
 
 def Reader(

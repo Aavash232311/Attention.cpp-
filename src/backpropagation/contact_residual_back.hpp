@@ -49,7 +49,7 @@ public:
                     d_model,
                     d_model);
 
-        dl_dw_upstream(model_paramaters.Contact_G_Upstream,
+        dl_dh_upstream(model_paramaters.Contact_G_Upstream,
                        model_paramaters.WoT,
                        model_paramaters.attention_head.dattn_out,
                        batch_size,
