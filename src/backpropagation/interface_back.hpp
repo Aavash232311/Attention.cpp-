@@ -325,8 +325,8 @@ public:
             vocab_size);
 
         dl_dh_upstream_gradient(
-            paramaters.dl_dz_out_device,         // delta
-            paramaters.wt_out_d,                 // w^t
+            paramaters.dl_dz_out_device,   // delta
+            paramaters.wt_out_d,           // w^t
             model_paramaters.dl_dh_output, // (B, T, C)
             batch_size,
             seq_len,
@@ -338,11 +338,30 @@ public:
 
         // Note:- bias shape is vocab_size
         dbias(
-            model_paramaters.bias_lm_head,
-            model_paramaters.dbias_lm_head,
+            paramaters.dl_dz_out_device, // delta is the gradient G here
+            model_paramaters.dbias_lm_head_pred,
             batch_size,
             seq_len,
             vocab_size);
+
+        // if (debug)
+        // {
+        //     float *dbias_host = (float *)malloc(vocab_size * sizeof(float));
+
+        //     cudaMemcpy(dbias_host, model_paramaters.dbias_lm_head_pred, vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
+            
+        //     cout << "d bias lm head" << endl;
+        //     this->utils->printFlatArray1D(dbias_host, vocab_size);
+
+        //     float* d = (float *)malloc(batch_size * seq_len * vocab_size * sizeof(float));
+        //     cudaMemcpy(d, model_paramaters.dl_dz_out_device, batch_size * seq_len * vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
+
+        //     cout << "Delta upsteam G" << endl;
+        //     this->utils->printFlatArray3D(d, batch_size, seq_len, vocab_size);
+
+        //     free(dbias_host);
+        //     free(d);
+        // }
 
         if (debug)
             pyDebuggerReleaseStage3();

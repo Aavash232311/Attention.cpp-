@@ -158,6 +158,14 @@ def ReaderFlashAttention(
                                       shape=(batch_size, seq_len, d_model),
                                       dtype=np.float32).to(device)
 
+    d_bias_lm_head = load_tensor("./src/cache/cpp_out/dbias_lm_head.bin",
+                                 shape=(vocab_size, ),
+                                 dtype=np.float32).to(device)
+
+    d_bias_output_proj = load_tensor("./src/cache/cpp_out/dcontact_bias.bin",
+                                     shape=(d_model,),
+                                     dtype=np.float32).to(device)
+
     # print(f"Weight contact: {weight_contact} \n Weight transposed: {weight_contact_transposed}")
 
     return (P, V, PT, VT, G_unc, dl_dh, dp, dV,
@@ -166,7 +174,7 @@ def ReaderFlashAttention(
             upv, G_x_hat, layer_norm_gamma, mean_cache,
             std_dev_cache, x, layer_norm_back_x, beta,
             d_gamma, d_beta, weight_contact, weight_contact_transposed,
-            d_attention_contact)
+            d_attention_contact, d_bias_lm_head, d_bias_output_proj)
 
 
 def Reader(

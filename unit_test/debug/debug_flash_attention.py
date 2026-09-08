@@ -29,7 +29,8 @@ class DebugFlashAttention(torch.nn.Module):
          self.layer_norm_gamma, self.mc, self.stdc,
          self.x, self.layer_norm_back_x, self.beta,
          self.d_gamma, self.d_beta, self.weight_contact,
-         self.weight_contact_transpose, self.G) = ReaderFlashAttention(batch_size, seq_len, vocab_size, d_model, num_heads, head_dim)
+         self.weight_contact_transpose, self.G,
+         self.d_bias_lm_head, self.d_bias_output_proj) = ReaderFlashAttention(batch_size, seq_len, vocab_size, d_model, num_heads, head_dim)
 
     # dV = P^T G
     # dP = GV^T
@@ -254,3 +255,7 @@ class DebugFlashAttention(torch.nn.Module):
             print(f"Checking check_d_attention status: {RED} {check_d_attention} {RESET}")
         else:
             print(f"Checking check_d_attention status: {GREEN} {check_d_attention} {RESET}")
+
+        print(self.d_bias_lm_head)
+
+        print(self.d_bias_output_proj)
