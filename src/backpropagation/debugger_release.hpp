@@ -114,7 +114,7 @@ public:
         float *bias_lm_head_host = (float *)malloc(vocab_size * sizeof(float));
 
         cudaMemcpy(wt_host, model_paramaters.wt_out_d, d_model * vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
-        cudaMemcpy(dl_dh_host, model_paramaters.Contact_G_Upstream, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(dl_dh_host, model_paramaters.dl_dh_output, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
         cudaMemcpy(bias_lm_head_host, model_paramaters.dbias_lm_head, vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
 
         bulkRelease<float>(
@@ -392,6 +392,7 @@ public:
         float *dattention = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
         float *dcontact_bias = (float *)malloc(d_model * sizeof(float));
 
+   
         cudaMemcpy(weight, model_paramaters.attention_head.wo, d_model * d_model * sizeof(float), cudaMemcpyDeviceToHost);
         cudaError_t err1 = cudaGetLastError();
         if (err1 != cudaSuccess)
@@ -402,7 +403,7 @@ public:
         if (err2 != cudaSuccess)
             printf("After woT copy: %s\n", cudaGetErrorString(err2));
 
-        cudaMemcpy(dattention, model_paramaters.attention_head.dattn_out, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(dattention, model_paramaters.Contact_G_Upstream, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
         cudaError_t err3 = cudaGetLastError();
         if (err3 != cudaSuccess)
             printf("After dattn_out copy: %s\n", cudaGetErrorString(err3));

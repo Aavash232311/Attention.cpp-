@@ -88,7 +88,7 @@ public:
     float *Q_cache;
     float *K_cache;
 
-    float *dattn_out;
+
     float *doutput_bias;
 
     Attention(
@@ -178,7 +178,7 @@ public:
         // (B, n_head, T, head_dim) s
         value_mat = (float *)malloc(batch_size * num_heads * seq_len * head_dim * sizeof(float));
 
-        cudaMalloc((void **)&dattn_out, batch_size * seq_len * d_model * sizeof(float));
+
         cudaMalloc((void **)&doutput_bias, d_model * sizeof(float));
     };
 
@@ -208,7 +208,7 @@ public:
         cudaFree(BTCdevice);
         cudaFree(resedualOutDevice);
 
-        cudaFree(dattn_out);
+
         cudaFree(doutput_bias);
 
         free(B_NUMHEAD_T_T);
@@ -640,7 +640,6 @@ public:
             outputProj->getWeightDevice(),
             outputProj->getBaiasDevice(),
 
-            dattn_out,
             doutput_bias
 
         };
