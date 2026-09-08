@@ -99,4 +99,6 @@ struct FlashAttentionPointers : NetAttentionParamaters
     float *dbias_lm_head;
 
     float *bias_lm_head;
+
+    float *WoT;
 };

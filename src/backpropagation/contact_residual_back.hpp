@@ -27,27 +27,41 @@ public:
     {
     }
 
-
     /**
      * @class ContactResidualBack
      * @brief Backpropagation through output projection i.e contact paramaters
      *
-     * @param Upstream Gradient pointer to be modified 
+     * @param Upstream Gradient pointer to be modified
      *
      * @note Contact function is a linear function with weight and biases since we are using our custom linear class.
      *      Let us consider a linear function output_porjeciton = attention Wo + b
      *      Where Wo is the contact paramater and b is the bias.
-     * 
+     *
      *     Wq, Wk, and Wv have (C, C) shape we can re-use that
      *     If these are gradients then no, AdamW or Adam later will need these values
-     * 
+     *
      * @warning This should always be called right after we get gradients from FFN or LM head. Right now we are igonoring FNN so its LM head.
      */
     void outputProj()
     {
-        wt_upstream(model_paramaters.attention_head.wo, model_paramaters.attention_head.woT, d_model, d_model);
-        dl_dw_upstream(model_paramaters.Contact_G_Upstream, model_paramaters.attention_head.woT, model_paramaters.attention_head.dattn_out, batch_size, seq_len, d_model, d_model);
-        dbias(model_paramaters.attention_head.wo_bias, model_paramaters.attention_head.doutput_bias, batch_size, seq_len, d_model);
+        wt_upstream(model_paramaters.attention_head.wo,
+                    model_paramaters.WoT,
+                    d_model,
+                    d_model);
+
+        dl_dw_upstream(model_paramaters.Contact_G_Upstream,
+                       model_paramaters.WoT,
+                       model_paramaters.attention_head.dattn_out,
+                       batch_size,
+                       seq_len,
+                       d_model,
+                       d_model);
+
+        dbias(model_paramaters.attention_head.wo_bias,
+              model_paramaters.attention_head.doutput_bias,
+              batch_size,
+              seq_len,
+              d_model);
 
         if (debug)
         {

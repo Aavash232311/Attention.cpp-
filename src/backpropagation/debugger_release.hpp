@@ -397,7 +397,7 @@ public:
         if (err1 != cudaSuccess)
             printf("After wo copy: %s\n", cudaGetErrorString(err1));
 
-        cudaMemcpy(weight_transpose, model_paramaters.attention_head.woT, d_model * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(weight_transpose, model_paramaters.WoT, d_model * d_model * sizeof(float), cudaMemcpyDeviceToHost);
         cudaError_t err2 = cudaGetLastError();
         if (err2 != cudaSuccess)
             printf("After woT copy: %s\n", cudaGetErrorString(err2));
@@ -418,6 +418,12 @@ public:
              {dattention, batch_size * seq_len * d_model, "dattention_contact.bin"},
              {dcontact_bias, d_model, "dcontact_bias.bin"}
             });
+
+        // cout << "Weight" << endl;
+        // utils->printFlatArray2D(weight, d_model, d_model);
+
+        // cout << "Weight transposed" << endl;
+        // utils->printFlatArray2D(weight_transpose, d_model, d_model);
 
         free(weight);
         free(weight_transpose);

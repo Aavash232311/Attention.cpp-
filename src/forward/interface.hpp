@@ -149,6 +149,8 @@ class AttentionInterface
 
     float *dbias_lm_head;
 
+    float *WoT;
+
 private:
     // ----------- TEMPORARY DEBUGGER SCRIPT ---------------------
 
@@ -296,6 +298,8 @@ public:
         cudaMalloc((void **)&dgamma, d_model * sizeof(float));
 
         cudaMalloc((void **)&dbias_lm_head, vocab_size * sizeof(float));
+
+        cudaMalloc((void **)&WoT, d_model * d_model * sizeof(float));
     }
 
     ~AttentionInterface()
@@ -371,6 +375,8 @@ public:
         cudaFree(dgamma);
 
         cudaFree(dbias_lm_head);
+
+        cudaFree(WoT);
     }
 
     LinearParams getLmHeadParams()
@@ -546,6 +552,9 @@ public:
 
                 modelParamaters.debeta = dbeta;
                 modelParamaters.dgamma = dgamma;
+
+                // Tranapose of weight of contact i.e output projection
+                modelParamaters.WoT = WoT;
 
                 // because the backprops needs to be done for each epoch.
                 // we need to keep in mind that the things hurting performace like cuda malloc and everything declared

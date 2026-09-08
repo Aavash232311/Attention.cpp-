@@ -90,7 +90,6 @@ public:
 
     float *dattn_out;
     float *doutput_bias;
-    float *woT; // contact weight transpose
 
     Attention(
         int d_model,
@@ -181,7 +180,6 @@ public:
 
         cudaMalloc((void **)&dattn_out, batch_size * seq_len * d_model * sizeof(float));
         cudaMalloc((void **)&doutput_bias, d_model * sizeof(float));
-        cudaMalloc((void **)&woT, d_model * d_model * sizeof(float));
     };
 
     ~Attention()
@@ -212,8 +210,6 @@ public:
 
         cudaFree(dattn_out);
         cudaFree(doutput_bias);
-
-        cudaFree(woT);
 
         free(B_NUMHEAD_T_T);
         free(B_NUMHEAD_SEQLEN_HEADDIM);
@@ -599,6 +595,7 @@ public:
 
     AttentionParamaters getParamaters()
     {
+
         LinearParams Q_p{query->getWeight(), query->getBias()};
         LinearParams K_p{query->getWeight(), query->getBias()};
         LinearParams V_p{query->getWeight(), query->getBias()};
@@ -640,9 +637,8 @@ public:
             key->getWeight(),
             value->getWeight(),
 
-            outputProj->getWeight(),
-            woT,
-            outputProj->getBias(),
+            outputProj->getWeightDevice(),
+            outputProj->getBaiasDevice(),
 
             dattn_out,
             doutput_bias
