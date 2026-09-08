@@ -29,7 +29,7 @@ class DebugFlashAttention(torch.nn.Module):
          self.layer_norm_gamma, self.mc, self.stdc,
          self.x, self.layer_norm_back_x, self.beta,
          self.d_gamma, self.d_beta, self.weight_contact,
-         self.weight_contact_transpose) = ReaderFlashAttention(batch_size, seq_len, vocab_size, d_model, num_heads, head_dim)
+         self.weight_contact_transpose, self.d_attention_contact) = ReaderFlashAttention(batch_size, seq_len, vocab_size, d_model, num_heads, head_dim)
 
     # dV = P^T G
     # dP = GV^T
@@ -244,5 +244,12 @@ class DebugFlashAttention(torch.nn.Module):
         if not check_output_project_weight_transposed_troch:
             print(f"Checking output_project_weight_transposed_troch status: {RED} {check_output_project_weight_transposed_troch} {RESET} ")
         else:
-            print(
-                f"Checking output_project_weight_transposed_troch status: {GREEN} {check_output_project_weight_transposed_troch} {RESET} ")
+            print(f"Checking output_project_weight_transposed_troch status: {GREEN} {check_output_project_weight_transposed_troch} {RESET} ")
+
+        d_attention_torch = self.G @ self.weight_contact_transpose
+        check_d_attention = torch.allclose(d_attention_torch, self.d_attention_contact, atol=1e-4, rtol=1e-4)
+
+        if not check_d_attention:
+            print(f"Checking check_d_attention status: {RED} {check_d_attention} {RESET}")
+        else:
+            print(f"Checking check_d_attention status: {GREEN} {check_d_attention} {RESET}")
