@@ -148,12 +148,22 @@ public:
     float *getBias()
     {
         // get bias from derive
+        return this->bias;
+    }
+
+    float *getBaiasDevice()
+    {
         return this->d_b;
     }
 
     float *getWeight()
     {
         return this->weight;
+    }
+
+    float *getWeightDevice()
+    {
+        return this->device_weight;
     }
 
     float *forward(float *val)

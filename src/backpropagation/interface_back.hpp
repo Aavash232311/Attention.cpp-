@@ -333,8 +333,8 @@ public:
             d_model,
             vocab_size);
 
-        // now for the bias term, 
-        // Adam or AdamW needs these terms 
+        // now for the bias term,
+        // Adam or AdamW needs these terms
 
         // Note:- bias shape is vocab_size
         dbias(
@@ -342,18 +342,14 @@ public:
             model_paramaters.dbias_lm_head,
             batch_size,
             seq_len,
-            vocab_size
-        );
-
+            vocab_size);
 
         if (debug)
             pyDebuggerReleaseStage3();
 
-        
-        
         // Now we will take care about the output_proj
         // Contact_G_Upstream = upstream gradient from the interface
-    
+
         outputProj();
 
         // Calls the backpropagation for the attention head items

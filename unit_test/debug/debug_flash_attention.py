@@ -28,7 +28,8 @@ class DebugFlashAttention(torch.nn.Module):
          self.upk, self.upv, self.G_x_hat,
          self.layer_norm_gamma, self.mc, self.stdc,
          self.x, self.layer_norm_back_x, self.beta,
-         self.d_gamma, self.d_beta) = ReaderFlashAttention(batch_size, seq_len, vocab_size, d_model, num_heads, head_dim)
+         self.d_gamma, self.d_beta, self.weight_contact,
+         self.weight_contact_transpose) = ReaderFlashAttention(batch_size, seq_len, vocab_size, d_model, num_heads, head_dim)
 
     # dV = P^T G
     # dP = GV^T
@@ -221,8 +222,6 @@ class DebugFlashAttention(torch.nn.Module):
             self.seq_len
         )
 
-
-
         check_d_gamma = torch.allclose(d_gamma, self.d_gamma,atol=1e-4, rtol=1e-4)
         check_d_beta = torch.allclose(d_beta, self.d_beta,atol=1e-4, rtol=1e-4)
 
@@ -235,3 +234,15 @@ class DebugFlashAttention(torch.nn.Module):
             print(f"Checking check_d_beta status: {GREEN} {check_d_beta} {RESET}")
         else:
             print(f"Checking check_d_beta status: {GREEN} {check_d_beta} {RESET}")
+
+        ''' Here we are checking the output projection linear background '''
+
+        output_project_weight_transposed_troch = self.weight_contact.T
+        check_output_project_weight_transposed_troch = torch.allclose(output_project_weight_transposed_troch, self.weight_contact_transpose,atol=1e-4, rtol=1e-4)
+
+
+        if not check_output_project_weight_transposed_troch:
+            print(f"Checking output_project_weight_transposed_troch status: {RED} {check_output_project_weight_transposed_troch} {RESET} ")
+        else:
+            print(
+                f"Checking output_project_weight_transposed_troch status: {GREEN} {check_output_project_weight_transposed_troch} {RESET} ")
