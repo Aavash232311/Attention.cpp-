@@ -147,11 +147,11 @@ class AttentionInterface
     float *dbeta;
     float *dgamma;
 
-    float *dbias_lm_head;
-
     float *WoT;
 
     float *dl_dh_output;
+
+    float *dbias_lm_head_pred;
 
 private:
     // ----------- TEMPORARY DEBUGGER SCRIPT ---------------------
@@ -299,7 +299,7 @@ public:
         cudaMalloc((void **)&dbeta, d_model * sizeof(float));
         cudaMalloc((void **)&dgamma, d_model * sizeof(float));
 
-        cudaMalloc((void **)&dbias_lm_head, vocab_size * sizeof(float));
+        cudaMalloc((void **)&dbias_lm_head_pred, vocab_size * sizeof(float));
 
         cudaMalloc((void **)&WoT, d_model * d_model * sizeof(float));
 
@@ -378,7 +378,7 @@ public:
         cudaFree(dbeta);
         cudaFree(dgamma);
 
-        cudaFree(dbias_lm_head);
+        cudaFree(dbias_lm_head_pred);
 
         cudaFree(WoT);
 
@@ -475,7 +475,7 @@ public:
                 float *prob = lm_head->forward(x); // Shape (B, T, vocab_size) x is not changed here.
 
                 modelParamaters.w_host = lm_head->getWeight();
-                modelParamaters.bias_lm_head = lm_head->getBias();
+                modelParamaters.bias_lm_head = lm_head->getBaiasDevice();
 
                 // if (debug)
                 // {
@@ -504,8 +504,7 @@ public:
                 modelParamaters.device_h = attention->BorrowBTCDevice(); // (B, T, d_model) on device
                 modelParamaters.device_out_h = out_h;
 
-                modelParamaters.dbias_lm_head = dbias_lm_head;
-            
+                modelParamaters.dbias_lm_head_pred = dbias_lm_head_pred;
 
                 // for dl_dw = delta h^T derived in flashback.md
 

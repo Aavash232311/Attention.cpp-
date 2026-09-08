@@ -177,11 +177,11 @@ extern "C"
         dim3 gridDim(T, B, 1);
         dbiasKernel<<<gridDim, blockDim>>>(G, dbias, B, T, C);
 
-        // cudaError_t err = cudaGetLastError();
-        // if (err != cudaSuccess)
-        // {
-        //     printf("Kernel launch failed: %s\n", cudaGetErrorString(err));
-        // }
+        cudaError_t err = cudaGetLastError();
+        if (err != cudaSuccess)
+        {
+            printf("Kernel launch failed: %s\n", cudaGetErrorString(err));
+        }
 
         cudaDeviceSynchronize();
     }

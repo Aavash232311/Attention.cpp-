@@ -115,7 +115,7 @@ public:
 
         cudaMemcpy(wt_host, model_paramaters.wt_out_d, d_model * vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
         cudaMemcpy(dl_dh_host, model_paramaters.dl_dh_output, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
-        cudaMemcpy(bias_lm_head_host, model_paramaters.dbias_lm_head, vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(bias_lm_head_host, model_paramaters.dbias_lm_head_pred, vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
 
         bulkRelease<float>(
             {
