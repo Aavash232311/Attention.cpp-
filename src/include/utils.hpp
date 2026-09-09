@@ -22,6 +22,12 @@ struct Tensor4
 class Utility
 {
 public:
+    /**
+     * @class showHashMap
+     * @brief prints hash map ket and value
+     *
+     * @param encoded_input: pass in the hash map
+     */
     void showHashMap(std::vector<std::unordered_map<char, int>> &encoded_input)
     {
         for (size_t i = 0; i < encoded_input.size(); i++)
@@ -34,6 +40,13 @@ public:
         return;
     }
 
+    /**
+     * @class showVector
+     * @brief Prints 1D vector data structure
+     *
+     * @param arr: pass in the vector
+     */
+
     template <typename T>
     void showVector(std::vector<T> &arr)
     {
@@ -43,6 +56,15 @@ public:
         }
         std::cout << "\n";
     }
+
+    /**
+     * @class Print2DVector
+     * @brief Prints 2D vector data structure
+     *
+     * @param vec: pass in the vector
+     * @param shape: bool shows the shape of the vector as if it was a tensor
+     */
+
     template <typename T>
     void Print2DVector(const std::vector<std::vector<T>> &vec, bool shape_only = false)
     {
@@ -66,6 +88,15 @@ public:
                   << (vec.empty() ? 0 : vec[0].size())
                   << ")\n";
     }
+
+    /**
+     * @class Print3DVector
+     * @brief Prints 3D vector data structure
+     *
+     * @param vec: pass in the vector
+     * @param shape: bool shows the shape of the vector as if it was a tensor
+     */
+
     template <typename T>
     void Print3DVector(const std::vector<std::vector<std::vector<T>>> &vec, bool shape_only = false)
     {
@@ -99,6 +130,14 @@ public:
                   << ")\n";
     }
 
+    /**
+     * @class print_vector
+     * @brief Prints vector data structure
+     *
+     * @param vec: pass in the vector
+     *
+     */
+
     template <typename T>
     void print_vector(const std::vector<T> &vec)
     {
@@ -110,6 +149,16 @@ public:
         }
         std::cout << "]\n";
     }
+
+    /**
+     * @class printFlatArray2D
+     * @brief Prints flat memory strip as if it was a tensor
+     *
+     * @param generic pointer address
+     * @param dim 1
+     * @param dim 2
+     *
+     */
 
     template <typename T>
     void printFlatArray2D(const T *arr, int seq_len, int d_model)
@@ -147,10 +196,11 @@ public:
      * @param dim 1
      * @param dim 2
      * @param dim 3
-     * 
+     *
      * @param show_last_dim bool shows the last dim
      *
-     * @note Looks like this is failing
+     * @note Known issue something is wrong here, I noticed that when using this it sometimes crashes next time that happens
+     * I will take a look at this one right here.
      */
 
     template <typename T>
@@ -222,7 +272,19 @@ public:
             }
         }
     }
-    // For now lets make this method convert the flat array which is computed by the GPU to 2D array of vectors
+
+    /**
+     * @class flatArrToVec
+     * @brief converts the memory strip to a vector data structure
+     *
+     * @param arr pointer to the first memory address
+     * @param rows 1
+     * @param cols 2
+     *
+     *
+     * @note this is expensive when invoking under each epoch. Its sutiable only for a single shot opreation
+     * Example: when converting flat memory strip to a vector using data loader.
+     */
     template <typename T>
     std::vector<std::vector<T>> flatArrToVec(const float *arr, int rows, int cols)
     {
@@ -239,10 +301,16 @@ public:
         return vec2d;
     }
 
-    // IMPORTANT NOTE HERE:-
-    // opreation in the parallel happens through the flat strip of memory so just to check and see I am writing this.
-    // This is a performace bottlneck in the code but for the sake of learning you cant really think in terms of flat memory.
-    // I am keeping this here. Once the model is working we will modifiy and make this flat we might.
+    /**
+     * @class TwoDVectorToFlatMem
+     * @brief converts vector data structures to a flat memory strip
+     *
+     * @param arr pass in vector data structure
+     * @param shape prints the shape
+     *
+     * @warning This is again expensive task to invoke under each epoch. It really hurts the performance very much.
+     * Use this in something like a data loader for single shot opreation
+     */
     template <typename T>
     T *TwoDVectorToFlatMem(const std::vector<std::vector<T>> &arr,
                            bool shape = false) // This is a bottleneck in the perforamce I know the fact that we should use flat vector but for the sake of learning I am using this.
@@ -312,6 +380,19 @@ public:
     //     }
     // }
 
+    /**
+     * @class print2DMatrixLastTwo
+     * @brief Prints 4d memory strip's last two matrix.
+     *
+     * @param arr pass in vector data structure
+     * @param dim1
+     * @param dim2
+     * @param dim3
+     * @param dim4
+     *
+     * @brief Used for debugging
+     */
+
     void print2DMatrixLastTwo(
         float *arr,
         int batch_size,
@@ -338,6 +419,20 @@ public:
             }
         }
     }
+
+    /**
+     * @class print2DMatrixLastTwoRect
+     * @brief Prints 4d memory strip's last two matrix.
+     *
+     * @param arr pass in vector data structure
+     * @param dim1
+     * @param dim2
+     * @param dim3
+     * @param dim4
+     * @param label: can pass in anything for label
+     *
+     * @brief Used for debugging
+     */
 
     // This the more flexible. used for checking dimension in tensor that are swapped.
     void print2DMatrixLastTwoRect(
@@ -368,8 +463,18 @@ public:
         }
     }
 
-    // this is for debugging multi headed attention
-    // errors in the GPU are quiet, like me
+    /**
+     * @class printFlarArray4D
+     * @brief Prints the 4d memory strip as if it was a tensor
+     *
+     * @param data pointer data
+     * @param dim1
+     * @param dim2
+     * @param dim3
+     * @param dim4
+     *
+     * @brief Used for debugging
+     */
     template <typename T>
     void printFlarArray4D(T *data, int B, int S, int num_heads, int head_dim)
     {
