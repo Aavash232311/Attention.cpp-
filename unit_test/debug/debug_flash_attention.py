@@ -256,5 +256,17 @@ class DebugFlashAttention(torch.nn.Module):
         else:
             print(f"Checking check_d_attention status: {GREEN} {check_d_attention} {RESET}")
 
+        check_d_bias_output_proj = torch.allclose(self.d_bias_output_proj,
+                                                  self.dl_dh.sum(dim=(0, 1)),
+                                                  atol=1e-4,
+                                                  rtol=1e-4)
+        # print(f"sum b, t: {self.dl_dh.sum(dim=(0, 1))}"
+        #       f"{self.d_bias_output_proj}")
 
+        # Here in the output project our upstream gradient is dl_dh
+
+        if not check_d_bias_output_proj:
+            print(f"Checking dbias output projection: {RED} {check_d_bias_output_proj} {RESET}")
+        else:
+            print(f"Checking dbias output projection: {GREEN} {check_d_bias_output_proj} {RESET}")
 

@@ -11,20 +11,17 @@
 #include <iostream>
 #include <unordered_map>
 
-
-
-struct Tensor4 {
+struct Tensor4
+{
     int x;
     int y;
     int z;
     int z1; // shapes can have muliple heads
 };
 
-
 class Utility
 {
 public:
-
     void showHashMap(std::vector<std::unordered_map<char, int>> &encoded_input)
     {
         for (size_t i = 0; i < encoded_input.size(); i++)
@@ -141,6 +138,20 @@ public:
         }
         printf("], shape=[%d, %d])\n", seq_len, d_model);
     }
+
+    /**
+     * @class printFlatArray3D
+     * @brief Prints flat memory strip as if it was a tensor
+     *
+     * @param generic pointer address
+     * @param dim 1
+     * @param dim 2
+     * @param dim 3
+     * 
+     * @param show_last_dim bool shows the last dim
+     *
+     * @note Looks like this is failing
+     */
 
     template <typename T>
     void printFlatArray3D(const T *arr, int seq_len, int batch_size, int embed_dim, bool show_last_dim = false)

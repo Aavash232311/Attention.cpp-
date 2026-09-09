@@ -69,7 +69,7 @@ public:
 
         // for testing what I want to do is, copy that
 
-        dbias(model_paramaters.attention_head.wo_bias,
+        dbias(model_paramaters.dl_dh_output, // upstream gradient
               model_paramaters.attention_head.doutput_bias,
               batch_size,
               seq_len,

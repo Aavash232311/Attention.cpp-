@@ -117,6 +117,7 @@ public:
         cudaMemcpy(dl_dh_host, model_paramaters.dl_dh_output, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
         cudaMemcpy(bias_lm_head_host, model_paramaters.dbias_lm_head_pred, vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
 
+
         bulkRelease<float>(
             {
                 {wt_host, d_model * vocab_size, "wt.bin"},
@@ -126,11 +127,6 @@ public:
                 {bias_lm_head_host, vocab_size, "dbias_lm_head.bin"}
             });
 
-        // if (debug)
-        // {
-        //     cout << "W^T from C++" << endl;
-        //     utils->printFlatArray2D(wt_host, vocab_size, d_model);
-        // }
         free(dl_dh_host);
         free(wt_host);
         free(bias_lm_head_host);
@@ -408,7 +404,7 @@ public:
         if (err3 != cudaSuccess)
             printf("After dattn_out copy: %s\n", cudaGetErrorString(err3));
 
-        cudaMemcpy(dcontact_bias, model_paramaters.attention_head.wo_bias, d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(dcontact_bias, model_paramaters.attention_head.doutput_bias, d_model * sizeof(float), cudaMemcpyDeviceToHost);
         cudaError_t err4 = cudaGetLastError();
         if (err4 != cudaSuccess)
             printf("After wo_bias copy: %s\n", cudaGetErrorString(err4));
