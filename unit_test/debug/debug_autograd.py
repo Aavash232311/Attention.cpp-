@@ -11,7 +11,9 @@ def debug_autograd(
         num_heads: int
 ):
     torch.set_printoptions(precision=8, sci_mode=False, threshold=float('inf'))
-    delta, y_predicted, y_actual, h, dl_dw_kernel, h_t, wt, w, dl_dh_kernel = Reader(
+    (delta, y_predicted,
+     y_actual, h, dl_dw_kernel,
+     h_t, wt, w, dl_dh_kernel, d_bias_lm_head) = Reader(
         batch_size=batch_size,
         seq_len=seq_len,
         vocab_size=vocab_size,
@@ -60,4 +62,12 @@ def debug_autograd(
         print(f"Checking dl_dh matmul kernel: {RED} {check_dl_dh} {RESET}")
     else:
         print(f"Checking dl_dh matmul kernel: {GREEN} {check_dl_dh} {RESET}")
+
+    check_d_bias_lm_head = torch.allclose(delta_torch.sum(dim=(0, 1)), d_bias_lm_head)
+
+    if not check_d_bias_lm_head:
+        print(f"checking dl_dh bias (i.e sum across b,t) kernel: {RED} {check_d_bias_lm_head} {RESET}")
+    else:
+        print(f"checking dl_dh bias (i.e sum across b,t) kernel: {GREEN} {check_d_bias_lm_head} {RESET}")
+
     return dl_dw_kernel

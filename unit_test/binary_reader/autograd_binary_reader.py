@@ -157,11 +157,6 @@ def ReaderFlashAttention(
     d_attention_contact = load_tensor("./src/cache/cpp_out/dattention_contact.bin",
                                       shape=(batch_size, seq_len, d_model),
                                       dtype=np.float32).to(device)
-
-    d_bias_lm_head = load_tensor("./src/cache/cpp_out/dbias_lm_head.bin",
-                                 shape=(vocab_size, ),
-                                 dtype=np.float32).to(device)
-
     d_bias_output_proj = load_tensor("./src/cache/cpp_out/dcontact_bias.bin",
                                      shape=(d_model,),
                                      dtype=np.float32).to(device)
@@ -174,7 +169,7 @@ def ReaderFlashAttention(
             upv, G_x_hat, layer_norm_gamma, mean_cache,
             std_dev_cache, x, layer_norm_back_x, beta,
             d_gamma, d_beta, weight_contact, weight_contact_transposed,
-            d_attention_contact, d_bias_lm_head, d_bias_output_proj)
+            d_attention_contact, d_bias_output_proj)
 
 
 def Reader(
@@ -195,7 +190,12 @@ def Reader(
     w = load_tensor('./src/cache/cpp_out/w.bin', shape=(d_model, vocab_size), dtype=np.float32).to(device)
 
     dl_dh = load_tensor('./src/cache/cpp_out/dl_dh.bin', shape=(batch_size, seq_len, d_model), dtype=np.float32).to(device)
+    d_bias_lm_head = load_tensor("./src/cache/cpp_out/dbias_lm_head.bin",
+                                 shape=(vocab_size, ),
+                                 dtype=np.float32).to(device)
 
 
-    return delta, y_predicted, y_actual, h, dl_dw_kernel, h_t, wt, w, dl_dh
+    return (delta, y_predicted,
+            y_actual, h, dl_dw_kernel,
+            h_t, wt, w, dl_dh, d_bias_lm_head)
 
