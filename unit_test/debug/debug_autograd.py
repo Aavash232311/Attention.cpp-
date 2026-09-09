@@ -70,4 +70,5 @@ def debug_autograd(
     else:
         print(f"checking dl_dh bias (i.e sum across b,t) kernel: {GREEN} {check_d_bias_lm_head} {RESET}")
 
+    print("\n")
     return dl_dw_kernel
