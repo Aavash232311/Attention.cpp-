@@ -46,9 +46,9 @@ struct AttentionParamaters
 
     // Pass Host reference to linear layer of weights of QKV
 
-    float *host_WQ;
-    float *host_WK;
-    float *host_WV;
+    float *device_WQ;
+    float *device_WK;
+    float *device_WV;
 
     // for contact paramater linear
     float *wo;
