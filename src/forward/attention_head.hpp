@@ -564,6 +564,18 @@ public:
         //     this->utils->printFlatArray3D(BTCHost, batch_size, seq_len, d_model);
         // }
 
+        // if (debug)
+        // {
+        //     cout << "Check weight from d_weight in the linear lauyer" << endl;
+        //     float *Weight = (float *)malloc(d_model * d_model * sizeof(float));
+
+        //     cudaMemcpy(Weight, query->getBaiasDevice(), d_model * d_model * sizeof(float), cudaMemcpyDeviceToDevice);
+
+        //     utils->printFlatArray2D(Weight, d_model, d_model);
+
+        //     free(Weight);
+        // }
+
         debug = false;
 
         return this->BTCHost;
@@ -606,6 +618,7 @@ public:
 
         SingleEmbeddings emebdding_p{embeddings->getEmbeddingsParamaters()};
 
+
         return {
             Q_p, // weight and bias of QKV
             K_p,
@@ -633,9 +646,9 @@ public:
             layerNorm->getGammaDevice(),
             layerNorm->getBeta(),
 
-            query->getWeight(),
-            key->getWeight(),
-            value->getWeight(),
+            query->getWeightDevice(),
+            key->getWeightDevice(),
+            value->getWeightDevice(),
 
             outputProj->getWeightDevice(),
             outputProj->getBaiasDevice(),

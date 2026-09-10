@@ -29,14 +29,14 @@ private:
 
         // K and V are allocated elsewhere just re-using this pointer
 
-        cudaMemcpy(model_paramaters.Wk, model_paramaters.attention_head.host_WK, d_model * d_model * sizeof(float), cudaMemcpyHostToDevice);
-        cudaMemcpy(model_paramaters.WQ, model_paramaters.attention_head.host_WQ, d_model * d_model * sizeof(float), cudaMemcpyHostToDevice);
-        cudaMemcpy(model_paramaters.WV, model_paramaters.attention_head.host_WV, d_model * d_model * sizeof(float), cudaMemcpyHostToDevice);
+        // cudaMemcpy(model_paramaters.Wk, model_paramaters.attention_head.host_WK, d_model * d_model * sizeof(float), cudaMemcpyHostToDevice);
+        // cudaMemcpy(model_paramaters.WQ, model_paramaters.attention_head.host_WQ, d_model * d_model * sizeof(float), cudaMemcpyHostToDevice);
+        // cudaMemcpy(model_paramaters.WV, model_paramaters.attention_head.host_WV, d_model * d_model * sizeof(float), cudaMemcpyHostToDevice);
 
         // reanspose shape (C, C) -> (C, C) output variabel WKT, WqT, WvT
-        wt_upstream(model_paramaters.Wk, model_paramaters.WkT, d_model, d_model);
-        wt_upstream(model_paramaters.WQ, model_paramaters.WqT, d_model, d_model);
-        wt_upstream(model_paramaters.WV, model_paramaters.WvT, d_model, d_model); // out shape (d_mdoel, d_model)
+        wt_upstream(model_paramaters.attention_head.device_WK, model_paramaters.WkT, d_model, d_model);
+        wt_upstream(model_paramaters.attention_head.device_WQ, model_paramaters.WqT, d_model, d_model);
+        wt_upstream(model_paramaters.attention_head.device_WV, model_paramaters.WvT, d_model, d_model); // out shape (d_mdoel, d_model)
 
         // recalling the shape here
 
@@ -78,17 +78,17 @@ private:
         if (debug)
             pyDebuggerReleaseStage8();
 
-        if (debug)
-        {
-            cout << "dl_dh at the end of backpropagation " << endl;
-            float *G = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
+        // if (debug)
+        // {
+        //     cout << "dl_dh at the end of backpropagation " << endl;
+        //     float *G = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
 
-            cudaMemcpy(G, model_paramaters.dl_dh_output, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyHostToDevice);
+        //     cudaMemcpy(G, model_paramaters.dl_dh_output, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyHostToDevice);
 
-            utils->printFlatArray3D(G, batch_size, seq_len, d_model);
+        //     utils->printFlatArray3D(G, batch_size, seq_len, d_model);
 
-            free(G);
-        }
+        //     free(G);
+        // }
     }
 
 public:
