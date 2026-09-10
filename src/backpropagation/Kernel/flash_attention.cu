@@ -9,6 +9,20 @@
 #include <cuda_runtime.h>
 #include <curand_kernel.h>
 
+/**
+ * @class matmulLastTwo4DKernel
+ * @brief Matrix multiplication of the last two dimension of the 4D tensor
+ *
+ * @param A: matrix A
+ * @param B: matrix B
+ * @param C: matrix C
+ * @param a: shape A
+ * @param b: shape B
+ * @param c: shape C
+ * @param d: shape D
+ * @param e: shape E
+ *
+ */
 
 __global__ void matmulLastTwo4DKernel(
     float *A,      // (a, b, c, d)
@@ -61,6 +75,14 @@ forward pass kernels reading pdf's from NVIDA now I do not remember, but
 lets try to unfold first.
 */
 
+/**
+ * @class warpReduceSum
+ * @brief wrap level reduction between the sum
+ *
+ * @param A: value to reduce
+ *
+ */
+
 __device__ float warpReduceSum(float val)
 {
     for (int offset = 16; offset > 0; offset >>= 1)
@@ -68,11 +90,25 @@ __device__ float warpReduceSum(float val)
     return val;
 }
 
-// One Kernel that accounts for seq_len > 32 if its small don't care
-// even though we would have the advantage of warp level reduction.
 
-// forget 1024 hardware limit for NOW at least lets get the model working atleast
-// it will be a weak model but lets focus on getting the result right at first.
+/**
+ * @class softmaxBackTankKernel
+ * @brief Softmax backpropagation calculation formula, derived in flashback.md
+ *
+ * @param P: input
+ * @param dY: upstream gradient
+ * @param out: result
+ * @param N: shape (A * B * C)
+ * @param b: batch_size
+ * @param t: seq_len
+ * @param d: d_model
+ * 
+ * @author Avash Lamichhane
+ * @details This works for seq_len > 32; uses shared memory in the procress of parallel reduction
+ *
+ */
+
+
 __global__ void softmaxBackTankKernel(
     float *P,  // (batch_size * num_heads * seq_len * seq_len )
     float *dY, // Shape (batch_size, seq_len, num_head, head_dim) again I might be wrong I am old.
@@ -158,15 +194,32 @@ __device__ __forceinline__ void ParallelReducer(float &localSum)
     localSum = __shfl_sync(0xffffffff, localSum, 0);
 }
 
-// LayerNorm Backpropagation
 
-/*
-    Eneginnering tradeoffs here, if we have that (x - u) from our forward pass kernel
+
+/**
+ * @class LayerNormBackPropgationKernel
+ * @brief Layernorm backpropagation formula derived in flashback.md
+ *
+ * @param x: input tensor pointer
+ * @param G: upstream gradient G
+ * @param mc: mean cache from the forward pass
+ * @param sdc: standard deaviation cache from forward pass
+ * @param dgamma: delta gamma
+ * @param dbeta: delta beta
+ * @param B: shape of tensor B
+ * @param T: shape of tensor T
+ * @param C: shape of tensor C
+ * 
+ * @note  Eneginnering tradeoffs here, if we have that (x - u) from our forward pass kernel
     then we will need to reserve our VRAM, lets re-compute that again here.
-*/
 
-// C dimension > 32 we use shared memory here, if it was  < 32 then register could talk with each other in faster way, even if they are they wont because of this but its okay here.
-// Note:- I am not so sharp and smart so I am taking my time here to derive and understand.
+    C dimension > 32 we use shared memory here, if it was  < 32 then register 
+    could talk with each other in faster way, even if they are they wont because
+    of this but its okay here.
+ * 
+ * @author Avash Lamichhane
+ *
+ */
 
 __global__ void LayerNormBackPropgationKernel(
     float *x,     // Shape (B, T, C)
@@ -261,6 +314,22 @@ __global__ void LayerNormBackPropgationKernel(
     }
 }
 
+/**
+ * @class sumBTC3TensorKernel
+ * @brief Sum the 3D tensor
+ *
+ * @param A: input A (tensor A)
+ * @param B: input B (tensor B)
+ * @param C: resultant tensor (tensor C)
+ * @param B: shape of tensor B
+ * @param T: shape of tensor T
+ * @param C: shape of tensor C
+ * 
+ * 
+ * @author Avash Lamichhane
+ *
+ */
+
 __global__ void sumBTC3TensorKernel(
     float *A, // Shape (B, T, C)
     float *B,
@@ -279,6 +348,22 @@ __global__ void sumBTC3TensorKernel(
     }
 }
 
+/**
+ * @class ReformBNTH_BTC_Kernel
+ * @brief Reforms multi headed attention into a 3d tensor
+ *
+ * @param arr: tensor shaped (batch_size, num_head, seq_len, head_dim)
+ * @param out: 3d tensor (batch_size, seq_len, d_model)
+ * @param batch_size
+ * @param seq_len
+ * @param d_model
+ * @param num_head
+ * @param head_dim
+ * 
+ * 
+ * @author Avash Lamichhane
+ *
+ */
 __global__ void ReformBNTH_BTC_Kernel(
     float *arr, // [batch_size, num_head, seq_len, head_dim]
     float *out, // (B, T, C)
@@ -306,7 +391,6 @@ __global__ void ReformBNTH_BTC_Kernel(
         out[outIdx] = arr[idx];
     }
 }
-
 
 extern "C"
 {
