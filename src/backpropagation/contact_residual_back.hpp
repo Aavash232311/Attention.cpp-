@@ -58,6 +58,18 @@ public:
                     d_model,
                     d_model);
 
+        if (debug)
+        {
+            cout << "dl_dh upstream before backpass of the attention head" << endl;
+            float *G = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
+
+            cudaMemcpy(G, model_paramaters.dl_dh_output, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyHostToDevice);
+
+            utils->printFlatArray3D(G, batch_size, seq_len, d_model);
+
+            free(G);
+        }
+
         // This now releases what we call the G I am cooked but it is what it is hold tight.
         dl_dh_upstream(model_paramaters.dl_dh_output,
                        model_paramaters.WoT,
