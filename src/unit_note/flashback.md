@@ -742,12 +742,29 @@ $$G_{\hat{x}_0} = \left( \frac{1}{\sqrt{d_k}} G_S K \right) W_Q^T + \left( \frac
 
 I totally forgot gamma and beta are also learnable paramaters, therefore we will need to do something about them.
 
+Recalling the equation that we have we get,
 
+$$f(x) = y = \gamma \frac{x - \mu}{\sqrt{\sigma^2 + \varepsilon}} + \beta$$
 
+$$\frac{\partial y}{\partial \gamma} = \hat{x} \frac{\partial \gamma}{\partial \gamma} + 0 = \hat{x}_{b,t}$$
 
+Now we care about this loss so writing the multi-variable chain rule we get,
 
-Hope that made sense, I may even not remember this after long but when I go through this again should make sense.
+$$\frac{\partial L}{\partial \gamma} = \frac{\partial L}{\partial y_{b,t,c}} \frac{\partial y_{b,t,c}}{\partial \gamma}$$
 
+$$\frac{\partial L}{\partial \gamma} = \sum_{b,t} \left( G_{b,t} \cdot \hat{x}_{b,t} \right)$$
+
+Now wrt to learnable paramater beta we get,
+
+$$y_{b,t,c} = \gamma_c \hat{x}_{b,t,c} + \beta_c$$
+
+$$\frac{\partial y_{b,t,c}}{\partial \beta_c} = 0 + \frac{\partial \beta_c}{\partial \beta_c} = 1$$
+
+Now again we care about the loss so writing the multi variable chain rule
+
+$$\frac{\partial L}{\partial \beta_c} = \sum_{b,t} \frac{\partial L}{\partial y_{b,t,c}} \frac{\partial y_{b,t,c}}{\partial \beta_c}$$
+
+$$\frac{\partial L}{\partial \beta_c} = \sum_{b,t} \left( \frac{\partial L}{\partial y_{b,t,c}} \cdot 1 \right) = \sum_{b,t} G_{b,t,c}$$
 
 
 ### Backpropagation  Derivation and Implementation

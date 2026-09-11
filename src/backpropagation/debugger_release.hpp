@@ -458,15 +458,15 @@ public:
     void pyDebuggerReleaseStage10()
     {
 
-        // float *grad_host = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
+        float *grad_host = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
 
-        // cudaMemcpy(grad_host, model_paramaters.d_add_residual_output, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(grad_host, model_paramaters.d_add_residual_output, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
 
-        // bulkRelease<float>(
-        //     {
-        //         {grad_host, batch_size * seq_len * d_model, "net_gradient_final.bin"},
-        //     });
+        bulkRelease<float>(
+            {
+                {grad_host, batch_size * seq_len * d_model, "net_gradient_final.bin"},
+            });
 
-        // free(grad_host);
+        free(grad_host);
     }
 };
