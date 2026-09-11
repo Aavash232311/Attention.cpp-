@@ -453,4 +453,16 @@ public:
         free(dattention);
         free(dcontact_bias);
     }
+
+    /**
+     * @class pyDebuggerReleaseStage10
+     * @brief Releases the upstream gradient for debugging the splitted gradient of add residual 
+
+
+    * @note Releases the output param contact paramater
+    */
+    void pyDebuggerReleaseStage10()
+    {
+
+    }
 };

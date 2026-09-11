@@ -23,7 +23,6 @@
  * @param e: shape E
  *
  */
-
 __global__ void matmulLastTwo4DKernel(
     float *A,      // (a, b, c, d)
     float *B,      // (a, b, d, e)
@@ -82,14 +81,12 @@ lets try to unfold first.
  * @param A: value to reduce
  *
  */
-
 __device__ float warpReduceSum(float val)
 {
     for (int offset = 16; offset > 0; offset >>= 1)
         val += __shfl_down_sync(0xffffffff, val, offset);
     return val;
 }
-
 
 /**
  * @class softmaxBackTankKernel
@@ -102,13 +99,11 @@ __device__ float warpReduceSum(float val)
  * @param b: batch_size
  * @param t: seq_len
  * @param d: d_model
- * 
+ *
  * @author Avash Lamichhane
  * @details This works for seq_len > 32; uses shared memory in the procress of parallel reduction
  *
  */
-
-
 __global__ void softmaxBackTankKernel(
     float *P,  // (batch_size * num_heads * seq_len * seq_len )
     float *dY, // Shape (batch_size, seq_len, num_head, head_dim) again I might be wrong I am old.
@@ -194,8 +189,6 @@ __device__ __forceinline__ void ParallelReducer(float &localSum)
     localSum = __shfl_sync(0xffffffff, localSum, 0);
 }
 
-
-
 /**
  * @class LayerNormBackPropgationKernel
  * @brief Layernorm backpropagation formula derived in flashback.md
@@ -209,18 +202,17 @@ __device__ __forceinline__ void ParallelReducer(float &localSum)
  * @param B: shape of tensor B
  * @param T: shape of tensor T
  * @param C: shape of tensor C
- * 
+ *
  * @note  Eneginnering tradeoffs here, if we have that (x - u) from our forward pass kernel
     then we will need to reserve our VRAM, lets re-compute that again here.
 
-    C dimension > 32 we use shared memory here, if it was  < 32 then register 
+    C dimension > 32 we use shared memory here, if it was  < 32 then register
     could talk with each other in faster way, even if they are they wont because
     of this but its okay here.
- * 
+ *
  * @author Avash Lamichhane
  *
  */
-
 __global__ void LayerNormBackPropgationKernel(
     float *x,     // Shape (B, T, C)
     float *G,     // Shape (B, T, C) aftermath shape is this
@@ -320,16 +312,16 @@ __global__ void LayerNormBackPropgationKernel(
  *
  * @param A: input A (tensor A)
  * @param B: input B (tensor B)
- * @param C: resultant tensor (tensor C)
- * @param B: shape of tensor B
- * @param T: shape of tensor T
- * @param C: shape of tensor C
- * 
- * 
+ * @param C: input C (tensor C)
+ * @param out: output tensor shape (B, T, C)
+ * @param batch_size: shape of tensor B
+ * @param seq_len: shape of tensor T
+ * @param d_model: shape of tensor C
+ *
+ *
  * @author Avash Lamichhane
  *
  */
-
 __global__ void sumBTC3TensorKernel(
     float *A, // Shape (B, T, C)
     float *B,
@@ -349,6 +341,38 @@ __global__ void sumBTC3TensorKernel(
 }
 
 /**
+ * @class sumBTC2TensorKernel
+ * @brief Sum the 3D tensor
+ *
+ * @param A: input A (tensor A)
+ * @param B: input B (tensor B)
+ * @param C: resultant tensor (tensor C)
+ * @param batch_size: shape of tensor B
+ * @param seq_len: shape of tensor T
+ * @param d_model: shape of tensor C
+ *
+ *
+ * @author Avash Lamichhane
+ *
+ */
+__global__ void sumBTC2TensorKernel(
+    float *A, // Shape (B, T, C)
+    float *B,
+    float *Out,
+    int batch_size,
+    int seq_len,
+    int d_model,
+    int N)
+{
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (idx < N)
+    {
+        Out[idx] = A[idx] + B[idx];
+    }
+}
+
+/**
  * @class ReformBNTH_BTC_Kernel
  * @brief Reforms multi headed attention into a 3d tensor
  *
@@ -359,8 +383,8 @@ __global__ void sumBTC3TensorKernel(
  * @param d_model
  * @param num_head
  * @param head_dim
- * 
- * 
+ *
+ *
  * @author Avash Lamichhane
  *
  */
@@ -430,6 +454,23 @@ extern "C"
         int blocks = (N + threads - 1) / threads;
 
         sumBTC3TensorKernel<<<blocks, threads>>>(A, B, C, Out, batch_size, seq_len, d_model, N);
+
+        cudaDeviceSynchronize();
+    }
+
+    void addTwoTensor(
+        float *A,
+        float *B,
+        float *Out,
+        int batch_size,
+        int seq_len,
+        int d_model)
+    {
+        int threads = 256;
+        int N = batch_size * seq_len * d_model;
+        int blocks = (N + threads - 1) / threads;
+
+        sumBTC2TensorKernel<<<blocks, threads>>>(A, B, Out, batch_size, seq_len, d_model, N);
 
         cudaDeviceSynchronize();
     }
