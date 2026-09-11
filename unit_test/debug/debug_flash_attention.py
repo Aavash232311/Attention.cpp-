@@ -30,7 +30,7 @@ class DebugFlashAttention(torch.nn.Module):
          self.x, self.layer_norm_back_x, self.beta,
          self.d_gamma, self.d_beta, self.weight_contact,
          self.weight_contact_transpose, self.G,
-         self.d_bias_output_proj) = ReaderFlashAttention(batch_size, seq_len, vocab_size, d_model, num_heads, head_dim)
+         self.d_bias_output_proj, self.final_gradient_from_add_residual) = ReaderFlashAttention(batch_size, seq_len, vocab_size, d_model, num_heads, head_dim)
 
     # dV = P^T G
     # dP = GV^T
@@ -270,6 +270,7 @@ class DebugFlashAttention(torch.nn.Module):
         else:
             print(f"Checking dbias output projection: {GREEN} {check_d_bias_output_proj} {RESET}")
 
-        sum_dl_dh_and_d_layer_norm = self.dl_dl + self.layer_norm_back_x
+        print(self.final_gradient_from_add_residual)
+
 
 
