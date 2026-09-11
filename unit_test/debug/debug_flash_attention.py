@@ -270,7 +270,20 @@ class DebugFlashAttention(torch.nn.Module):
         else:
             print(f"Checking dbias output projection: {GREEN} {check_d_bias_output_proj} {RESET}")
 
-        print(self.final_gradient_from_add_residual)
+        # add the net gradient dl_dh and output from layer norm backward in torch here for the first part
+        final_grad_torch = self.dl_dh + self.layer_norm_back_x
+
+        check_final_grad = torch.allclose(
+            final_grad_torch,
+            self.final_gradient_from_add_residual,
+            atol=1e-4,
+            rtol=1e-4
+        )
+
+        if not check_final_grad:
+            print(f"Checking final_gradient status: {RED} {check_final_grad} {RESET}")
+        else:
+            print(f"Checking final_gradient status: {GREEN} {check_final_grad} {RESET}")
 
 
 
