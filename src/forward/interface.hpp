@@ -142,8 +142,6 @@ class AttentionInterface
 
     float *G_x_hat; // total added up tensor
 
-    float *device_x;
-
     float *dbeta;
     float *dgamma;
 
@@ -152,6 +150,7 @@ class AttentionInterface
     float *dl_dh_output;
 
     float *dbias_lm_head_pred;
+
 
 private:
     // ----------- TEMPORARY DEBUGGER SCRIPT ---------------------
@@ -294,8 +293,6 @@ public:
         cudaMalloc((void **)&dkWt, batch_size * seq_len * d_model * sizeof(float));
         cudaMalloc((void **)&dvWt, batch_size * seq_len * d_model * sizeof(float));
 
-        cudaMalloc((void **)&device_x, batch_size * seq_len * d_model * sizeof(float));
-
         cudaMalloc((void **)&dbeta, d_model * sizeof(float));
         cudaMalloc((void **)&dgamma, d_model * sizeof(float));
 
@@ -304,6 +301,8 @@ public:
         cudaMalloc((void **)&WoT, d_model * d_model * sizeof(float));
 
         cudaMalloc((void **)&dl_dh_output, batch_size * seq_len * d_model * sizeof(float));
+
+
     }
 
     ~AttentionInterface()
@@ -373,8 +372,6 @@ public:
 
         cudaFree(G_x_hat);
 
-        cudaFree(device_x);
-
         cudaFree(dbeta);
         cudaFree(dgamma);
 
@@ -383,6 +380,8 @@ public:
         cudaFree(WoT);
 
         cudaFree(dl_dh_output);
+
+   
     }
 
     LinearParams getLmHeadParams()
@@ -552,8 +551,6 @@ public:
                 modelParamaters.dvWt = dvWt;
 
                 modelParamaters.G_x_hat = G_x_hat; // net G_hat from the derivation
-
-                modelParamaters.device_x = device_x;
 
                 modelParamaters.debeta = dbeta;
                 modelParamaters.dgamma = dgamma;

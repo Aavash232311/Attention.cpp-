@@ -60,9 +60,17 @@ private:
         addThreeTensor(model_paramaters.dqWt, model_paramaters.dkWt, model_paramaters.dvWt, model_paramaters.G_x_hat, batch_size, seq_len, d_model);
 
         // copy that x after the net_embedding to device
-        cudaMemcpy(model_paramaters.device_x, model_paramaters.attention_head.x, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyHostToDevice);
 
-        // Note- IMPORTANT X WILL BE OVERRITTEN HERE partial L / partial x
+        cudaMemcpy(model_paramaters.attention_head.x,
+                   model_paramaters.attention_head.x,
+                   batch_size * seq_len * d_model * sizeof(float),
+                   cudaMemcpyHostToDevice);
+
+        /***
+         * @warning the first arguement pointer is modified here.
+         * Which might cause confusion and problems but it is what it is.
+         * 
+         */
         layernorm_backward(
             model_paramaters.attention_head.x,
             model_paramaters.G_x_hat,
@@ -75,20 +83,10 @@ private:
             seq_len,
             d_model);
 
+        // my anxiety and lack of sleep has caused be to do many simple mistakes recently :)
+
         if (debug)
             pyDebuggerReleaseStage8();
-
-        // if (debug)
-        // {
-        //     cout << "dl_dh at the end of backpropagation " << endl;
-        //     float *G = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
-
-        //     cudaMemcpy(G, model_paramaters.dl_dh_output, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyHostToDevice);
-
-        //     utils->printFlatArray3D(G, batch_size, seq_len, d_model);
-
-        //     free(G);
-        // }
     }
 
 public:
