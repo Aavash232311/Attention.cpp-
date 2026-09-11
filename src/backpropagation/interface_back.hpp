@@ -240,6 +240,7 @@ public:
     virtual void pyDebuggerReleaseStage7() {}
     virtual void pyDebuggerReleaseStage8() {}
     virtual void pyDebuggerReleaseStage9() {}
+    virtual void pyDebuggerReleaseStage10() {}
 
     // Backpropagation along Linear layer, Normalization
     virtual void NormLinearNet() {}
