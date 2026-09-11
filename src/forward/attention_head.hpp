@@ -69,6 +69,7 @@ public:
     float *resedualOutDevice;
 
     float *tempX = nullptr;
+    float *x_device;
 
     // ----- Paramater required for standard attention backpropagation not the flash ------
     // at the learning stage of mine this is fine as well
@@ -87,7 +88,6 @@ public:
 
     float *Q_cache;
     float *K_cache;
-
 
     float *doutput_bias;
 
@@ -178,8 +178,8 @@ public:
         // (B, n_head, T, head_dim) s
         value_mat = (float *)malloc(batch_size * num_heads * seq_len * head_dim * sizeof(float));
 
-
         cudaMalloc((void **)&doutput_bias, d_model * sizeof(float));
+        cudaMalloc((void **)&x_device, batch_size * seq_len * d_model * sizeof(float));
     };
 
     ~Attention()
@@ -207,7 +207,6 @@ public:
 
         cudaFree(BTCdevice);
         cudaFree(resedualOutDevice);
-
 
         cudaFree(doutput_bias);
 
@@ -592,6 +591,7 @@ public:
         cudaMemcpy(BTCdevice, input, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyHostToDevice);
         cudaMemcpy(tempDevice, temp, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyHostToDevice);
 
+        // Keep an EYE on this one, might have only summed the last two dimension IMPORTNATTTT
         vectorKernel(BTCdevice, tempDevice, resedualOutDevice, batch_size * seq_len * d_model);
 
         // copy this to pointer input, and that same x will be modified
@@ -639,7 +639,7 @@ public:
             Q_cache,
             K_cache,
 
-            tempX,
+            tempDevice, // last pointer my guess is this wont be modified anytime soon.
 
             layerNorm->getMean(),
             layerNorm->getStdDev(),

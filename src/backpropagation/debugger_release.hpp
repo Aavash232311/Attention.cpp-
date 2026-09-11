@@ -282,6 +282,8 @@ public:
 
 
     * @note Releases Weights of QKT transposed
+    * @bug or @warning if you allocate that weight Q, K, V host somewhere in the middle then it returns a problem not sure why.
+    * This is the known issue here.
     */
 
     void pyDebuggerReleaseStage8()
@@ -309,7 +311,7 @@ public:
         G_x_hat_host = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
 
         layer_norm_x = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
-        ;
+        
 
         float *d_delta_beta;
         float *d_delta_gamma;

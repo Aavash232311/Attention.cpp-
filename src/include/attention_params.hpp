@@ -6,7 +6,7 @@
 // I am afraid that I manage memory like I have no common sense at all
 // but anyway right now we just want it to work.
 
-
+// todo: add a production grade comment after a single working prototype comes into play
 // todo: add a production grade comment after a single working prototype comes into play
 struct AttentionParamaters
 {
@@ -32,27 +32,81 @@ struct AttentionParamaters
     float *Q_cache;
     float *K_cache;
 
-    // shape (B, T, C) after
-    // embedding out
+    /**
+     * (B,T,C) tensor after net embedding added location GPU
+     *
+     * @param x (BTC) tensor inside of the GPU, after net embedding.
+     */
     float *x;
 
-    // cache the mean and std-dev shape
-    // LayerNorm forward pass cache.
+    /**
+     * mean cache from forward pass LayerNorm
+     * Shape (B * T, C)
+     * @param mean_cache location device
+     */
     float *mean_cache;
+
+    /**
+     * std dev cache from forward pass LayerNorm
+     * Shape (B * T, C)
+     * @param std_dev_cache location device
+     */
     float *std_dev_cache;
+
+    /**
+     * local derivative of learnable paramater gamma
+     * Shape (C)
+     * @param d_gamma device
+     */
     float *d_gamma;
+
+    /**
+     * local derivative of learnable paramater beta
+     * Shape (C)
+     * @param d_beta device
+     */
     float *d_beta;
 
-
-    // Pass Host reference to linear layer of weights of QKV
-
+    /**
+     * Weight of query
+     * Shape (C, C)
+     * @param device_WQ device
+     */
     float *device_WQ;
+    /**
+     * Weight of key
+     * Shape (C, C)
+     * @param device_WK device
+     */
     float *device_WK;
+    /**
+     * Weight of value
+     * Shape (C, C)
+     * @param device_WV device
+     */
     float *device_WV;
 
-    // for contact paramater linear
+    /**
+     * concatenation paramater (output projection) weight
+     * Shape (B, T, C)
+     * @param wo location device
+     */
     float *wo;
-    float *wo_bias;
-    float *doutput_bias; // [C]
 
+    /**
+     * concatenation paramater (output projection) bias
+     * Shape (C, )
+     *
+     * @param wo_bias location device
+     */
+    float *wo_bias;
+
+    /**
+     * concatenation paramater (output projection) bias output
+     * dbias, sum across B, T dimension of the upstream gradient of shape (B, T, C)
+     * Shape (C)
+     *
+     * @param wo_bias location device
+     */
+    float *doutput_bias;
 };
