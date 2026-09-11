@@ -270,3 +270,6 @@ class DebugFlashAttention(torch.nn.Module):
         else:
             print(f"Checking dbias output projection: {GREEN} {check_d_bias_output_proj} {RESET}")
 
+        sum_dl_dh_and_d_layer_norm = self.dl_dl + self.layer_norm_back_x
+
+
