@@ -490,6 +490,18 @@ extern "C"
 
         ReformBNTH_BTC_Kernel<<<grid, block>>>(arr, out, batch_size, seq_len, d_model, num_head, head_dim);
 
+        // cudaError_t err = cudaGetLastError();
+        // if (err != cudaSuccess)
+        // {
+        //     printf("Kernel launch error: %s\n", cudaGetErrorString(err));
+        // }
+
+        // err = cudaDeviceSynchronize();
+        // if (err != cudaSuccess)
+        // {
+        //     printf("Kernel execution error: %s\n", cudaGetErrorString(err));
+        // }
+
         cudaDeviceSynchronize();
     }
 

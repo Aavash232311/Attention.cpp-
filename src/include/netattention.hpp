@@ -97,4 +97,6 @@ struct FlashAttentionPointers : NetAttentionParamaters
 
     // final gradient for the interface layer
     float *dl_dh_output;
+
+    float *d_add_residual_output;
 };

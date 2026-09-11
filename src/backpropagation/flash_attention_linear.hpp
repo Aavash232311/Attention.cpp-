@@ -17,6 +17,7 @@ extern "C" void dl_dh_upstream(float *A, float *B, float *C, int a, int b, int c
 extern "C" void ReformBNTH_BTC(float *arr, float *out, int batch_size, int seq_len, int d_model, int num_head, int head_dim);
 extern "C" void addThreeTensor(float *A, float *B, float *C, float *Out, int batch_size, int seq_len, int d_model);
 extern "C" void layernorm_backward(float *x, float *G, float *mc, float *sdc, float *gamma, float *dgamma, float *dbeta, int B, int T, int C);
+extern "C" void addTwoTensor(float *A, float *B, float *Out, int batch_size, int seq_len, int d_model);
 // G_kx0 total upstream gradient and Linear Layer, add-residual back propagation here.
 class FlashAttentionLinear : virtual public AutoGradEngine
 {
@@ -69,7 +70,7 @@ private:
         /***
          * @warning the first arguement pointer is modified here.
          * Which might cause confusion and problems but it is what it is.
-         * 
+         *
          */
         layernorm_backward(
             model_paramaters.attention_head.x,
@@ -83,10 +84,34 @@ private:
             seq_len,
             d_model);
 
-        // my anxiety and lack of sleep has caused be to do many simple mistakes recently :)
-
         if (debug)
             pyDebuggerReleaseStage8();
+
+        // my anxiety and lack of sleep has caused be to do many simple mistakes recently :)
+        addTwoTensor(
+            model_paramaters.dl_dh_output,
+            model_paramaters.attention_head.x,
+            model_paramaters.d_add_residual_output,
+            batch_size,
+            seq_len,
+            d_model);
+
+        if (debug) 
+            pyDebuggerReleaseStage10();
+
+        // if (debug)
+        // {
+
+        //     float *G = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
+
+        //     cudaMemcpy(G, model_paramaters.d_add_residual_output, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyHostToDevice);
+
+        //     utils->printFlatArray3D(G, batch_size, seq_len, d_model);
+
+        //     free(G);
+        // }
+
+    
     }
 
 public:

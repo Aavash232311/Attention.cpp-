@@ -306,12 +306,11 @@ public:
         upK = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
         upV = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
 
-        d_beta = (float *)malloc(batch_size * sizeof(float));
+        d_beta = (float *)malloc(d_model * sizeof(float));
 
         G_x_hat_host = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
 
         layer_norm_x = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
-        
 
         float *d_delta_beta;
         float *d_delta_gamma;
@@ -372,6 +371,8 @@ public:
         float *host_WK = (float *)malloc(d_model * d_model * sizeof(float));
         float *host_WV = (float *)malloc(d_model * d_model * sizeof(float));
 
+        // Funny that I tried to ducktape this heap corruption but the problem was wrong host allocation for dbias in the CPU
+
         cudaMemcpy(host_WQ, model_paramaters.attention_head.device_WQ, d_model * d_model * sizeof(float), cudaMemcpyDeviceToHost);
         cudaError_t err1 = cudaGetLastError();
         if (err1 != cudaSuccess)
@@ -387,7 +388,7 @@ public:
         if (err3 != cudaSuccess)
             printf("After WV copy: %s\n", cudaGetErrorString(err3));
 
-                bulkRelease<float>({
+        bulkRelease<float>({
             {host_WQ, d_model * d_model, "wq.bin"},
             {host_WK, d_model * d_model, "wk.bin"},
             {host_WV, d_model * d_model, "wv.bin"},
@@ -454,15 +455,18 @@ public:
         free(dcontact_bias);
     }
 
-    /**
-     * @class pyDebuggerReleaseStage10
-     * @brief Releases the upstream gradient for debugging the splitted gradient of add residual 
-
-
-    * @note Releases the output param contact paramater
-    */
     void pyDebuggerReleaseStage10()
     {
 
+        // float *grad_host = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
+
+        // cudaMemcpy(grad_host, model_paramaters.d_add_residual_output, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+
+        // bulkRelease<float>(
+        //     {
+        //         {grad_host, batch_size * seq_len * d_model, "net_gradient_final.bin"},
+        //     });
+
+        // free(grad_host);
     }
 };
