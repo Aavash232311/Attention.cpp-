@@ -285,7 +285,6 @@ public:
     * @bug or @warning if you allocate that weight Q, K, V host somewhere in the middle then it returns a problem not sure why.
     * This is the known issue here.
     */
-
     void pyDebuggerReleaseStage8()
     {
         float *WQT = (float *)malloc(d_model * d_model * sizeof(float));
@@ -406,7 +405,6 @@ public:
 
     * @note Releases the output param contact paramater
     */
-
     void pyDebuggerReleaseStage9()
     {
         // output projection wieght transpose check
@@ -459,14 +457,22 @@ public:
     {
 
         float *grad_host = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
+        float *d_embedding = (float *)malloc(vocab_size * d_model * sizeof(float));
+        int *token_ids_host = (int *)malloc(batch_size * seq_len * sizeof(float));
 
+        cudaMemcpy(d_embedding, model_paramaters.d_embedding, vocab_size * d_model * sizeof(float), cudaMemcpyHostToDevice);
         cudaMemcpy(grad_host, model_paramaters.d_add_residual_output, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(token_ids_host, model_paramaters.attention_head.token_id, batch_size * seq_len * sizeof(int), cudaMemcpyDeviceToHost);
 
         bulkRelease<float>(
-            {
-                {grad_host, batch_size * seq_len * d_model, "net_gradient_final.bin"},
-            });
+            {{grad_host, batch_size * seq_len * d_model, "net_gradient_final.bin"},
+             {d_embedding, vocab_size * d_model, "d_embedding.bin"}});
+
+        bulkRelease<int>(
+            {{token_ids_host, batch_size * seq_len, "token_ids.bin"}});
 
         free(grad_host);
+        free(token_ids_host);
+        free(d_embedding);
     }
 };

@@ -3,7 +3,7 @@ import math
 import torch
 from debug.static import RESET, RED, GREEN
 from binary_reader.autograd_binary_reader import ReaderFlashAttention
-from Complex_kernel_opreations.layer_norm_back import layer_backward_analytical, layer_norm_beta_gamma_analytical
+from debug.Complex_kernel_opreations.layer_norm_back import layer_backward_analytical, layer_norm_beta_gamma_analytical
 
 ''' This will debug the mathematical operation in flash attention class '''
 
@@ -30,7 +30,8 @@ class DebugFlashAttention(torch.nn.Module):
          self.x, self.layer_norm_back_x, self.beta,
          self.d_gamma, self.d_beta, self.weight_contact,
          self.weight_contact_transpose, self.G,
-         self.d_bias_output_proj, self.final_gradient_from_add_residual) = ReaderFlashAttention(batch_size, seq_len, vocab_size, d_model, num_heads, head_dim)
+         self.d_bias_output_proj, self.final_gradient_from_add_residual,
+         self.d_embeddings, self.token_ids) = ReaderFlashAttention(batch_size, seq_len, vocab_size, d_model, num_heads, head_dim)
 
     # dV = P^T G
     # dP = GV^T
@@ -285,5 +286,6 @@ class DebugFlashAttention(torch.nn.Module):
         else:
             print(f"Checking final_gradient status: {GREEN} {check_final_grad} {RESET}")
 
-
+        print(self.d_embeddings)
+        print(self.token_ids)
 

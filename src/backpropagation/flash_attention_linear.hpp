@@ -112,17 +112,17 @@ private:
         if (debug) 
             pyDebuggerReleaseStage10();
 
-        if (debug)
-        {
+        // if (debug)
+        // {
 
-            float *G = (float *)malloc(vocab_size * d_model * sizeof(float));
+        //     float *G = (float *)malloc(vocab_size * d_model * sizeof(float));
 
-            cudaMemcpy(G, model_paramaters.d_embedding, vocab_size * d_model * sizeof(float), cudaMemcpyHostToDevice);
+        //     cudaMemcpy(G, model_paramaters.d_embedding, vocab_size * d_model * sizeof(float), cudaMemcpyHostToDevice);
 
-            utils->printFlatArray2D(G, vocab_size, d_model);
+        //     utils->printFlatArray2D(G, vocab_size, d_model);
 
-            free(G);
-        }
+        //     free(G);
+        // }
 
     
     }
