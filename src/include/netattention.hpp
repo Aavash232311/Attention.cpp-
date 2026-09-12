@@ -99,4 +99,6 @@ struct FlashAttentionPointers : NetAttentionParamaters
     float *dl_dh_output;
 
     float *d_add_residual_output;
+
+    float *d_embedding;
 };

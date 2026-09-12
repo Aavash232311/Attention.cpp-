@@ -416,8 +416,84 @@ __global__ void ReformBNTH_BTC_Kernel(
     }
 }
 
+/**
+ * @class updateTokenEmbeddingKernel
+ * @brief Updates the embedding weight (vocab_size, d_model)
+ *
+ * @param G: upstream graident Shape(B, T, C)
+ * @param vc: embedding matrix shape (vocab_size, d_model)
+ * @param token_id: token_id shape (batch_size, seq_len)
+ * @param batch_size
+ * @param seq_len
+ * @param d_model
+ * @param vocab_size
+ *
+ * @note the token matrix shaped (batch_size, seq_len) is the matrix of integers
+ * which takes certian chunk of vocab elements (encoded text or character or whatever)
+ * into that matrix depending upon the size. So each element of the matrix corresponds to the
+ * embedding matrix (vocab_size, d_model), each element of that (batch_size, seq_len) can grab
+ * rows of channel from that embedding matirx.
+ *
+ * Now the kernel is launched and element in the tensor is distrubuted according to the upstream gradient
+ * (B, T, C) tensor we can get the current token_id and then grab the chunk of chennel from the emebdding matrix
+ * shaped (vocab_size, d_model)
+ *
+ * @author Avash Lamichhane
+ *
+ */
+__global__ void updateTokenEmbeddingKernel(
+    float *G,       // Shape (B, T, C)
+    float *vc,      // Shape (V, C)
+    int *token_ids, // Shape (B, T)
+    int batch_size,
+    int seq_len,
+    int d_model,
+    int vocab_size)
+{
+    int batch_idx = blockIdx.y;
+    int row_idx = blockIdx.x;
+
+    float *G_row = G + batch_idx * (seq_len * d_model) + row_idx * d_model;
+
+    int current_token_id = token_ids[batch_idx * seq_len + row_idx];
+    // again for each token id we have a "row" of channels thats how it works
+
+    // so for the current token_id we need the vc row
+    float *vc_row = vc + current_token_id * d_model;
+
+    for (int c = threadIdx.x; c < d_model; c += blockDim.x)
+    {
+        atomicAdd(&vc_row[c], G_row[c]);
+    }
+}
+
 extern "C"
 {
+
+    void updateTokenEmbedding(
+        float *G,
+        float *d_embedding,
+        int *token_ids,
+        int batch_size,
+        int seq_len,
+        int d_model,
+        int vocab_size)
+    {
+        dim3 blockDim(256, 1, 1);
+        dim3 gridDim(seq_len, batch_size, 1); 
+        
+        updateTokenEmbeddingKernel<<<gridDim, blockDim>>>(
+            G,
+            d_embedding,
+            token_ids,
+            batch_size,
+            seq_len,
+            d_model,
+            vocab_size
+        );
+
+        cudaDeviceSynchronize();
+    }
 
     void layernorm_backward(
         float *x,
