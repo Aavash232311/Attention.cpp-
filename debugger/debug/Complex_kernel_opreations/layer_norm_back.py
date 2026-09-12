@@ -63,3 +63,19 @@ def layer_norm_beta_gamma_analytical(x: torch.Tensor,
     d_gamma = (G * x_hat).sum(dim=(0, 1))
 
     return d_gamma, d_beta
+
+
+def compute_token_embedding_grad(G: torch.Tensor,
+                                 token_ids: torch.Tensor,
+                                 vocab_size: int) -> torch.Tensor:
+    B, T, C = G.shape
+    assert token_ids.shape == (B, T), "token_ids must match G's (B, T) shape"
+
+    grad_E = torch.zeros(vocab_size, C, dtype=G.dtype, device=G.device)
+
+    flat_ids  = token_ids.reshape(-1).long()   # forcing integer 64
+    flat_grad = G.reshape(-1, C)
+
+    grad_E.index_add_(0, flat_ids, flat_grad)
+
+    return grad_E
