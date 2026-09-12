@@ -19,6 +19,7 @@ flashback.log
 .vs/
 .vscode/
 .idea/
+.run/
 
 # Caches and Python bytecode
 .cache/
