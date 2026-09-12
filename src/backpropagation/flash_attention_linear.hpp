@@ -18,6 +18,7 @@ extern "C" void ReformBNTH_BTC(float *arr, float *out, int batch_size, int seq_l
 extern "C" void addThreeTensor(float *A, float *B, float *C, float *Out, int batch_size, int seq_len, int d_model);
 extern "C" void layernorm_backward(float *x, float *G, float *mc, float *sdc, float *gamma, float *dgamma, float *dbeta, int B, int T, int C);
 extern "C" void addTwoTensor(float *A, float *B, float *Out, int batch_size, int seq_len, int d_model);
+extern "C" void updateTokenEmbeddingKernel(float *G, float *d_emebdding, int token_ids, int batch_size, int seq_len, int d_model, int vocab_size);
 // G_kx0 total upstream gradient and Linear Layer, add-residual back propagation here.
 class FlashAttentionLinear : virtual public AutoGradEngine
 {
@@ -95,6 +96,9 @@ private:
             batch_size,
             seq_len,
             d_model);
+
+
+        // update the embedding gradient
 
         if (debug) 
             pyDebuggerReleaseStage10();
