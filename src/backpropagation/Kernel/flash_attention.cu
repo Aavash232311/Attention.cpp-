@@ -479,9 +479,11 @@ extern "C"
         int d_model,
         int vocab_size)
     {
-        dim3 blockDim(256, 1, 1);
-        dim3 gridDim(seq_len, batch_size, 1); 
+        cudaMemset(token_ids, 0, batch_size * seq_len * sizeof(int));
         
+        dim3 blockDim(256, 1, 1);
+        dim3 gridDim(seq_len, batch_size, 1);
+
         updateTokenEmbeddingKernel<<<gridDim, blockDim>>>(
             G,
             d_embedding,
@@ -489,8 +491,7 @@ extern "C"
             batch_size,
             seq_len,
             d_model,
-            vocab_size
-        );
+            vocab_size);
 
         cudaDeviceSynchronize();
     }
