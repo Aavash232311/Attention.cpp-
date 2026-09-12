@@ -653,7 +653,8 @@ public:
             outputProj->getWeightDevice(),
             outputProj->getBaiasDevice(),
 
-            doutput_bias
+            doutput_bias,
+            embeddings->deviceX
 
         };
     }

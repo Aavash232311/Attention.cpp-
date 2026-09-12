@@ -18,7 +18,7 @@ extern "C" void ReformBNTH_BTC(float *arr, float *out, int batch_size, int seq_l
 extern "C" void addThreeTensor(float *A, float *B, float *C, float *Out, int batch_size, int seq_len, int d_model);
 extern "C" void layernorm_backward(float *x, float *G, float *mc, float *sdc, float *gamma, float *dgamma, float *dbeta, int B, int T, int C);
 extern "C" void addTwoTensor(float *A, float *B, float *Out, int batch_size, int seq_len, int d_model);
-extern "C" void updateTokenEmbeddingKernel(float *G, float *d_emebdding, int token_ids, int batch_size, int seq_len, int d_model, int vocab_size);
+extern "C" void updateTokenEmbedding(float *G, float *d_emebdding, int *token_ids, int batch_size, int seq_len, int d_model, int vocab_size);
 // G_kx0 total upstream gradient and Linear Layer, add-residual back propagation here.
 class FlashAttentionLinear : virtual public AutoGradEngine
 {
@@ -99,21 +99,30 @@ private:
 
 
         // update the embedding gradient
+        updateTokenEmbedding(
+            model_paramaters.attention_head.x,
+            model_paramaters.d_embedding,
+            model_paramaters.attention_head.token_id,
+            batch_size,
+            seq_len,
+            d_model,
+            vocab_size
+        );
 
         if (debug) 
             pyDebuggerReleaseStage10();
 
-        // if (debug)
-        // {
+        if (debug)
+        {
 
-        //     float *G = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
+            float *G = (float *)malloc(vocab_size * d_model * sizeof(float));
 
-        //     cudaMemcpy(G, model_paramaters.d_add_residual_output, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyHostToDevice);
+            cudaMemcpy(G, model_paramaters.d_embedding, vocab_size * d_model * sizeof(float), cudaMemcpyHostToDevice);
 
-        //     utils->printFlatArray3D(G, batch_size, seq_len, d_model);
+            utils->printFlatArray2D(G, vocab_size, d_model);
 
-        //     free(G);
-        // }
+            free(G);
+        }
 
     
     }
