@@ -3,7 +3,7 @@ import math
 import torch
 from debug.static import RESET, RED, GREEN
 from binary_reader.autograd_binary_reader import ReaderFlashAttention
-from debug.Complex_kernel_opreations.layer_norm_back import layer_backward_analytical, layer_norm_beta_gamma_analytical
+from debug.Complex_kernel_opreations.layer_norm_back import layer_backward_analytical, layer_norm_beta_gamma_analytical, compute_token_embedding_grad
 
 ''' This will debug the mathematical operation in flash attention class '''
 
@@ -286,6 +286,17 @@ class DebugFlashAttention(torch.nn.Module):
         else:
             print(f"Checking final_gradient status: {GREEN} {check_final_grad} {RESET}")
 
-        print(self.d_embeddings)
-        print(self.token_ids)
 
+        d_token_embedding_torch = compute_token_embedding_grad(
+            self.layer_norm_back_x,
+            self.token_ids,
+            self.vocab_size
+        )
+
+        check_d_embedding = torch.allclose(d_token_embedding_torch, self.d_embeddings, atol=1e-4,
+            rtol=1e-4)
+
+        if not check_d_embedding:
+            print(f"Checking d_embedding status: {RED} {check_d_embedding} {RESET}")
+        else:
+            print(f"Checking d_embedding status: {GREEN} {check_d_embedding} {RESET}")
