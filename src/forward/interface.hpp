@@ -7,10 +7,14 @@
 #include <cstdio>
 #include <chrono>
 
+
+
+
 #include "../include/utils.hpp"
 #include "../forward/linear.hpp"
 #include "../include/linear.hpp"
 #include "../include/p_head.hpp"
+#include "../optimizer/AdamW.hpp"
 #include "../include/cache_in.hpp"
 #include "../include/cache_out.hpp"
 #include "../forward/layer_norm.hpp"
@@ -22,6 +26,8 @@
 #include "../backpropagation/interface_back.hpp"
 #include "../backpropagation/flash_attention.hpp"
 #include "../backpropagation/debugger_release.hpp"
+
+using namespace std;
 
 extern "C" void softmax2D(float *arr, float *out, int batch_size, int seq_len, int vocab_size);
 extern "C" void CrossEntropy(float *x, int *y, float *oneHotOut, float *lossOut, int batch_size, int seq_len, int vocab_size);
@@ -42,6 +48,7 @@ class AttentionInterface
     std::unique_ptr<Attention> attention;
     std::unique_ptr<DataLoader> dataLoader;
     std::unique_ptr<Utility> utils;
+    std::unique_ptr<AdamW> optimizer;
 
     // turn those result into proballity score
     std::unique_ptr<Linear> lm_head;
@@ -205,6 +212,8 @@ public:
             seq_len,
             batch_size,
             debug);
+
+        optimizer = std::make_unique<AdamW>(debug=true);
 
         // pass in the derived class for proper inheritance
         autograd = std::make_unique<AutogradEngineDebuggerRelease>(
@@ -577,6 +586,7 @@ public:
                 // there is tradeoff between making things modular and fusing everything together.
                 // Lets create a buffer for CPU/GPU memory in this class so that we dont overload the system and free it when the object is destroyed.
                 autograd->backprop(modelParamaters);
+                optimizer->invoke();
                 debug = false;
             }
             dataLoader->resetIterator(); // just the weird logic that I wrote.
