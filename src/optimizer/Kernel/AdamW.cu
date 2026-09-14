@@ -10,8 +10,8 @@
 #include <curand_kernel.h>
 
 __global__ void adamw_step(
-    float *theta, // weight wherever we need to update this one
-    float *grad, // (B, T, C) shape, or [C] shape 
+    float *theta, // This is basically pointer to the device weight location
+    float *grad, // A tensor threa and grad needs to be of same shape
     float *m,
     float *v,
     float lr,
@@ -31,7 +31,7 @@ __global__ void adamw_step(
         // RMS prop
         v[i] = beta2 * v[i] + (1.0f - beta2) * g * g;
 
-        // bias correction for momentum and rms prop
+        // bias correction for momentum and velocity
         float m_hat = m[i] / (1.0f - powf(beta1, t));
         float v_hat = v[i] / (1.0f - powf(beta2, t));
 
