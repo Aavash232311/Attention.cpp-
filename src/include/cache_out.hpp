@@ -54,12 +54,12 @@ inline string jsonEscape(const string &s)
     return out;
 }
 
+template <typename T>
 inline void releaseConfig(
     const vector<string> key,
-    const vector<int> value)
+    const vector<T> value,
+    const string path = "./src/cache/config.json")
 {
-    const string path = "./src/cache/config.json";
-
     std::ofstream out(path);
     if (!out.is_open())
     {
@@ -79,6 +79,8 @@ inline void releaseConfig(
     out.close();
 }
 
+
+
 // Realeses json for hyperparamaters config
 
 inline void releaseHyperParamaters(
@@ -86,8 +88,7 @@ inline void releaseHyperParamaters(
     int vocab_size,
     int batch_size,
     int seq_len,
-    int num_heads
-)
+    int num_heads)
 {
     std::vector<string> key = {
         "d_model",
@@ -106,13 +107,14 @@ inline void releaseHyperParamaters(
     releaseConfig(key, value);
 }
 
-
 // For debugging the autograd engine we would need to release entire
 
 // only array from RAM
 template <typename T>
-void bulkRelease(const vector<tuple<T*, int, string>>& items) {
-    for (const auto& [arr, size, filename] : items) {
+void bulkRelease(const vector<tuple<T *, int, string>> &items)
+{
+    for (const auto &[arr, size, filename] : items)
+    {
         releaseFile<T>(filename, arr, size);
     }
 }

@@ -8,8 +8,6 @@
 #include <chrono>
 
 
-
-
 #include "../include/utils.hpp"
 #include "../forward/linear.hpp"
 #include "../include/linear.hpp"
@@ -23,6 +21,7 @@
 #include "../include/netattention.hpp"
 #include "../forward/attention_head.hpp"
 #include "../include/single_embeddings.hpp"
+#include "../optimizer/optimizer_debugger.hpp"
 #include "../backpropagation/interface_back.hpp"
 #include "../backpropagation/flash_attention.hpp"
 #include "../backpropagation/debugger_release.hpp"
@@ -48,7 +47,7 @@ class AttentionInterface
     std::unique_ptr<Attention> attention;
     std::unique_ptr<DataLoader> dataLoader;
     std::unique_ptr<Utility> utils;
-    std::unique_ptr<AdamW> optimizer;
+    std::unique_ptr<OptimizerDebugger> optimizer;
 
     // turn those result into proballity score
     std::unique_ptr<Linear> lm_head;
@@ -213,7 +212,7 @@ public:
             batch_size,
             debug);
 
-        optimizer = std::make_unique<AdamW>(debug=true);
+        optimizer = std::make_unique<OptimizerDebugger>(0.01f, 0.0f, 0.9f, 0.999f, 1e-8f, debug);
 
         // pass in the derived class for proper inheritance
         autograd = std::make_unique<AutogradEngineDebuggerRelease>(
