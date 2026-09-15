@@ -13,8 +13,8 @@
 #include <chrono>
 
 extern "C" void adamw_step(
-    float *theta, 
-    float *grad,  
+    float *theta,
+    float *grad,
     float *m,
     float *v,
     float lr,
@@ -22,7 +22,7 @@ extern "C" void adamw_step(
     float beta2,
     float eps,
     float weight_decay,
-    int t, 
+    int t,
     int n);
 
 using namespace std;
@@ -38,7 +38,7 @@ private:
      * @param G: gradient G
      * @param out: the actual weight and bias to update
      * @param N: total number of element in G and N.
-     * 
+     *
      * @warning size of G should equal out
      *
      * @note Nothing for AdamW if there is no learnable paramaters, we only care about the learnable paramaters.
@@ -53,7 +53,6 @@ private:
     {
         if (debug)
         {
-            cout << "Invoked AdamW optimizer" << endl;
         }
     }
 
@@ -65,6 +64,8 @@ public:
     float beta_1;
     float beta_2;
     float epsilon;
+
+    virtual void releaseOptimizerHyperparameters() {};
 
     AdamW(
         float lr = 0.01f,
@@ -82,9 +83,12 @@ public:
         this->weight_decay = weight_decay;
     }
 
-
     void invoke()
     {
- 
+        if (debug)
+        {
+            // release hyperparameters
+            releaseOptimizerHyperparameters();
+        }
     }
 };

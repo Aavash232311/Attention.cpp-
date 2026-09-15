@@ -3,7 +3,7 @@ import math
 import torch
 from debug.static import RESET, RED, GREEN
 from binary_reader.autograd_binary_reader import ReaderFlashAttention
-from debug.Complex_kernel_opreations.layer_norm_back import layer_backward_analytical, layer_norm_beta_gamma_analytical, compute_token_embedding_grad
+from debug.Complex_kernel_opreations.equivalent_kernel_functions import layer_backward_analytical, layer_norm_beta_gamma_analytical, compute_token_embedding_grad
 
 ''' This will debug the mathematical operation in flash attention class '''
 
