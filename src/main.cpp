@@ -6,7 +6,6 @@
 #include <cstdio>
 #include <chrono>
 
-
 #include "forward/linear.hpp"
 #include "include/linear.hpp"
 #include "include/p_head.hpp"
@@ -44,9 +43,9 @@ int main()
     auto start = std::chrono::high_resolution_clock::now();
 
     bool debug = true;
-    // #ifdef DEBUG
-    //     debug = true;
-    // #endif
+    #ifdef DEBUG
+        debug = true;
+    #endif
 
     int d_model = 32;
     int vocab_size; // that depends upon the data that you are passing.
@@ -71,27 +70,12 @@ int main()
 
     vocab_size = charPool.size();
 
-    // In this case we would have release the config from our C++ script
-    // and python program should be able to read it.
-
-#ifdef PARAMS
-    hyperParamaterRelease = true;
-#endif
-
-    if (hyperParamaterRelease)
-    {
-        // Python debugger wants hyperparams to initlize item to totally remove randomness
-        // to redice the kernels, if compiled with this flag then the program ends here
-
-        releaseHyperParamaters(
-            d_model,
-            vocab_size,
-            batch_size,
-            seq_len,
-            num_heads); // write the hyperparamaters down
-
-        return 0;
-    }
+    releaseHyperParamaters(
+        d_model,
+        vocab_size,
+        batch_size,
+        seq_len,
+        num_heads); // write the hyperparamaters down
 
     // we just need a simple shample.
     epoch = debug == true ? 1 : epoch;
