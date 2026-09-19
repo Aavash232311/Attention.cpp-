@@ -5,6 +5,12 @@ warnings.filterwarnings("ignore", category=UserWarning, message="The given buffe
 
 
 
+class AdamW:
+
+    def __init__(self, beta_1, beta_2, epsilon, lr, wd):
+        ...
+
+
 class DebugOptimizer:
 
     def __init__(self):
