@@ -585,7 +585,7 @@ public:
                 // there is tradeoff between making things modular and fusing everything together.
                 // Lets create a buffer for CPU/GPU memory in this class so that we dont overload the system and free it when the object is destroyed.
                 autograd->backprop(modelParamaters);
-                optimizer->invoke();
+                optimizer->invoke(modelParamaters);
                 debug = false;
             }
             dataLoader->resetIterator(); // just the weird logic that I wrote.

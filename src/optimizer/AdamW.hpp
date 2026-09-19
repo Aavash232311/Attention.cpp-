@@ -65,6 +65,8 @@ public:
     float beta_2;
     float epsilon;
 
+    FlashAttentionPointers modelParamaters;
+
     virtual void releaseOptimizerHyperparameters() {};
 
     AdamW(
@@ -83,12 +85,24 @@ public:
         this->weight_decay = weight_decay;
     }
 
-    void invoke()
+    void invoke(FlashAttentionPointers modelParamaters)
     {
         if (debug)
         {
             // release hyperparameters
             releaseOptimizerHyperparameters();
+
+            /*
+                Note:- the sequence does not matter here we go from back to first for all the learnable paramaters, we update them.
+            */
+
+            // for lm head weight, and the gradient here is also
+            // the dl_dw which is the local gradient
+            // adamw_step(
+            //     modelParamaters.w_device,
+            //     modelParamaters.dl_dw_device,
+
+            // );
         }
     }
 };
