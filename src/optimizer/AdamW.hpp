@@ -5,6 +5,9 @@
 
 #include "../include/helper.hpp"
 #include "../include/utils.hpp"
+
+#include "./ds/optimizer_mem.hpp"
+
 #include <curand_kernel.h>
 #include <cuda_runtime.h>
 #include <iostream>
@@ -24,6 +27,7 @@ extern "C" void adamw_step(
     float weight_decay,
     int t,
     int n);
+
 
 using namespace std;
 
