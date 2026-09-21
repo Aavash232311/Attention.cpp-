@@ -40,6 +40,7 @@ struct AdamWMemConfig
 
     AdamWMemConfig()
     {
+        // init everything here for moment and velicity and pass it I am sick today.
         dl_dw.init(1000);
     }
 };
