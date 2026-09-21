@@ -8,6 +8,7 @@
 #include <chrono>
 
 
+
 #include "../include/utils.hpp"
 #include "../forward/linear.hpp"
 #include "../include/linear.hpp"
@@ -21,6 +22,7 @@
 #include "../include/netattention.hpp"
 #include "../forward/attention_head.hpp"
 #include "../include/single_embeddings.hpp"
+#include "../optimizer/ds/AdamW_config.hpp"
 #include "../optimizer/optimizer_debugger.hpp"
 #include "../backpropagation/interface_back.hpp"
 #include "../backpropagation/flash_attention.hpp"
@@ -48,6 +50,7 @@ class AttentionInterface
     std::unique_ptr<DataLoader> dataLoader;
     std::unique_ptr<Utility> utils;
     std::unique_ptr<OptimizerDebugger> optimizer;
+    std::unique_ptr<AdamWMemConfig> adamMemCofig;
 
     // turn those result into proballity score
     std::unique_ptr<Linear> lm_head;
