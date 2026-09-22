@@ -37,7 +37,7 @@ __global__ void oneHotKernel(
 // SO: for our each B,T we will have a unique vocab as proballity.
 __global__ void crossEntropyLoss(
     float *x,   // (B, T, vocab_size)
-    int *y,     // (vocab_size)
+    int *y,     // (B,T)
     float *out, // N loss across all B,T basically.
     int seq_len,
     int vocab_size,

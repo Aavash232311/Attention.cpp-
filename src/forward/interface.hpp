@@ -457,8 +457,8 @@ public:
             // std::cout << " After one hot encode " << std::endl;
             // utils->printFlatArray3D(outHotEncodeOut, batch_size, seq_len, vocab_size);
 
-            // std::cout << "Apply the cross entropy loss" << std::endl;
-            // utils->printFlatArray1D(outCrossEntropyHost, seq_len * batch_size);
+            std::cout << "Apply the cross entropy loss" << std::endl;
+            utils->printFlatArray1D(outCrossEntropyHost, batch_size * seq_len);
 
             // std::cout << "Predicted" << std::endl;
             // DebugBTCFlatArray3D(DeviceSoftmaxBLout, batch_size, seq_len, vocab_size);
