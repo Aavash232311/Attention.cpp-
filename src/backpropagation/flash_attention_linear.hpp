@@ -23,6 +23,14 @@ class FlashAttentionLinear : virtual public AutoGradEngine
 {
 
 private:
+    /**
+     * @brief calculates the gradeint along QKV for all the weight and biases.
+     * @bug         Note: ISSUE
+        dQ, dK, dV are each upstream gradient for
+        dweight and dbias for QKV after that we sum the weights
+        for the layer norm. And thats how the chain gets completed
+     */
+
     void copyWeightQKVtoDevice()
     {
         // from attention pointer has the thing inside of CPU
@@ -96,7 +104,6 @@ private:
             seq_len,
             d_model);
 
-
         // update the embedding gradient
         updateTokenEmbedding(
             model_paramaters.attention_head.x,
@@ -105,12 +112,10 @@ private:
             batch_size,
             seq_len,
             d_model,
-            vocab_size
-        );
+            vocab_size);
 
-        if (debug) 
+        if (debug)
             pyDebuggerReleaseStage10();
-    
     }
 
 public:

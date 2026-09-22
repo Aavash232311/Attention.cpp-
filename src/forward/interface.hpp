@@ -166,6 +166,10 @@ class AttentionInterface
     float *d_bias_k;
     float *d_bias_v;
 
+    float *d_weight_q;
+    float *d_weight_k;
+    float *d_weight_v;
+
 private:
     // ----------- TEMPORARY DEBUGGER SCRIPT ---------------------
 
@@ -332,6 +336,10 @@ public:
         cudaMalloc((void **)&d_bias_q, d_model * sizeof(float));
         cudaMalloc((void **)&d_bias_k, d_model * sizeof(float));
         cudaMalloc((void **)&d_bias_v, d_model * sizeof(float));
+
+        cudaMalloc((void **)&d_weight_q, d_model * d_model * sizeof(float));
+        cudaMalloc((void **)&d_weight_k, d_model * d_model * sizeof(float));
+        cudaMalloc((void **)&d_weight_v, d_model * d_model * sizeof(float));
     }
 
     ~AttentionInterface()
@@ -417,6 +425,10 @@ public:
         cudaFree(d_bias_q);
         cudaFree(d_bias_k);
         cudaFree(d_bias_v);
+
+        cudaFree(d_weight_q);
+        cudaFree(d_weight_k);
+        cudaFree(d_weight_v);
     }
 
     LinearParams getLmHeadParams()
@@ -580,6 +592,11 @@ public:
                 modelParamaters.qUp = qUp;
                 modelParamaters.kUp = kUp;
                 modelParamaters.vUp = vUp;
+
+                modelParamaters.d_weight_q = d_weight_q;
+                modelParamaters.d_weight_k = d_weight_k;
+                modelParamaters.d_weight_v = d_weight_v;
+
 
                 modelParamaters.d_bias_q = d_bias_q;
                 modelParamaters.d_bias_k = d_bias_k;
