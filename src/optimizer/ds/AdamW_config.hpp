@@ -9,10 +9,56 @@
 struct AdamWMemConfig
 {
 public:
+    // For interface back. Ex: these are the local gradients
     AdamWPhysics dl_dw;
+    AdamWPhysics dl_db;
 
-    AdamWMemConfig()
+    // For attention head 
+    AdamWPhysics weight_output_proj;
+    AdamWPhysics bias_output_proj;
+
+    AdamWPhysics dQ;
+    AdamWPhysics dK;
+    AdamWPhysics dV;
+
+    AdamWPhysics Ln_gamma;
+    AdamWPhysics Ln_beta;
+
+    AdamWPhysics d_token_embedding;
+
+    int batch_size;
+    int seq_len;
+    int d_model;
+    int vocab_size;
+    int num_heads;
+
+    AdamWMemConfig(
+        int batch_size,
+        int seq_len,
+        int d_model,
+        int vocab_size,
+        int num_heads
+    )
     {
-        dl_dw.init(1000);
+        this->batch_size = batch_size;
+        this->d_model = d_model;
+        this->seq_len = seq_len;
+        this->vocab_size = vocab_size;
+        this->num_heads = num_heads;
+
+        dl_dw.init(vocab_size * d_model);
+        dl_db.init(vocab_size);
+
+        weight_output_proj.init(d_model * d_model);
+        bias_output_proj.init(d_model);
+
+        dQ.init(d_model * d_model);
+        dK.init(d_model * d_model);
+        dV.init(d_model * d_model);
+
+        Ln_gamma.init(d_model);
+        Ln_beta.init(d_model);
+
+        d_token_embedding.init(vocab_size * d_model);
     }
 };

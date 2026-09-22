@@ -226,6 +226,14 @@ public:
             batch_size,
             debug);
 
+        adamMemCofig = std::make_unique<AdamWMemConfig>(
+            batch_size,
+            seq_len,
+            d_model,
+            vocab_size,
+            num_heads
+        );
+
         // BUFFER CPU/GPU allocation for the auto grad engine
         dl_dz_out_host = (float *)malloc(batch_size * seq_len * vocab_size * sizeof(float));
         cudaMalloc((void **)&dl_dz_out_device, batch_size * seq_len * vocab_size * sizeof(float));
@@ -457,8 +465,8 @@ public:
             // std::cout << " After one hot encode " << std::endl;
             // utils->printFlatArray3D(outHotEncodeOut, batch_size, seq_len, vocab_size);
 
-            std::cout << "Apply the cross entropy loss" << std::endl;
-            utils->printFlatArray1D(outCrossEntropyHost, batch_size * seq_len);
+            // std::cout << "Apply the cross entropy loss" << std::endl;
+            // utils->printFlatArray1D(outCrossEntropyHost, batch_size * seq_len);
 
             // std::cout << "Predicted" << std::endl;
             // DebugBTCFlatArray3D(DeviceSoftmaxBLout, batch_size, seq_len, vocab_size);
