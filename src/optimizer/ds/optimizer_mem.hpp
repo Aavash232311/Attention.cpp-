@@ -1,3 +1,4 @@
+#pragma once
 #include <iostream>
 #include <memory>
 #include <cstdio>
@@ -18,8 +19,8 @@ using namespace std;
  */
 struct AdamWPhysics
 {
-    float* m_d = nullptr;
-    float* v_d = nullptr;
+    float* m_d;
+    float* v_d;
 
     void init(int N)
     {
@@ -31,16 +32,5 @@ struct AdamWPhysics
     {
         cudaFree(m_d);
         cudaFree(v_d);
-    }
-};
-
-struct AdamWMemConfig
-{
-    AdamWPhysics dl_dw;
-
-    AdamWMemConfig()
-    {
-        // init everything here for moment and velicity and pass it I am sick today.
-        dl_dw.init(1000);
     }
 };
