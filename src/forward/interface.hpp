@@ -7,8 +7,6 @@
 #include <cstdio>
 #include <chrono>
 
-
-
 #include "../include/utils.hpp"
 #include "../forward/linear.hpp"
 #include "../include/linear.hpp"
@@ -164,7 +162,9 @@ class AttentionInterface
 
     float *d_embedding;
 
-
+    float *d_bias_q;
+    float *d_bias_k;
+    float *d_bias_v;
 
 private:
     // ----------- TEMPORARY DEBUGGER SCRIPT ---------------------
@@ -231,8 +231,7 @@ public:
             seq_len,
             d_model,
             vocab_size,
-            num_heads
-        );
+            num_heads);
 
         // BUFFER CPU/GPU allocation for the auto grad engine
         dl_dz_out_host = (float *)malloc(batch_size * seq_len * vocab_size * sizeof(float));
@@ -329,6 +328,10 @@ public:
         cudaMalloc((void **)&d_add_residual_output, batch_size * seq_len * d_model * sizeof(float));
 
         cudaMalloc((void **)&d_embedding, vocab_size * d_model * sizeof(float));
+
+        cudaMalloc((void **)&d_bias_q, d_model * sizeof(float));
+        cudaMalloc((void **)&d_bias_k, d_model * sizeof(float));
+        cudaMalloc((void **)&d_bias_v, d_model * sizeof(float));
     }
 
     ~AttentionInterface()
@@ -410,6 +413,10 @@ public:
         cudaFree(d_add_residual_output);
 
         cudaFree(d_embedding);
+
+        cudaFree(d_bias_q);
+        cudaFree(d_bias_k);
+        cudaFree(d_bias_v);
     }
 
     LinearParams getLmHeadParams()
@@ -573,6 +580,10 @@ public:
                 modelParamaters.qUp = qUp;
                 modelParamaters.kUp = kUp;
                 modelParamaters.vUp = vUp;
+
+                modelParamaters.d_bias_q = d_bias_q;
+                modelParamaters.d_bias_k = d_bias_k;
+                modelParamaters.d_bias_v = d_bias_v;
 
                 modelParamaters.dqWt = dqWt;
                 modelParamaters.dkWt = dkWt;

@@ -118,4 +118,23 @@ struct AttentionParamaters
      * @param token_id location device
      */
     int *token_id;
+
+    /**
+     * Bias of the query from attention head.
+     *
+     * @param bias_q location device
+     */
+    float *bias_q;
+    /**
+     * Bias of the key from attention head.
+     *
+     * @param bias_k location device
+     */
+    float *bias_k;
+    /**
+     * Bias of the value from attention head.
+     *
+     * @param bias_v location device
+     */
+    float *bias_v;
 };

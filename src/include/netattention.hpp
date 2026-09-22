@@ -29,7 +29,6 @@ struct NetAttentionParamaters
     float *w_host;
     float *w_device;
     float *wt_out_d; // copy to CPU if the debugger is on and see.
-
 };
 
 struct FlashAttentionPointers : NetAttentionParamaters
@@ -101,4 +100,8 @@ struct FlashAttentionPointers : NetAttentionParamaters
     float *d_add_residual_output;
 
     float *d_embedding;
+
+    float *d_bias_q;
+    float *d_bias_k;
+    float *d_bias_v;
 };
