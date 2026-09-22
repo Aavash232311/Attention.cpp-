@@ -618,7 +618,6 @@ public:
 
         SingleEmbeddings emebdding_p{embeddings->getEmbeddingsParamaters()};
 
-
         return {
             Q_p, // weight and bias of QKV
             K_p,
@@ -654,8 +653,11 @@ public:
             outputProj->getBaiasDevice(),
 
             doutput_bias,
-            embeddings->deviceX
+            embeddings->deviceX,
 
+            query->getBaiasDevice(),
+            key->getBaiasDevice(),
+            value->getBaiasDevice(),
         };
     }
 };
