@@ -13,6 +13,7 @@
 using namespace std;
 
 extern "C" void wt_upstream(float *w, float *wt, int a, int b);
+extern "C" void dbias(float *G, float *dbias, int B, int T, int C);
 extern "C" void dl_dh_upstream(float *A, float *B, float *C, int a, int b, int c, int d);
 extern "C" void ReformBNTH_BTC(float *arr, float *out, int batch_size, int seq_len, int d_model, int num_head, int head_dim);
 extern "C" void addThreeTensor(float *A, float *B, float *C, float *Out, int batch_size, int seq_len, int d_model);
@@ -30,6 +31,56 @@ private:
         dweight and dbias for QKV after that we sum the weights
         for the layer norm. And thats how the chain gets completed
      */
+    void linearBackForQKV()
+    {
+        // Note:- These task does not have to be sequential but we have that sync call in that wrapper we will let it be as it is.
+        // weight backpropagation for Q
+        dl_dh_upstream(
+            model_paramaters.dQ,
+            model_paramaters.WqT,
+            model_paramaters.d_weight_q,
+            batch_size,
+            seq_len,
+            d_model,
+            d_model);
+
+        dl_dh_upstream(
+            model_paramaters.dK,
+            model_paramaters.WkT,
+            model_paramaters.d_weight_k,
+            batch_size,
+            seq_len,
+            d_model,
+            d_model);
+
+        dl_dh_upstream(
+            model_paramaters.dV,
+            model_paramaters.WvT,
+            model_paramaters.d_weight_v,
+            batch_size,
+            seq_len,
+            d_model,
+            d_model);
+
+        dbias(
+            model_paramaters.dQ,
+            model_paramaters.d_bias_q,
+            batch_size,
+            seq_len,
+            d_model);
+        dbias(
+            model_paramaters.dK,
+            model_paramaters.d_bias_k,
+            batch_size,
+            seq_len,
+            d_model);
+        dbias(
+            model_paramaters.dV,
+            model_paramaters.d_bias_v,
+            batch_size,
+            seq_len,
+            d_model);
+    }
 
     void copyWeightQKVtoDevice()
     {
@@ -46,6 +97,8 @@ private:
         wt_upstream(model_paramaters.attention_head.device_WK, model_paramaters.WkT, d_model, d_model);
         wt_upstream(model_paramaters.attention_head.device_WQ, model_paramaters.WqT, d_model, d_model);
         wt_upstream(model_paramaters.attention_head.device_WV, model_paramaters.WvT, d_model, d_model); // out shape (d_mdoel, d_model)
+
+        linearBackForQKV();
 
         // recalling the shape here
 

@@ -389,7 +389,7 @@ public:
             seq_len,    // seq_len
             false);
 
-        // Now we will multiply G^T Q to get dK
+        // dK = G^T Q
         MatMul4D(
             model_paramaters.d_score_t, //  (B, H, T, T)
             model_paramaters.attention_head.Q_cache, // (batch_size, num_head, seq_len, head_dim) 
