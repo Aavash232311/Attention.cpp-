@@ -26,6 +26,14 @@ public:
 
     AdamWPhysics d_token_embedding;
 
+    AdamWPhysics d_weight_q;
+    AdamWPhysics d_weight_k;
+    AdamWPhysics d_weight_v;
+
+    AdamWPhysics d_bias_q;
+    AdamWPhysics d_bias_k;
+    AdamWPhysics d_bias_v;
+
     int batch_size;
     int seq_len;
     int d_model;
@@ -60,5 +68,13 @@ public:
         Ln_beta.init(d_model);
 
         d_token_embedding.init(vocab_size * d_model);
+
+        d_weight_q.init(d_model * d_model);
+        d_weight_k.init(d_model * d_model);
+        d_weight_v.init(d_model * d_model);
+
+        d_bias_q.init(d_model);
+        d_bias_k.init(d_model);
+        d_bias_v.init(d_model);
     }
 };

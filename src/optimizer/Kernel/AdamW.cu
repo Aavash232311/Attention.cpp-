@@ -11,7 +11,7 @@
 
 __global__ void adamw_step(
     float *theta, // This is basically pointer to the device weight location
-    float *grad, // A tensor threa and grad needs to be of same shape
+    float *grad,  // A tensor threa and grad needs to be of same shape
     float *m,
     float *v,
     float lr,
@@ -57,8 +57,14 @@ extern "C"
         int n)
 
     {
+        cudaMemset(m, 0, n * sizeof(float));
+        cudaMemset(v, 0, n * sizeof(float));
+
+        
         int threads = 256;
         int blocks = 128;
         adamw_step<<<blocks, threads>>>(theta, grad, m, v, lr, beta1, beta2, eps, weight_decay, t, n);
+
+        // no sync here because updating gradients can happen in parallel without relying on each other.
     }
 }
