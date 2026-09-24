@@ -486,9 +486,17 @@ public:
         float *d_bias_k = (float *)malloc(d_model * sizeof(float));
         float *d_bias_v = (float *)malloc(d_model * sizeof(float));
 
+        float *bias_q = (float *)malloc(d_model * sizeof(float));
+        float *bias_k = (float *)malloc(d_model * sizeof(float));
+        float *bias_v = (float *)malloc(d_model * sizeof(float));
+
         cudaMemcpy(d_weight_q, model_paramaters.d_weight_q, d_model * d_model * sizeof(float), cudaMemcpyHostToDevice);
         cudaMemcpy(d_weight_k, model_paramaters.d_weight_k, d_model * d_model * sizeof(float), cudaMemcpyHostToDevice);
         cudaMemcpy(d_weight_v, model_paramaters.d_weight_v, d_model * d_model * sizeof(float), cudaMemcpyHostToDevice);
+
+        cudaMemcpy(bias_q, model_paramaters.attention_head.bias_q, d_model * sizeof(float), cudaMemcpyHostToDevice);
+        cudaMemcpy(bias_k, model_paramaters.attention_head.bias_k, d_model * sizeof(float), cudaMemcpyHostToDevice);
+        cudaMemcpy(bias_v, model_paramaters.attention_head.bias_v, d_model * sizeof(float), cudaMemcpyHostToDevice);
 
         bulkRelease<float>({
             {d_weight_q, d_model * d_model, "d_weight_q.bin"},
@@ -497,7 +505,9 @@ public:
             {d_bias_q, d_model, "d_bias_q.bin"},
             {d_bias_k, d_model, "d_bias_k.bin"},
             {d_bias_v, d_model, "d_bias_v.bin"},
-
+            {bias_q, d_model, "bias_q.bin"},
+            {bias_k, d_model, "bias_k.bin"},
+            {bias_v, d_model, "bias_v.bin"}
         });
 
         free(d_weight_q);
@@ -507,5 +517,9 @@ public:
         free(d_bias_q);
         free(d_bias_k);
         free(d_bias_v);
+
+        free(bias_q);
+        free(bias_k);
+        free(bias_v);
     }
 };

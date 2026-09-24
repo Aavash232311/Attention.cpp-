@@ -62,6 +62,8 @@ private:
             d_model,
             d_model);
 
+        // this dQ, dK, and dV terms are not your standard B,T,C tensors the are expanded. We need to contact them
+        // and I think from my memory they are re-shapped somewhere because they are
         dbias(
             model_paramaters.dQ,
             model_paramaters.d_bias_q,
@@ -101,8 +103,6 @@ private:
         wt_upstream(model_paramaters.attention_head.device_WQ, model_paramaters.WqT, d_model, d_model);
         wt_upstream(model_paramaters.attention_head.device_WV, model_paramaters.WvT, d_model, d_model); // out shape (d_mdoel, d_model)
 
-        linearBackForQKV();
-
         // recalling the shape here
 
         // dQ = 1/sqrt(dk) G K      shape=(batch_size, num_heads, seq_len, head_dim)
@@ -113,6 +113,9 @@ private:
         ReformBNTH_BTC(model_paramaters.dV, model_paramaters.vUp, batch_size, seq_len, d_model, num_heads, head_dim);
         ReformBNTH_BTC(model_paramaters.dQ, model_paramaters.qUp, batch_size, seq_len, d_model, num_heads, head_dim);
         ReformBNTH_BTC(model_paramaters.dK, model_paramaters.kUp, batch_size, seq_len, d_model, num_heads, head_dim);
+
+        linearBackForQKV();
+
         // Problem with this matmul kernel but I will look at it, its been a rough week
 
         // matirx multiplication
