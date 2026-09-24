@@ -173,6 +173,41 @@ def ReaderFlashAttention(
                             shape=(batch_size, seq_len),
                             dtype=np.float32).to(device)
 
+
+    d_weight_q = load_tensor("./src/cache/cpp_out/d_weight_q.bin",
+                             shape=(d_model, d_model),
+                             dtype=np.float32).to(device)
+    d_weight_k = load_tensor("./src/cache/cpp_out/d_weight_k.bin",
+                             shape=(d_model, d_model),
+                             dtype=np.float32).to(device)
+    d_weight_v = load_tensor("./src/cache/cpp_out/d_weight_v.bin",
+                             shape=(d_model, d_model),
+                             dtype=np.float32).to(device)
+
+    d_bias_q = load_tensor("./src/cache/cpp_out/d_bias_q.bin",
+                           shape=(d_model,),
+                           dtype=np.float32).to(device)
+
+    d_bias_k = load_tensor("./src/cache/cpp_out/d_bias_k.bin",
+                           shape=(d_model,),
+                           dtype=np.float32).to(device)
+
+    d_bias_v = load_tensor("./src/cache/cpp_out/d_bias_v.bin",
+                           shape=(d_model,),
+                           dtype=np.float32).to(device)
+
+    bias_q = load_tensor("./src/cache/cpp_out/bias_q.bin",
+                         shape=(d_model,),
+                         dtype=np.float32).to(device)
+
+    bias_k = load_tensor("./src/cache/cpp_out/bias_k.bin",
+                         shape=(d_model,),
+                         dtype=np.float32).to(device)
+
+    bias_v = load_tensor("./src/cache/cpp_out/bias_v.bin",
+                         shape=(d_model,),
+                         dtype=np.float32).to(device)
+
     # print(f"Weight contact: {weight_contact} \n Weight transposed: {weight_contact_transposed}")
 
     return (P, V, PT, VT, G_unc, dl_dh, dp, dV,
@@ -182,7 +217,10 @@ def ReaderFlashAttention(
             std_dev_cache, x, layer_norm_back_x, beta,
             d_gamma, d_beta, weight_contact, weight_contact_transposed,
             d_attention_contact, d_bias_output_proj, final_gradient_from_add_residual,
-            d_embedding, token_ids)
+            d_embedding, token_ids,
+            d_weight_q, d_weight_k,  d_weight_v,
+            d_bias_q, d_bias_k, d_bias_v,
+            bias_q, bias_k, bias_v)
 
 
 def Reader(

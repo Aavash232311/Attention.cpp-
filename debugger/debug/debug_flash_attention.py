@@ -31,7 +31,10 @@ class DebugFlashAttention(torch.nn.Module):
          self.d_gamma, self.d_beta, self.weight_contact,
          self.weight_contact_transpose, self.G,
          self.d_bias_output_proj, self.final_gradient_from_add_residual,
-         self.d_embeddings, self.token_ids) = ReaderFlashAttention(batch_size, seq_len, vocab_size, d_model, num_heads, head_dim)
+         self.d_embeddings, self.token_ids,
+         self.d_weight_q, self.d_weight_k, self.d_weight_v,
+         self.d_bias_q, self.d_bias_k, self.d_bias_v,
+         self.bias_q, self.bias_k, self.bias_v) = ReaderFlashAttention(batch_size, seq_len, vocab_size, d_model, num_heads, head_dim)
 
     # dV = P^T G
     # dP = GV^T
@@ -300,3 +303,39 @@ class DebugFlashAttention(torch.nn.Module):
             print(f"Checking d_embedding status: {RED} {check_d_embedding} {RESET}")
         else:
             print(f"Checking d_embedding status: {GREEN} {check_d_embedding} {RESET}")
+
+        # Here we will check the gradient calculation for attention heads Q, K and V.
+        check_dw_q = torch.allclose(self.d_weight_q @ self.wqt, self.d_weight_q @ self.wqt, atol=1e-4, rtol=1e-4)
+        check_dw_k = torch.allclose(self.d_weight_k @ self.wkt, self.d_weight_k @ self.wkt, atol=1e-4, rtol=1e-4)
+        check_dw_v = torch.allclose(self.d_weight_v @ self.wvt, self.d_weight_v @ self.wvt, atol=1e-4, rtol=1e-4)
+
+        if not check_dw_q:
+            print(f"Checking delta weights q status: {RED} {check_dw_q} {RESET}")
+        else:
+        check_d_bias_q = torch.allclose(dQ_compact.sum(dim=(0, 1)), self.d_bias_q, atol=1e-4, rtol=1e-4)
+        check_d_bias_k = torch.allclose(dK_compact.sum(dim=(0, 1)), self.d_bias_k, atol=1e-4, rtol=1e-4)
+        check_d_bias_v = torch.allclose(dV_compact.sum(dim=(0, 1)), self.d_bias_v, atol=1e-4, rtol=1e-4)
+
+            print(f"Checking delta weights q status: {GREEN} {check_dw_q} {RESET}")
+
+        if not check_dw_k:
+            print(f"Checking delta weight k status: {RED} {check_dw_k} {RESET}")
+        else:
+            print(f"Checking delta weight k status: {GREEN} {check_dw_k} {RESET}")
+
+        if not check_dw_v:
+            print(f"Checking delta weights v status: {RED} {check_dw_v} {RESET}")
+        else:
+            print(f"Checking delta weights v status: {GREEN} {check_dw_v} {RESET}")
+
+        # sum along the b,t because that's the gradient for the bias term here.
+
+        sum_dq = dQ_compact.sum(dim=(0, 1))
+
+        check_d_bias_q = torch.allclose(dQ_compact.sum(dim=(0, 1)), self.d_bias_q, atol=1e-4, rtol=1e-4)
+        check_d_bias_k = torch.allclose(dK_compact.sum(dim=(0, 1)), self.d_bias_k, atol=1e-4, rtol=1e-4)
+        check_d_bias_v = torch.allclose(dV_compact.sum(dim=(0, 1)), self.d_bias_v, atol=1e-4, rtol=1e-4)
+
+        print(check_d_bias_q, check_d_bias_k, check_d_bias_v)
+
+

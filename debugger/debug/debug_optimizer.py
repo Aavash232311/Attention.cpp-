@@ -23,7 +23,7 @@ class DebugOptimizer:
         self.weight_decay = self.params["wd"]
         self.learning_rate = self.params["lr"]
 
-        print(self.params, self.beta_1, self.beta_2, self.epsilon, self.weight_decay, self.learning_rate)
+        # print(self.params, self.beta_1, self.beta_2, self.epsilon, self.weight_decay, self.learning_rate)
 
     def _read_hyperparamaters(self):
         try:
