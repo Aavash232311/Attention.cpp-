@@ -475,4 +475,37 @@ public:
         free(token_ids_host);
         free(d_embedding);
     }
+
+    void pyDebuggerReleaseStage11()
+    {
+        float *d_weight_q = (float *)malloc(d_model * d_model * sizeof(float));
+        float *d_weight_k = (float *)malloc(d_model * d_model * sizeof(float));
+        float *d_weight_v = (float *)malloc(d_model * d_model * sizeof(float));
+
+        float *d_bias_q = (float *)malloc(d_model * sizeof(float));
+        float *d_bias_k = (float *)malloc(d_model * sizeof(float));
+        float *d_bias_v = (float *)malloc(d_model * sizeof(float));
+
+        cudaMemcpy(d_weight_q, model_paramaters.d_weight_q, d_model * d_model * sizeof(float), cudaMemcpyHostToDevice);
+        cudaMemcpy(d_weight_k, model_paramaters.d_weight_k, d_model * d_model * sizeof(float), cudaMemcpyHostToDevice);
+        cudaMemcpy(d_weight_v, model_paramaters.d_weight_v, d_model * d_model * sizeof(float), cudaMemcpyHostToDevice);
+
+        bulkRelease<float>({
+            {d_weight_q, d_model * d_model, "d_weight_q.bin"},
+            {d_weight_k, d_model * d_model, "d_weight_k.bin"},
+            {d_weight_v, d_model * d_model, "d_weight_v.bin"},
+            {d_bias_q, d_model, "d_bias_q.bin"},
+            {d_bias_k, d_model, "d_bias_k.bin"},
+            {d_bias_v, d_model, "d_bias_v.bin"},
+
+        });
+
+        free(d_weight_q);
+        free(d_weight_k);
+        free(d_weight_v);
+
+        free(d_bias_q);
+        free(d_bias_k);
+        free(d_bias_v);
+    }
 };
