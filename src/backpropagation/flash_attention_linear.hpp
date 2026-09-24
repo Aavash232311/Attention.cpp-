@@ -65,19 +65,19 @@ private:
         // this dQ, dK, and dV terms are not your standard B,T,C tensors the are expanded. We need to contact them
         // and I think from my memory they are re-shapped somewhere because they are
         dbias(
-            model_paramaters.dQ,
+            model_paramaters.qUp,
             model_paramaters.d_bias_q,
             batch_size,
             seq_len,
             d_model);
         dbias(
-            model_paramaters.dK,
+            model_paramaters.kUp,
             model_paramaters.d_bias_k,
             batch_size,
             seq_len,
             d_model);
         dbias(
-            model_paramaters.dV,
+            model_paramaters.vUp,
             model_paramaters.d_bias_v,
             batch_size,
             seq_len,
