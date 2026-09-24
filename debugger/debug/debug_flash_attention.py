@@ -312,10 +312,6 @@ class DebugFlashAttention(torch.nn.Module):
         if not check_dw_q:
             print(f"Checking delta weights q status: {RED} {check_dw_q} {RESET}")
         else:
-        check_d_bias_q = torch.allclose(dQ_compact.sum(dim=(0, 1)), self.d_bias_q, atol=1e-4, rtol=1e-4)
-        check_d_bias_k = torch.allclose(dK_compact.sum(dim=(0, 1)), self.d_bias_k, atol=1e-4, rtol=1e-4)
-        check_d_bias_v = torch.allclose(dV_compact.sum(dim=(0, 1)), self.d_bias_v, atol=1e-4, rtol=1e-4)
-
             print(f"Checking delta weights q status: {GREEN} {check_dw_q} {RESET}")
 
         if not check_dw_k:
@@ -332,10 +328,21 @@ class DebugFlashAttention(torch.nn.Module):
 
         sum_dq = dQ_compact.sum(dim=(0, 1))
 
-        check_d_bias_q = torch.allclose(dQ_compact.sum(dim=(0, 1)), self.d_bias_q, atol=1e-4, rtol=1e-4)
-        check_d_bias_k = torch.allclose(dK_compact.sum(dim=(0, 1)), self.d_bias_k, atol=1e-4, rtol=1e-4)
-        check_d_bias_v = torch.allclose(dV_compact.sum(dim=(0, 1)), self.d_bias_v, atol=1e-4, rtol=1e-4)
+        check_d_bias_q = torch.allclose(self.upq.sum(dim=(0, 1)), self.d_bias_q, atol=1e-4, rtol=1e-4)
+        check_d_bias_k = torch.allclose(self.upk.sum(dim=(0, 1)), self.d_bias_k, atol=1e-4, rtol=1e-4)
+        check_d_bias_v = torch.allclose(self.upv.sum(dim=(0, 1)), self.d_bias_v, atol=1e-4, rtol=1e-4)
 
-        print(check_d_bias_q, check_d_bias_k, check_d_bias_v)
+        if not check_d_bias_q:
+            print(f"Checking d_bias_q status: {RED} {check_d_bias_q} {RESET}")
+        else:
+            print(f"Checking d_bias_q status: {GREEN} {check_d_bias_q} {RESET}")
 
+        if not check_d_bias_k:
+            print(f"Checking d_bias_k status: {RED} {check_d_bias_k} {RESET}")
+        else:
+            print(f"Checking d_bias_k status: {GREEN} {check_d_bias_k} {RESET}")
 
+        if not check_d_bias_v:
+            print(f"Checking d_bias_v status: {RED} {check_d_bias_v} {RESET}")
+        else:
+            print(f"Checking d_bias_v status: {GREEN} {check_d_bias_v} {RESET}")

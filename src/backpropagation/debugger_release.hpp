@@ -494,6 +494,10 @@ public:
         cudaMemcpy(d_weight_k, model_paramaters.d_weight_k, d_model * d_model * sizeof(float), cudaMemcpyHostToDevice);
         cudaMemcpy(d_weight_v, model_paramaters.d_weight_v, d_model * d_model * sizeof(float), cudaMemcpyHostToDevice);
 
+        cudaMemcpy(d_bias_q, model_paramaters.d_bias_q, d_model * sizeof(float), cudaMemcpyHostToDevice);
+        cudaMemcpy(d_bias_k, model_paramaters.d_bias_k, d_model * sizeof(float), cudaMemcpyHostToDevice);
+        cudaMemcpy(d_bias_v, model_paramaters.d_bias_v, d_model * sizeof(float), cudaMemcpyHostToDevice);
+
         cudaMemcpy(bias_q, model_paramaters.attention_head.bias_q, d_model * sizeof(float), cudaMemcpyHostToDevice);
         cudaMemcpy(bias_k, model_paramaters.attention_head.bias_k, d_model * sizeof(float), cudaMemcpyHostToDevice);
         cudaMemcpy(bias_v, model_paramaters.attention_head.bias_v, d_model * sizeof(float), cudaMemcpyHostToDevice);
