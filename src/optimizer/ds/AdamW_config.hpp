@@ -77,4 +77,9 @@ public:
         d_bias_k.init(d_model);
         d_bias_v.init(d_model);
     }
+
+    void optimize()
+    {
+        
+    }
 };
