@@ -15,7 +15,7 @@
 #include <cstdio>
 #include <chrono>
 
-extern "C" void adamw_step(
+extern "C" void AdamWSTEP(
     float *theta,
     float *grad,
     float *m,
@@ -34,32 +34,6 @@ using namespace std;
 class AdamW
 {
 
-private:
-    /**
-     * @class AdamW
-     * @brief Optimizes and updates the upstream gradient
-     *
-     * @param G: gradient G
-     * @param out: the actual weight and bias to update
-     * @param N: total number of element in G and N.
-     *
-     * @warning size of G should equal out
-     *
-     * @note Nothing for AdamW if there is no learnable paramaters, we only care about the learnable paramaters.
-     *
-     * @author Avash Lamichhane
-     *
-     */
-    void step(
-        float *G,
-        float *theta,
-        int N)
-    {
-        if (debug)
-        {
-        }
-    }
-
 public:
     bool debug = false;
 
@@ -70,6 +44,7 @@ public:
     float epsilon;
 
     FlashAttentionPointers modelParamaters;
+    // AdamWMemConfig gradient_optimizer_properties;
 
     virtual void releaseOptimizerHyperparameters() {};
 
@@ -99,14 +74,12 @@ public:
             /*
                 Note:- the sequence does not matter here we go from back to first for all the learnable paramaters, we update them.
             */
-
-            // for lm head weight, and the gradient here is also
-            // the dl_dw which is the local gradient
-            // adamw_step(
-            //     modelParamaters.w_device,
-            //     modelParamaters.dl_dw_device,
-
-            // );
         }
+
+        // AdamWSTEP(
+        //     modelParamaters.dl_dz_out_device
+        //     modelParamaters.dl_dz_out_device,
+
+        // );
     }
 };

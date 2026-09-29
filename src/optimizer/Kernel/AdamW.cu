@@ -42,7 +42,21 @@ __global__ void adamw_step(
 
 extern "C"
 {
-
+        /**
+     * @class AdamW
+     * @brief Optimizes and updates the upstream gradient
+     *
+     * @param G: gradient G
+     * @param out: the actual weight and bias to update
+     * @param N: total number of element in G and N.
+     *
+     * @warning size of G should equal out
+     *
+     * @note Nothing for AdamW if there is no learnable paramaters, we only care about the learnable paramaters.
+     *
+     * @author Avash Lamichhane
+     *
+     */
     void AdamWSTEP(
         float *theta,
         float *grad,

@@ -142,7 +142,6 @@ private:
         float *delta_device, // (B, T, vocab_size)
         float *h_device,     // (B, C, T)   Here: h = h^T (transposed by the derivation)
         float *out_device,   // (B, C, vocab_size)
-        float *out_host,     //  B, C, vocab_size)
         int B,
         int T,
         int C,
@@ -158,8 +157,7 @@ private:
             C,
             vocab_size);
 
-        // write to host, we have a debugger release from which we can copy to just just for the sake of releasing
-        cudaMemcpy(out_host, out_device, batch_size * vocab_size * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+
     }
 
     // this is something that you have written in Java already sometime many years ago
@@ -169,14 +167,11 @@ private:
     // I may not be so smart, atleast now I understand the defination
 
     void wt_upstream_gradient(
-        float *w_host,
         float *w_device, // (d_model, vocab_size)
         float *w_out_d,  // (vocab_size, d_model)
         int d_model,
         int vocab_size)
     {
-        // copy form host w
-        cudaMemcpy(w_device, w_host, d_model * vocab_size * sizeof(float), cudaMemcpyHostToDevice);
 
         wt_upstream(
             w_device,
@@ -310,7 +305,6 @@ public:
             paramaters.dl_dz_out_device, // delta device
             paramaters.device_out_h,     // its going to be h^T after transpose kernel writes to this kernel
             paramaters.dl_dw_device,     // for out
-            paramaters.dl_dw_host,
             batch_size,
             seq_len,
             d_model,
@@ -320,8 +314,7 @@ public:
             pyDebuggerReleaseStage2();
 
         wt_upstream_gradient(
-            paramaters.w_host,
-            paramaters.w_device,
+            paramaters.weight_lm_head,
             paramaters.wt_out_d,
             d_model,
             vocab_size);
