@@ -92,7 +92,6 @@ class AttentionInterface
     // goal is not perfection here, I just want to make it work
 
     // ---------- Autograd engine weight lm head ---------------------
-    float *w_device;
     float *w_out_d;
 
     // For the net gradient we also want to allocate for
@@ -270,7 +269,6 @@ public:
 
         // ------------ for w in lm head --------------
 
-        cudaMalloc((void **)&w_device, d_model * vocab_size * sizeof(float));
         cudaMalloc((void **)&w_out_d, d_model * vocab_size * sizeof(float));
 
         // ----- For flash attention kernel -------------------
@@ -365,7 +363,6 @@ public:
         free(dl_dw_out_host);
 
         cudaFree(w_out_d);
-        cudaFree(w_device);
 
         // free flash-attention device allocations
         cudaFree(S_device);
@@ -520,7 +517,17 @@ public:
 
                 float *prob = lm_head->forward(x); // Shape (B, T, vocab_size) x is not changed here.
 
-                modelParamaters.w_host = lm_head->getWeight();
+                modelParamaters.weight_lm_head = lm_head->getWeightDevice();
+
+                // if (debug)
+                // {
+                //     float *w_host = (float *)malloc(d_model * vocab_size * sizeof(float));
+                //     cudaMemcpy(w_host, lm_head->getWeightDevice(), vocab_size * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+
+                //     utils->printFlatArray2D(w_host, d_model, vocab_size);
+
+                //     free(w_host);
+                // }
                 modelParamaters.bias_lm_head = lm_head->getBaiasDevice();
 
                 // if (debug)
@@ -555,10 +562,8 @@ public:
                 // for dl_dw = delta h^T derived in flashback.md
 
                 modelParamaters.dl_dw_device = dl_dw_out_device;
-                modelParamaters.dl_dw_host = dl_dw_out_host;
 
                 // these are just borrowed pointers
-                modelParamaters.w_device = w_device;
                 modelParamaters.wt_out_d = w_out_d;
 
                 modelParamaters.P_T_device = P_T_device;
@@ -596,7 +601,6 @@ public:
                 modelParamaters.d_weight_q = d_weight_q;
                 modelParamaters.d_weight_k = d_weight_k;
                 modelParamaters.d_weight_v = d_weight_v;
-
 
                 modelParamaters.d_bias_q = d_bias_q;
                 modelParamaters.d_bias_k = d_bias_k;

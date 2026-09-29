@@ -134,10 +134,6 @@ def ReaderFlashAttention(
                                     shape=(batch_size, seq_len, d_model),
                                     dtype=np.float32).to(device)
 
-    beta = load_tensor("./src/cache/cpp_out/beta.bin",
-                       shape=(d_model, ),
-                       dtype=np.float32).to(device)
-
     d_beta = load_tensor("./src/cache/cpp_out/d_beta.bin",
                          shape=(d_model,),
                          dtype=np.float32).to(device)
@@ -214,7 +210,7 @@ def ReaderFlashAttention(
             softmax_upstream, dQ, k, q, d_score_t,
             dK, wqt, wkt, wvt, wq, wk, wv, upq, upk,
             upv, G_x_hat, layer_norm_gamma, mean_cache,
-            std_dev_cache, x, layer_norm_back_x, beta,
+            std_dev_cache, x, layer_norm_back_x,
             d_gamma, d_beta, weight_contact, weight_contact_transposed,
             d_attention_contact, d_bias_output_proj, final_gradient_from_add_residual,
             d_embedding, token_ids,

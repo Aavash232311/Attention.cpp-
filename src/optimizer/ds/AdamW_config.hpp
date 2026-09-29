@@ -6,6 +6,22 @@
 
 #include "./optimizer_mem.hpp"
 
+
+
+/**
+ * @class AdamWMemConfig
+ * @brief Memory allocation for all the gradients
+ *
+ * 
+ * @param batch_size batch_size
+ * @param seq_len seq_len
+ * @param d_model d_model
+ * @param vocab_size
+ * @param num_heads
+ * 
+ * @author Avash Lamichhane
+ *
+ */
 struct AdamWMemConfig
 {
 public:
@@ -76,10 +92,5 @@ public:
         d_bias_q.init(d_model);
         d_bias_k.init(d_model);
         d_bias_v.init(d_model);
-    }
-
-    void optimize()
-    {
-        
     }
 };

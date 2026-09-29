@@ -27,7 +27,7 @@ class DebugFlashAttention(torch.nn.Module):
          self.wq, self.wk, self.wv, self.upq,
          self.upk, self.upv, self.G_x_hat,
          self.layer_norm_gamma, self.mc, self.stdc,
-         self.x, self.layer_norm_back_x, self.beta,
+         self.x, self.layer_norm_back_x,
          self.d_gamma, self.d_beta, self.weight_contact,
          self.weight_contact_transpose, self.G,
          self.d_bias_output_proj, self.final_gradient_from_add_residual,

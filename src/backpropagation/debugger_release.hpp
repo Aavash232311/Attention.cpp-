@@ -90,10 +90,14 @@ public:
      */
     void pyDebuggerReleaseStage2()
     {
+        float *dl_dw_host = (float *)malloc(batch_size * d_model * vocab_size * sizeof(float));
+        cudaMemcpy(dl_dw_host, model_paramaters.dl_dw_device, batch_size * d_model * vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
         // After the gradient_linear() gets called model_paramaters.h gets written
         bulkRelease<float>({{model_paramaters.h, batch_size * seq_len * d_model, "h_t.bin"},
-                            {model_paramaters.dl_dw_host, batch_size * d_model * vocab_size, "dl_dw.bin"}}); // out delta h^T binary
+                            {dl_dw_host, batch_size * d_model * vocab_size, "dl_dw.bin"}
+                        }); // out delta h^T binary
                                                                                                              // second stage release for the autograd engine.
+        free(dl_dw_host);
     }
 
     /**
@@ -112,14 +116,16 @@ public:
         float *wt_host = (float *)malloc(d_model * vocab_size * sizeof(float));
         float *dl_dh_host = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
         float *bias_lm_head_host = (float *)malloc(vocab_size * sizeof(float));
+        float *w_host = (float *)malloc(d_model * vocab_size * sizeof(float));
 
         cudaMemcpy(wt_host, model_paramaters.wt_out_d, d_model * vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
         cudaMemcpy(dl_dh_host, model_paramaters.dl_dh_output, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
         cudaMemcpy(bias_lm_head_host, model_paramaters.dbias_lm_head_pred, vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(w_host, model_paramaters.weight_lm_head, vocab_size * d_model * sizeof(float), cudaMemcpyDeviceToHost);
 
         bulkRelease<float>(
             {{wt_host, d_model * vocab_size, "wt.bin"},
-             {model_paramaters.w_host, d_model * vocab_size, "w.bin"},
+             {w_host, d_model * vocab_size, "w.bin"},
              // for now this is the G shape (B, T, C)
              {dl_dh_host, batch_size * seq_len * d_model, "dl_dh.bin"},
              {bias_lm_head_host, vocab_size, "dbias_lm_head.bin"}});
@@ -127,6 +133,7 @@ public:
         free(dl_dh_host);
         free(wt_host);
         free(bias_lm_head_host);
+        free(w_host);
     }
 
     /**
