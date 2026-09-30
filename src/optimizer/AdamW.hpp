@@ -7,6 +7,7 @@
 #include "../include/utils.hpp"
 
 #include "./ds/optimizer_mem.hpp"
+#include "./ds/AdamW_config.hpp"
 
 #include <curand_kernel.h>
 #include <cuda_runtime.h>
@@ -44,7 +45,6 @@ public:
     float epsilon;
 
     FlashAttentionPointers modelParamaters;
-    // AdamWMemConfig gradient_optimizer_properties;
 
     virtual void releaseOptimizerHyperparameters() {};
 
@@ -62,9 +62,13 @@ public:
         this->beta_2 = beta_2;
         this->epsilon = epsilon;
         this->weight_decay = weight_decay;
+
     }
 
-    void invoke(FlashAttentionPointers modelParamaters)
+    void invoke(
+        FlashAttentionPointers modelParamaters,
+        const AdamWMemConfig& config
+    )
     {
         if (debug)
         {
@@ -77,9 +81,17 @@ public:
         }
 
         // AdamWSTEP(
-        //     modelParamaters.dl_dz_out_device
-        //     modelParamaters.dl_dz_out_device,
-
+        //     modelParamaters.dl_dw_device
+        //     modelParamaters.dl_dz_out, // this is the output here in this case.
+        //     config.dl_dw.m_d,
+        //     config.dl_dw.m_v,
+        //     lr,
+        //     beta1,
+        //     beta2,
+        //     eps,
+        //     weight_decay,
+        //     t,
+        //     n
         // );
     }
 };

@@ -48,7 +48,7 @@ class AttentionInterface
     std::unique_ptr<DataLoader> dataLoader;
     std::unique_ptr<Utility> utils;
     std::unique_ptr<OptimizerDebugger> optimizer;
-    std::unique_ptr<AdamWMemConfig> adamMemCofig;
+    std::unique_ptr<AdamWMemConfig> adamMemConfig;
 
     // turn those result into proballity score
     std::unique_ptr<Linear> lm_head;
@@ -229,7 +229,7 @@ public:
             batch_size,
             debug);
 
-        adamMemCofig = std::make_unique<AdamWMemConfig>(
+        adamMemConfig = std::make_unique<AdamWMemConfig>(
             batch_size,
             seq_len,
             d_model,
@@ -628,7 +628,7 @@ public:
                 // there is tradeoff between making things modular and fusing everything together.
                 // Lets create a buffer for CPU/GPU memory in this class so that we dont overload the system and free it when the object is destroyed.
                 autograd->backprop(modelParamaters);
-                optimizer->invoke(modelParamaters);
+                optimizer->invoke(modelParamaters, *adamMemConfig);
                 debug = false;
             }
             dataLoader->resetIterator(); // just the weird logic that I wrote.
