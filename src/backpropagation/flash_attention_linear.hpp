@@ -45,8 +45,8 @@ private:
             d_model);
 
         dl_dh_upstream(
-            model_paramaters.dK,
-            model_paramaters.WkT,
+            model_paramaters.dK, // (B, T, C)
+            model_paramaters.WkT, // (C, C)
             model_paramaters.d_weight_k,
             batch_size,
             seq_len,
@@ -118,7 +118,7 @@ private:
 
         // Problem with this matmul kernel but I will look at it, its been a rough week
 
-        // matirx multiplication
+        // matirx multiplication, shape BTC, CC, CC
         dl_dh_upstream(model_paramaters.qUp, model_paramaters.WqT, model_paramaters.dqWt, batch_size, seq_len, d_model, d_model);
         dl_dh_upstream(model_paramaters.kUp, model_paramaters.WkT, model_paramaters.dkWt, batch_size, seq_len, d_model, d_model);
 
