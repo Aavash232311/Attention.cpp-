@@ -83,7 +83,6 @@ __global__ void dl_dw_upstream_kernel(
     /*
         Instead of firing GPU of by brain cell. Takeway for me, this is a 3D tensor and 
         we are trying to add this in a 2D shape. So you are basically summing this thing. 
-        W
     */
     atomicAdd(&out[idx_out], sum);
 }
@@ -259,7 +258,7 @@ extern "C"
             (C + block.y - 1) / block.y,          // grid.y: enough blocks to cover all of C
             B                                     // grid.z: one per batch element
         );
-        cudaMemset(out, 0, (size_t)C * vocab_size * sizeof(float));
+        cudaMemset(out, 0, (size_t) C * vocab_size * sizeof(float));
 
         dl_dw_upstream_kernel<<<grid, block>>>(h_t, delta, out, B, T, C, vocab_size);
 

@@ -230,7 +230,7 @@ def Reader(
     y_actual = load_tensor('./src/cache/cpp_out/y_actual.bin', shape=(batch_size, seq_len, vocab_size), dtype=np.float32).to(device)
     h = load_tensor('./src/cache/cpp_out/h.bin', shape=(batch_size, seq_len, d_model), dtype=np.float32).to(device)
     # (B, C, vocab_size)
-    dl_dw_kernel = load_tensor('./src/cache/cpp_out/dl_dw.bin', shape=(batch_size, d_model, vocab_size), dtype=np.float32).to(device)
+    dl_dw_kernel = load_tensor('./src/cache/cpp_out/dl_dw.bin', shape=(d_model, vocab_size), dtype=np.float32).to(device)
     h_t = load_tensor('./src/cache/cpp_out/h_t.bin', shape=(batch_size, d_model, seq_len), dtype=np.float32).to(device)
 
     wt = load_tensor('./src/cache/cpp_out/wt.bin', shape=(vocab_size, d_model), dtype=np.float32).to(device)

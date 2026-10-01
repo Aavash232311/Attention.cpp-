@@ -91,10 +91,10 @@ public:
     void pyDebuggerReleaseStage2()
     {
         float *dl_dw_host = (float *)malloc(batch_size * d_model * vocab_size * sizeof(float));
-        cudaMemcpy(dl_dw_host, model_paramaters.dl_dw_device, batch_size * d_model * vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(dl_dw_host, model_paramaters.dl_dw_device, d_model * vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
         // After the gradient_linear() gets called model_paramaters.h gets written
         bulkRelease<float>({{model_paramaters.h, batch_size * seq_len * d_model, "h_t.bin"},
-                            {dl_dw_host, batch_size * d_model * vocab_size, "dl_dw.bin"}
+                            {dl_dw_host, d_model * vocab_size, "dl_dw.bin"}
                         }); // out delta h^T binary
                                                                                                              // second stage release for the autograd engine.
         free(dl_dw_host);

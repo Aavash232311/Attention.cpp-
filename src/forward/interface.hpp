@@ -79,7 +79,6 @@ class AttentionInterface
     float *dl_dz_out_host;
 
     float *dl_dw_out_device;
-    float *dl_dw_out_host;
 
     // GPU buffer for the autograd engine in the attention interface.
     FlashAttentionPointers modelParamaters;
@@ -264,8 +263,7 @@ public:
 
         cudaMalloc((void **)&out_h, batch_size * seq_len * vocab_size * sizeof(float));
 
-        cudaMalloc((void **)&dl_dw_out_device, batch_size * d_model * vocab_size * sizeof(float));
-        dl_dw_out_host = (float *)malloc(batch_size * d_model * vocab_size * sizeof(float));
+        cudaMalloc((void **)&dl_dw_out_device, d_model * vocab_size * sizeof(float));
 
         // ------------ for w in lm head --------------
 
@@ -360,7 +358,6 @@ public:
         cudaFree(out_h);
 
         cudaFree(dl_dw_out_device);
-        free(dl_dw_out_host);
 
         cudaFree(w_out_d);
 
