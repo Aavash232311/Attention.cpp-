@@ -70,5 +70,11 @@ def debug_autograd(
     else:
         print(f"checking dl_dh bias (i.e sum across b,t) kernel: {GREEN} {check_d_bias_lm_head} {RESET}")
 
-    print("\n")
-    return dl_dw_kernel
+    local_weight_lm_head = (h_t @ delta).sum(dim=(0))
+
+    check_local_weight_lm_head = torch.allclose(local_weight_lm_head, dl_dw_kernel, atol=1e-4, rtol=1e-4)
+
+    if not check_local_weight_lm_head:
+        print(f"checking dl_dw local gradient: {RED} {check_local_weight_lm_head} {RESET}")
+    else:
+        print(f"checking dl_dw local gradient: {GREEN} {check_local_weight_lm_head} {RESET}")

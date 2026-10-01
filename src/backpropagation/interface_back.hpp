@@ -141,7 +141,7 @@ private:
     void dl_dw_upstream_gradient(
         float *delta_device, // (B, T, vocab_size)
         float *h_device,     // (B, C, T)   Here: h = h^T (transposed by the derivation)
-        float *out_device,   // (B, C, vocab_size)
+        float *out_device,   // (C, vocab_size)
         int B,
         int T,
         int C,
@@ -304,7 +304,7 @@ public:
         dl_dw_upstream_gradient(
             paramaters.dl_dz_out_device, // delta device
             paramaters.device_out_h,     // its going to be h^T after transpose kernel writes to this kernel
-            paramaters.dl_dw_device,     // for out
+            paramaters.dl_dw_device,     // (C, V) size same
             batch_size,
             seq_len,
             d_model,
@@ -327,6 +327,16 @@ public:
             seq_len,
             d_model,
             vocab_size);
+
+        // if (debug)
+        // {
+        //     float *dweight = (float *)malloc(d_model * vocab_size * sizeof(float));
+        //     cudaMemcpy(dweight, model_paramaters.dl_dw_device, d_model*  vocab_size  * sizeof(float), cudaMemcpyDeviceToHost);
+
+        //     utils->printFlatArray2D(dweight, d_model, vocab_size);
+
+        //     free(dweight);
+        // }
 
         // now for the bias term,
         // Adam or AdamW needs these terms
