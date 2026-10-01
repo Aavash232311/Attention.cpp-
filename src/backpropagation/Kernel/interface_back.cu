@@ -51,10 +51,11 @@ __global__ void transpose_last_two_kernel(float *input, float *output, int B, in
     }
 }
 
+// each token of the B,T frame which is c, example on cell [0, C-1]all together touches (C, C) weights
 __global__ void dl_dw_upstream_kernel(
     float *h_t,   // (B, C, T)          transposed h
     float *delta, // (B, T, vocab_size)
-    float *out,   // (B, C, vocab_size)
+    float *out,   // (C, vocab_size)    zeroed before launch
     int B,
     int T,
     int C,
@@ -70,15 +71,21 @@ __global__ void dl_dw_upstream_kernel(
     float sum = 0.0f;
     for (int k = 0; k < T; ++k)
     {
-        // transposne shape (B, C, T) escape C, T
-        // delta shape (B, T, vocab_size)
+        // h_t shape (B, C, T), delta shape (B, T, vocab_size)
         int idx_ht = (C * T) * batch_idx + T * row_idx + k;
         int idx_delta = (T * vocab_size) * batch_idx + vocab_size * k + col_idx;
         sum += h_t[idx_ht] * delta[idx_delta];
     }
 
-    int idx_out = (C * vocab_size) * batch_idx + vocab_size * row_idx + col_idx;
-    out[idx_out] = sum;
+    // before it was, out[(C * vocab_size) * batch_idx + vocab_size * row_idx + col_idx] = sum;
+    int idx_out = vocab_size * row_idx + col_idx;   // no batch_idx term
+
+    /*
+        Instead of firing GPU of by brain cell. Takeway for me, this is a 3D tensor and 
+        we are trying to add this in a 2D shape. So you are basically summing this thing. 
+        W
+    */
+    atomicAdd(&out[idx_out], sum);
 }
 
 __global__ void wt_upstream_gradient_kernel(
@@ -252,6 +259,7 @@ extern "C"
             (C + block.y - 1) / block.y,          // grid.y: enough blocks to cover all of C
             B                                     // grid.z: one per batch element
         );
+        cudaMemset(out, 0, (size_t)C * vocab_size * sizeof(float));
 
         dl_dw_upstream_kernel<<<grid, block>>>(h_t, delta, out, B, T, C, vocab_size);
 
