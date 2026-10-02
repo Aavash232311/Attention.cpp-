@@ -540,6 +540,7 @@ public:
         // Now we need to make this go thtrough a Linear Transformation without it the model will just learn to stack information together
         // without learning to mix information from multiple heads together.
 
+        // NOTE: This comes out in the host here.
         float *projectedBTC = outputProj->forward(B_NUMHEAD_SEQLEN_HEADDIM);
 
         // I will add the resudual here to give it a context on what's it is attending to
@@ -600,6 +601,24 @@ public:
 
     float *BorrowBTCDevice()
     {
+
+        /*
+        Engineer inside of me will have a hard time if I do not know what I am doing.
+        This is not a easy project to do. I promise. I PROMISE.
+
+        Now whats happenning here is our final.
+
+        BorrowBTCDevice brorrows this, Please forgive me (to myself) no body will ever read this.
+        THis is weid. but we will make it work anyhow.
+
+        BorrowBTCDevice() borrows this pointer as a final (B,T,C)
+        meaning BorrowBTCDevice() = attention(x) (B,T,C) tensor.
+
+        NOT NECESSARY SHDFJHSJDHSJD BUT JUST THE WAY I DID IT BEFORE;
+        */
+
+        cudaMemcpy(BTCdevice, BTCHost, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyHostToDevice);
+
         return this->BTCdevice;
     }
 

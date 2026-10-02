@@ -91,6 +91,10 @@ private:
     // REMEMBER BESIDE ME NO ONE WILL EVEERRRRR READ THIS CODE
     // IF ITS DIRTY THEN I WILL HANDLE ITTTT.
 
+    // This is from the endless marching of time
+    // from the universe.
+    // sure dbias is delta but this won't sum it don't know
+    // why did I wrote it like that.
     void dl_dz_upstream_gradient( // delta
         float *actual,            // (B, T, vocab_size) on device
         float *predicted,         // (B, T, vocab_size) on device
@@ -112,95 +116,6 @@ private:
         // upstream gradient to host, we can keep this in the device but we will fix this later, first goal is to get the result right
         cudaMemcpy(delta_host, delta, B * T * vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
         // delta_host = partial L / partial z
-    }
-
-    // h^T
-    void gradient_linear(
-        float *h_host, // input (B, T, d_model) and after the lm head (B, T, vocab_size)
-        float *h_device,
-        float *h_out, // device (B, C, T) shape for delta h^T
-        float *delta, // (B, T, vocab_size)
-        int B,
-        int T,
-        int d_model,
-        int vocab_size)
-    {
-        // Copy from host to device
-        cudaMemcpy(h_device, h_host, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyHostToDevice);
-
-        // h^T
-        lm_head_transpose_h(
-            h_device,
-            h_out,
-            batch_size,
-            seq_len,
-            d_model);
-
-        // copy back to host, just to check and debug, else we do not need to copy back and fourh between
-        // different memories that is costly, burnout is expected at this complexity and lines of code.
-        cudaMemcpy(h_host, h_out, batch_size * d_model * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
-    }
-
-    void dl_dw_upstream_gradient(
-        float *delta_device, // (B, T, vocab_size)
-        float *h_device,     // (B, C, T)   Here: h = h^T (transposed by the derivation)
-        float *out_device,   // (C, vocab_size)
-        int B,
-        int T,
-        int C,
-        int vocab_size)
-    {
-
-        dl_dw_upstream(
-            h_device,
-            delta_device,
-            out_device,
-            B,
-            T,
-            C,
-            vocab_size);
-
-
-    }
-
-    // this is something that you have written in Java already sometime many years ago
-    // just back propagation in output layer why because this is linear
-
-    // before lm_head -> (B, T, C) output is  (B, T, vocab_size)
-    // I may not be so smart, atleast now I understand the defination
-
-    void wt_upstream_gradient(
-        float *w_device, // (d_model, vocab_size)
-        float *w_out_d,  // (vocab_size, d_model)
-        int d_model,
-        int vocab_size)
-    {
-
-        wt_upstream(
-            w_device,
-            w_out_d,
-            d_model,
-            vocab_size);
-    }
-
-    void dl_dh_upstream_gradient(
-        float *delta,     //  (B, T, vocab_size)
-        float *wt,        //  (vocab_size, d_model)
-        float *out_dl_dh, // the real upstream gradient G, I accidently thought its dl_dw
-        int batch_size,
-        int seq_len,
-        int d_model,
-        int vocab_size)
-    {
-        dl_dh_upstream(
-            delta,
-            wt,
-            out_dl_dh,
-            batch_size,
-            seq_len,
-            d_model,
-            vocab_size,
-            true);
     }
 
 public:
@@ -225,8 +140,8 @@ public:
             batch_size,
             seq_len,
             d_model,
-            vocab_size
-        );
+            vocab_size,
+            debug);
 
         // NOTE- Memory allocation in RAM or VRAM is done per epoch if done here
         // huritng the performace, allocate and re-use ones from the attention
@@ -284,101 +199,31 @@ public:
         if (debug)
             pyDebuggerReleaseStage1();
 
-        gradient_linear(
-            paramaters.h, //
-            paramaters.device_h,
-            paramaters.device_out_h,     // out h^T
-            paramaters.dl_dz_out_device, // delta on device
-            batch_size,
-            seq_len,
-            d_model,
-            vocab_size);
-
-        // delta h^T for weights
-
-        /*
-            void dl_dw_upstream_gradient(
-        float *delta_device, // (B, T, vocab_size)
-        float *h_device,     // (B, C, T)   Here: h = h^T (transposed by the derivation)
-        float *out_device,   // (B, C, vocab_size)
-        float *out_host,     //  B, C, vocab_size)
-        int B,
-        int T,
-        int C,
-        int vocab_size)
-    {
-
-        */
-        // I am sorry for the confusing name
-        // remember no one EVERRR is reading this
-        // so on my lead only for me.
-        dl_dw_upstream_gradient(
-            paramaters.dl_dz_out_device, // delta device
-            paramaters.device_out_h,     // its going to be h^T after transpose kernel writes to this kernel
-            paramaters.dl_dw_device,     // (C, V) size same
-            batch_size,
-            seq_len,
-            d_model,
-            vocab_size);
-
         if (debug)
-            pyDebuggerReleaseStage2();
+        {
 
-        wt_upstream_gradient(
+            // float *h = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
+            // cudaMemcpy(h, model_paramaters.device_h, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+
+            // std::cout << "x from the host " << std::endl;
+            // utils->printFlatArray3D(model_paramaters.h, batch_size, seq_len, d_model);
+
+            // std::cout << "x from the device" << std::endl;
+            // utils->printFlatArray3D(h, batch_size, seq_len, d_model);
+
+            // free(h);
+        }
+
+        linearBack->backward(
+            paramaters.device_h,
+            model_paramaters.dl_dz_out_device,
             paramaters.weight_lm_head,
             paramaters.wt_out_d,
-            d_model,
-            vocab_size);
-
-        dl_dh_upstream_gradient(
-            paramaters.dl_dz_out_device,   // delta
-            paramaters.wt_out_d,           // w^t
-            model_paramaters.dl_dh_output, // (B, T, C)
-            batch_size,
-            seq_len,
-            d_model,
-            vocab_size);
-
-        // if (debug)
-        // {
-        //     float *dweight = (float *)malloc(d_model * vocab_size * sizeof(float));
-        //     cudaMemcpy(dweight, model_paramaters.dl_dw_device, d_model*  vocab_size  * sizeof(float), cudaMemcpyDeviceToHost);
-
-        //     utils->printFlatArray2D(dweight, d_model, vocab_size);
-
-        //     free(dweight);
-        // }
-
-        // now for the bias term,
-        // Adam or AdamW needs these terms
-
-        // Note:- bias shape is vocab_size
-        dbias(
-            paramaters.dl_dz_out_device, // delta is the gradient G here
-            model_paramaters.dbias_lm_head_pred,
-            batch_size,
-            seq_len,
-            vocab_size,
+            paramaters.device_out_h,
+            paramaters.dl_dw_device,
+            paramaters.dbias_lm_head_pred,
+            paramaters.dl_dh_output,
             true);
-
-        // if (debug)
-        // {
-        //     float *dbias_host = (float *)malloc(vocab_size * sizeof(float));
-
-        //     cudaMemcpy(dbias_host, model_paramaters.dbias_lm_head_pred, vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
-            
-        //     cout << "d bias lm head" << endl;
-        //     this->utils->printFlatArray1D(dbias_host, vocab_size);
-
-        //     float* d = (float *)malloc(batch_size * seq_len * vocab_size * sizeof(float));
-        //     cudaMemcpy(d, model_paramaters.dl_dz_out_device, batch_size * seq_len * vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
-
-        //     cout << "Delta upsteam G" << endl;
-        //     this->utils->printFlatArray3D(d, batch_size, seq_len, vocab_size);
-
-        //     free(dbias_host);
-        //     free(d);
-        // }
 
         if (debug)
             pyDebuggerReleaseStage3();
