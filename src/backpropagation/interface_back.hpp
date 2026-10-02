@@ -7,6 +7,8 @@
 #include <cstdio>
 #include <chrono>
 
+#include "./linear_layer_local_and_up.hpp"
+
 #include "../include/utils.hpp"
 #include "../include/linear.hpp"
 #include "../include/p_head.hpp"
@@ -21,8 +23,8 @@ extern "C" void upstream_dl_dz(float *actual, float *predicted, float *delta, in
 extern "C" void lm_head_transpose_h(float *h, float *out, int B, int T, int C);
 extern "C" void dl_dw_upstream(float *h_t, float *delta, float *out, int B, int T, int C, int vocab_size);
 extern "C" void wt_upstream(float *w, float *wt, int d_model, int vocab_size);
-extern "C" void dl_dh_upstream(float *detla, float *wt, float *out, int B, int T, int C, int vocab_size);
-extern "C" void dbias(float *G, float *dbias, int B, int T, int C);
+extern "C" void dl_dh_upstream(float *detla, float *wt, float *out, int B, int T, int C, int vocab_size, bool sync);
+extern "C" void dbias(float *G, float *dbias, int B, int T, int C, bool sync);
 // ---- Paramaters for our custom backgrad engine -----
 
 /*
@@ -64,6 +66,7 @@ protected:
 
     // ---------- Handy methods -----------
     std::unique_ptr<Utility> utils = std::make_unique<Utility>();
+    std::unique_ptr<LinearLayerBackpropagation> linearBack;
 
 private:
     // ----------- TEMPORARY DEBUGGER SCRIPT ---------------------
@@ -196,7 +199,8 @@ private:
             batch_size,
             seq_len,
             d_model,
-            vocab_size);
+            vocab_size,
+            true);
     }
 
 public:
@@ -216,6 +220,13 @@ public:
         this->debug = debug;
 
         this->head_dim = d_model / num_heads;
+
+        linearBack = std::make_unique<LinearLayerBackpropagation>(
+            batch_size,
+            seq_len,
+            d_model,
+            vocab_size
+        );
 
         // NOTE- Memory allocation in RAM or VRAM is done per epoch if done here
         // huritng the performace, allocate and re-use ones from the attention
@@ -347,7 +358,8 @@ public:
             model_paramaters.dbias_lm_head_pred,
             batch_size,
             seq_len,
-            vocab_size);
+            vocab_size,
+            true);
 
         // if (debug)
         // {
