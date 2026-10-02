@@ -13,8 +13,8 @@
 using namespace std;
 
 extern "C" void wt_upstream(float *w, float *wt, int a, int b);
-extern "C" void dbias(float *G, float *dbias, int B, int T, int C);
-extern "C" void dl_dh_upstream(float *A, float *B, float *C, int a, int b, int c, int d);
+extern "C" void dbias(float *G, float *dbias, int B, int T, int C, bool sync);
+extern "C" void dl_dh_upstream(float *A, float *B, float *C, int a, int b, int c, int d, bool sync);
 extern "C" void ReformBNTH_BTC(float *arr, float *out, int batch_size, int seq_len, int d_model, int num_head, int head_dim);
 extern "C" void addThreeTensor(float *A, float *B, float *C, float *Out, int batch_size, int seq_len, int d_model);
 extern "C" void layernorm_backward(float *x, float *G, float *mc, float *sdc, float *gamma, float *dgamma, float *dbeta, int B, int T, int C);
@@ -42,16 +42,18 @@ private:
             batch_size,
             seq_len,
             d_model,
-            d_model);
+            d_model,
+            true);
 
         dl_dh_upstream(
-            model_paramaters.dK, // (B, T, C)
+            model_paramaters.dK,  // (B, T, C)
             model_paramaters.WkT, // (C, C)
             model_paramaters.d_weight_k,
             batch_size,
             seq_len,
             d_model,
-            d_model);
+            d_model,
+            true);
 
         dl_dh_upstream(
             model_paramaters.dV,
@@ -60,7 +62,8 @@ private:
             batch_size,
             seq_len,
             d_model,
-            d_model);
+            d_model,
+            true);
 
         // this dQ, dK, and dV terms are not your standard B,T,C tensors the are expanded. We need to contact them
         // and I think from my memory they are re-shapped somewhere because they are
@@ -69,19 +72,22 @@ private:
             model_paramaters.d_bias_q,
             batch_size,
             seq_len,
-            d_model);
+            d_model,
+            true);
         dbias(
             model_paramaters.kUp,
             model_paramaters.d_bias_k,
             batch_size,
             seq_len,
-            d_model);
+            d_model,
+            true);
         dbias(
             model_paramaters.vUp,
             model_paramaters.d_bias_v,
             batch_size,
             seq_len,
-            d_model);
+            d_model,
+            true);
 
         if (debug)
             pyDebuggerReleaseStage11();
@@ -119,10 +125,10 @@ private:
         // Problem with this matmul kernel but I will look at it, its been a rough week
 
         // matirx multiplication, shape BTC, CC, CC
-        dl_dh_upstream(model_paramaters.qUp, model_paramaters.WqT, model_paramaters.dqWt, batch_size, seq_len, d_model, d_model);
-        dl_dh_upstream(model_paramaters.kUp, model_paramaters.WkT, model_paramaters.dkWt, batch_size, seq_len, d_model, d_model);
+        dl_dh_upstream(model_paramaters.qUp, model_paramaters.WqT, model_paramaters.dqWt, batch_size, seq_len, d_model, d_model, true);
+        dl_dh_upstream(model_paramaters.kUp, model_paramaters.WkT, model_paramaters.dkWt, batch_size, seq_len, d_model, d_model, true);
 
-        dl_dh_upstream(model_paramaters.vUp, model_paramaters.WvT, model_paramaters.dvWt, batch_size, seq_len, d_model, d_model);
+        dl_dh_upstream(model_paramaters.vUp, model_paramaters.WvT, model_paramaters.dvWt, batch_size, seq_len, d_model, d_model, true);
 
         // pass in the compact shape (B,T,C)
         addThreeTensor(model_paramaters.dqWt, model_paramaters.dkWt, model_paramaters.dvWt, model_paramaters.G_x_hat, batch_size, seq_len, d_model);

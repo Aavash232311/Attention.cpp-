@@ -13,8 +13,9 @@
 using namespace std;
 
 extern "C" void wt_upstream(float *w, float *wt, int c1, int c2);
-extern "C" void dl_dh_upstream(float *detla, float *wt, float *out, int B, int T, int C, int vocab_size);
-extern "C" void dbias(float *G, float *dbias, int B, int T, int C);
+extern "C" void dl_dh_upstream(float *detla, float *wt, float *out, int B, int T, int C, int vocab_size, bool sync);
+extern "C" void dbias(float *G, float *dbias, int B, int T, int C, bool sync);
+extern "C" void dl_dw_upstream(float *deta, float *ht, float*out, int B, int T, int C, int vocab_size);
 
 // Contact and add residual backpropagation
 
@@ -77,7 +78,7 @@ public:
                        batch_size,
                        seq_len,
                        d_model,
-                       d_model);
+                       d_model, true);
 
         // for testing what I want to do is, copy that
 
@@ -85,7 +86,13 @@ public:
               model_paramaters.attention_head.doutput_bias,
               batch_size,
               seq_len,
-              d_model);
+              d_model,
+            true);
+
+        // dl_dw_upstream(
+        //     model_paramaters.dl_dh_output,
+        //     model_paramaters.
+        // );
 
 
         if (debug)

@@ -78,11 +78,11 @@ __global__ void dl_dw_upstream_kernel(
     }
 
     // before it was, out[(C * vocab_size) * batch_idx + vocab_size * row_idx + col_idx] = sum;
-    int idx_out = vocab_size * row_idx + col_idx;   // no batch_idx term
+    int idx_out = vocab_size * row_idx + col_idx; // no batch_idx term
 
     /*
-        Instead of firing GPU of by brain cell. Takeway for me, this is a 3D tensor and 
-        we are trying to add this in a 2D shape. So you are basically summing this thing. 
+        Instead of firing GPU of by brain cell. Takeway for me, this is a 3D tensor and
+        we are trying to add this in a 2D shape. So you are basically summing this thing.
     */
     atomicAdd(&out[idx_out], sum);
 }
@@ -169,13 +169,13 @@ extern "C"
      * @note Calculates the gradients along bias. Sum along B and T in a 3D tensor resulting in a "C" shape
      *
      */
-
     void dbias(
         float *G,
         float *dbias,
         int B,
         int T,
-        int C)
+        int C,
+        bool sync = true)
     {
         cudaMemset(dbias, 0, C * sizeof(float));
 
@@ -189,7 +189,10 @@ extern "C"
             printf("Kernel launch failed: %s\n", cudaGetErrorString(err));
         }
 
-        cudaDeviceSynchronize();
+        if (sync)
+        {
+            cudaDeviceSynchronize();
+        }
     }
 
     void dl_dh_upstream(
@@ -199,7 +202,8 @@ extern "C"
         int B,
         int T,
         int C,
-        int vocab_size)
+        int vocab_size,
+        bool sync = true)
     {
         dim3 blockDim(16, 16, 1);
         dim3 gridDim(
@@ -217,7 +221,8 @@ extern "C"
             C,
             vocab_size);
 
-        cudaDeviceSynchronize();
+        if (sync)
+            cudaDeviceSynchronize();
     }
 
     void wt_upstream(
@@ -258,7 +263,7 @@ extern "C"
             (C + block.y - 1) / block.y,          // grid.y: enough blocks to cover all of C
             B                                     // grid.z: one per batch element
         );
-        cudaMemset(out, 0, (size_t) C * vocab_size * sizeof(float));
+        cudaMemset(out, 0, (size_t)C * vocab_size * sizeof(float));
 
         dl_dw_upstream_kernel<<<grid, block>>>(h_t, delta, out, B, T, C, vocab_size);
 
