@@ -28,8 +28,9 @@ def debug_autograd(
     transposing_h = h.transpose(1, 2)
     check_ht_transpose = torch.allclose(transposing_h, h_t)
 
+
     if check_ht_transpose:
-        print(f"h^t transpose kernel: {GREEN} {torch.allclose(transposing_h, h_t)} {RESET}")
+        print(f"h^t transpose kernel: {GREEN} {check_ht_transpose} {RESET}")
     else:
         print(f"h^t transpose kernel: {RED} {check_ht_transpose} {RESET}")
 
@@ -55,6 +56,8 @@ def debug_autograd(
 
     dl_dh_torch = delta @ wt
 
+
+
     # we need to account for small rounding errors
     check_dl_dh = torch.allclose(dl_dh_torch, dl_dh_kernel, atol=1e-4, rtol=1e-4)
 
@@ -66,9 +69,9 @@ def debug_autograd(
     check_d_bias_lm_head = torch.allclose(delta_torch.sum(dim=(0, 1)), d_bias_lm_head)
 
     if not check_d_bias_lm_head:
-        print(f"checking dl_dh bias (i.e sum across b,t) kernel: {RED} {check_d_bias_lm_head} {RESET}")
+        print(f"checking dl_db bias (i.e sum across b,t) kernel: {RED} {check_d_bias_lm_head} {RESET}")
     else:
-        print(f"checking dl_dh bias (i.e sum across b,t) kernel: {GREEN} {check_d_bias_lm_head} {RESET}")
+        print(f"checking dl_db bias (i.e sum across b,t) kernel: {GREEN} {check_d_bias_lm_head} {RESET}")
 
     local_weight_lm_head = (h_t @ delta).sum(dim=(0))
 

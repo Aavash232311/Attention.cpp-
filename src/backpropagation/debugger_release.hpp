@@ -90,14 +90,6 @@ public:
      */
     void pyDebuggerReleaseStage2()
     {
-        float *dl_dw_host = (float *)malloc(batch_size * d_model * vocab_size * sizeof(float));
-        cudaMemcpy(dl_dw_host, model_paramaters.dl_dw_device, d_model * vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
-        // After the gradient_linear() gets called model_paramaters.h gets written
-        bulkRelease<float>({{model_paramaters.h, batch_size * seq_len * d_model, "h_t.bin"},
-                            {dl_dw_host, d_model * vocab_size, "dl_dw.bin"}
-                        }); // out delta h^T binary
-                                                                                                             // second stage release for the autograd engine.
-        free(dl_dw_host);
     }
 
     /**
@@ -112,6 +104,25 @@ public:
     void pyDebuggerReleaseStage3()
     {
         // copy w^T to host for the python script to read the binary
+
+        float *dl_dw_host = (float *)malloc(batch_size * d_model * vocab_size * sizeof(float));
+        cudaMemcpy(dl_dw_host, model_paramaters.dl_dw_device, d_model * vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
+
+        // In this fix, we have ignored the host memory as it is expensive to move data back and fourth
+        // between the PCIE express BUS.
+
+        // YOU'RE A GOD DAMN GENIOUS
+
+        float *transposed_h = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
+
+        cudaMemcpy(transposed_h, model_paramaters.device_out_h, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+
+        // This H is the one that got transpoed and my head is spinning round and round here.
+        bulkRelease<float>({
+            {transposed_h, batch_size * seq_len * d_model, "h_t.bin"},
+        }); // out delta h^T binary
+
+        free(transposed_h);
 
         float *wt_host = (float *)malloc(d_model * vocab_size * sizeof(float));
         float *dl_dh_host = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
@@ -128,12 +139,14 @@ public:
              {w_host, d_model * vocab_size, "w.bin"},
              // for now this is the G shape (B, T, C)
              {dl_dh_host, batch_size * seq_len * d_model, "dl_dh.bin"},
-             {bias_lm_head_host, vocab_size, "dbias_lm_head.bin"}});
+             {bias_lm_head_host, vocab_size, "dbias_lm_head.bin"},
+             {dl_dw_host, d_model * vocab_size, "dl_dw.bin"}});
 
         free(dl_dh_host);
         free(wt_host);
         free(bias_lm_head_host);
         free(w_host);
+        free(dl_dw_host);
     }
 
     /**
@@ -509,17 +522,15 @@ public:
         cudaMemcpy(bias_k, model_paramaters.attention_head.bias_k, d_model * sizeof(float), cudaMemcpyHostToDevice);
         cudaMemcpy(bias_v, model_paramaters.attention_head.bias_v, d_model * sizeof(float), cudaMemcpyHostToDevice);
 
-        bulkRelease<float>({
-            {d_weight_q, d_model * d_model, "d_weight_q.bin"},
-            {d_weight_k, d_model * d_model, "d_weight_k.bin"},
-            {d_weight_v, d_model * d_model, "d_weight_v.bin"},
-            {d_bias_q, d_model, "d_bias_q.bin"},
-            {d_bias_k, d_model, "d_bias_k.bin"},
-            {d_bias_v, d_model, "d_bias_v.bin"},
-            {bias_q, d_model, "bias_q.bin"},
-            {bias_k, d_model, "bias_k.bin"},
-            {bias_v, d_model, "bias_v.bin"}
-        });
+        bulkRelease<float>({{d_weight_q, d_model * d_model, "d_weight_q.bin"},
+                            {d_weight_k, d_model * d_model, "d_weight_k.bin"},
+                            {d_weight_v, d_model * d_model, "d_weight_v.bin"},
+                            {d_bias_q, d_model, "d_bias_q.bin"},
+                            {d_bias_k, d_model, "d_bias_k.bin"},
+                            {d_bias_v, d_model, "d_bias_v.bin"},
+                            {bias_q, d_model, "bias_q.bin"},
+                            {bias_k, d_model, "bias_k.bin"},
+                            {bias_v, d_model, "bias_v.bin"}});
 
         free(d_weight_q);
         free(d_weight_k);
