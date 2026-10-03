@@ -106,4 +106,6 @@ struct FlashAttentionPointers : NetAttentionParamaters
     float *d_weight_q;
     float *d_weight_k;
     float *d_weight_v;
+
+    float *d_weight_output_project;
 };

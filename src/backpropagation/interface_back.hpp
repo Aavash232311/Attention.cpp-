@@ -66,7 +66,7 @@ protected:
 
     // ---------- Handy methods -----------
     std::unique_ptr<Utility> utils = std::make_unique<Utility>();
-    std::unique_ptr<LinearLayerBackpropagation> linearBack;
+        std::unique_ptr<LinearLayerBackpropagation> linearBack;
 
 private:
     // ----------- TEMPORARY DEBUGGER SCRIPT ---------------------

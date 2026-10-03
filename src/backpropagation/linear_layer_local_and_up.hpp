@@ -69,9 +69,8 @@ public:
         float *xt,
         float *dw, // local gradient W
         float *db, // local gradient bias
-        float *dx,  // local gradient x
-        bool special_case=false
-    )
+        float *dx, // local gradient x
+        bool special_case = false)
     {
         // Considering a linear layer: z = wx + b;
 
@@ -83,42 +82,65 @@ public:
             seq_len,
             d_model);
 
-        // These are not in sync, one does not rely on another.
-        dl_dw_upstream(
-            xt,
-            G,
-            dw,
-            batch_size,
-            seq_len,
-            d_model,
-            vocab_size);
-
-    
+        if (special_case)
+        {
+            // These are not in sync, one does not rely on another.
+            dl_dw_upstream(
+                xt,
+                G,
+                dw,
+                batch_size,
+                seq_len,
+                d_model,
+                vocab_size);
+        }
+        else
+        {
+            dl_dw_upstream(
+                xt,
+                G,
+                dw,
+                batch_size,
+                seq_len,
+                d_model,
+                d_model); // weight is (C, C here)
+        }
 
         dbias(
             G,
             db,
             batch_size,
             seq_len,
-            special_case ? vocab_size: d_model,
+            special_case ? vocab_size : d_model,
             false);
 
-        wt_upstream(
-            W,
-            Wt,
-            d_model,
-            vocab_size);
+        if (special_case)
+        {
+            wt_upstream(
+                W,
+                Wt,
+                d_model,
+                vocab_size);
+        }
+        else
+        {
+            // don't judge on how bad of a programmer I am
+            // I am solving todays problem here.
+            wt_upstream(
+                W,
+                Wt,
+                d_model,
+                d_model);
+        }
 
-        // upstream gradient that flows up
+        // // upstream gradient that flows up
         dl_dh_upstream(G,
                        Wt,
                        dx, // upstream graidnet dx
                        batch_size,
                        seq_len,
                        d_model,
-                       special_case ? vocab_size: d_model, 
+                       special_case ? vocab_size : d_model,
                        true);
-
-        
     }
 };

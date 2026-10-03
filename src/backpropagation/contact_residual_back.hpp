@@ -54,46 +54,53 @@ public:
      */
     void outputProj()
     {
-        wt_upstream(model_paramaters.attention_head.wo,
-                    model_paramaters.WoT,
-                    d_model,
-                    d_model);
+        // wt_upstream(model_paramaters.attention_head.wo,
+        //             model_paramaters.WoT,
+        //             d_model,
+        //             d_model);
 
-        // if (debug)
-        // {
-        //     cout << "dl_dh upstream before backpass of the attention head" << endl;
-        //     float *G = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
+        // // if (debug)
+        // // {
+        // //     cout << "dl_dh upstream before backpass of the attention head" << endl;
+        // //     float *G = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
 
-        //     cudaMemcpy(G, model_paramaters.dl_dh_output, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyHostToDevice);
+        // //     cudaMemcpy(G, model_paramaters.dl_dh_output, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyHostToDevice);
 
-        //     utils->printFlatArray3D(G, batch_size, seq_len, d_model);
+        // //     utils->printFlatArray3D(G, batch_size, seq_len, d_model);
 
-        //     free(G);
-        // }
+        // //     free(G);
+        // // }
 
-        // This now releases what we call the G I am cooked but it is what it is hold tight.
-        dl_dh_upstream(model_paramaters.dl_dh_output,
-                       model_paramaters.WoT,
-                       model_paramaters.Contact_G_Upstream,
-                       batch_size,
-                       seq_len,
-                       d_model,
-                       d_model, true);
+        // // This now releases what we call the G I am cooked but it is what it is hold tight.
+        // dl_dh_upstream(model_paramaters.dl_dh_output,
+        //                model_paramaters.WoT,
+        //                model_paramaters.Contact_G_Upstream,
+        //                batch_size,
+        //                seq_len,
+        //                d_model,
+        //                d_model, true);
 
-        // for testing what I want to do is, copy that
+        // // for testing what I want to do is, copy that
 
-        dbias(model_paramaters.dl_dh_output, // upstream gradient
-              model_paramaters.attention_head.doutput_bias,
-              batch_size,
-              seq_len,
-              d_model,
-            true);
+        // dbias(model_paramaters.dl_dh_output, // upstream gradient
+        //       model_paramaters.attention_head.doutput_bias,
+        //       batch_size,
+        //       seq_len,
+        //       d_model,
+        //     true);
 
-        // dl_dw_upstream(
-        //     model_paramaters.dl_dh_output,
-        //     model_paramaters.
-        // );
-
+        linearBack->backward(
+            model_paramaters.attention_head.output_porjection_x,
+            model_paramaters.dl_dh_output,
+            model_paramaters.attention_head.wo,
+            model_paramaters.WoT,
+            model_paramaters.attention_head.output_project_xt,
+            model_paramaters.d_weight_output_project,
+            model_paramaters.attention_head.doutput_bias,
+            model_paramaters.Contact_G_Upstream,
+            false
+        );
+        
 
         if (debug)
         {
