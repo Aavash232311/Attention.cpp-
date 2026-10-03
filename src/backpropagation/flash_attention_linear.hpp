@@ -89,6 +89,8 @@ private:
             d_model,
             true);
 
+    
+
         if (debug)
             pyDebuggerReleaseStage11();
     }
