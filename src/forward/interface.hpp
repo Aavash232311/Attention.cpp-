@@ -168,6 +168,8 @@ class AttentionInterface
     float *d_weight_k;
     float *d_weight_v;
 
+    float *d_weight_output_project;
+
 private:
     // ----------- TEMPORARY DEBUGGER SCRIPT ---------------------
 
@@ -336,6 +338,8 @@ public:
         cudaMalloc((void **)&d_weight_q, d_model * d_model * sizeof(float));
         cudaMalloc((void **)&d_weight_k, d_model * d_model * sizeof(float));
         cudaMalloc((void **)&d_weight_v, d_model * d_model * sizeof(float));
+
+        cudaMalloc((void **)&d_weight_output_project, d_model * d_model * sizeof(float));
     }
 
     ~AttentionInterface()
@@ -423,6 +427,8 @@ public:
         cudaFree(d_weight_q);
         cudaFree(d_weight_k);
         cudaFree(d_weight_v);
+
+        cudaFree(d_weight_output_project);
     }
 
     LinearParams getLmHeadParams()
@@ -618,6 +624,8 @@ public:
                 modelParamaters.d_add_residual_output = d_add_residual_output;
 
                 modelParamaters.d_embedding = d_embedding;
+
+                modelParamaters.d_weight_output_project = d_weight_output_project;
 
                 // because the backprops needs to be done for each epoch.
                 // we need to keep in mind that the things hurting performace like cuda malloc and everything declared

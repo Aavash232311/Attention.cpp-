@@ -34,7 +34,7 @@ class DebugFlashAttention(torch.nn.Module):
          self.d_embeddings, self.token_ids,
          self.d_weight_q, self.d_weight_k, self.d_weight_v,
          self.d_bias_q, self.d_bias_k, self.d_bias_v,
-         self.bias_q, self.bias_k, self.bias_v) = ReaderFlashAttention(batch_size, seq_len, vocab_size, d_model, num_heads, head_dim)
+         self.bias_q, self.bias_k, self.bias_v, self.d_weight_output_project) = ReaderFlashAttention(batch_size, seq_len, vocab_size, d_model, num_heads, head_dim)
 
     # dV = P^T G
     # dP = GV^T
@@ -346,3 +346,12 @@ class DebugFlashAttention(torch.nn.Module):
             print(f"Checking d_bias_v status: {RED} {check_d_bias_v} {RESET}")
         else:
             print(f"Checking d_bias_v status: {GREEN} {check_d_bias_v} {RESET}")
+
+        # local_weight_lm_head = (h_t @ dl).sum(dim=(0))
+        #
+        # check_local_weight_lm_head = torch.allclose(local_weight_lm_head, d_weight_output_project, atol=1e-4, rtol=1e-4)
+        #
+        # if not check_local_weight_lm_head:
+        #     print(f"checking weight gradient output project local gradient: {RED} {check_local_weight_lm_head} {RESET}")
+        # else:
+        #     print(f"checking weight gradient output project local gradient:  {GREEN} {check_local_weight_lm_head} {RESET}")

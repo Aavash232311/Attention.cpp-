@@ -434,8 +434,15 @@ public:
         float *weight_transpose = (float *)malloc(d_model * d_model * sizeof(float));
         float *dattention = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
         float *dcontact_bias = (float *)malloc(d_model * sizeof(float));
+        float *dweight_projection = (float *)malloc(d_model * d_model * sizeof(float));        
+        float *output_porjection_x = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
+        float *output_porjection_xt = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
 
+        cudaMemcpy(dweight_projection, model_paramaters.d_weight_output_project, d_model * d_model * sizeof(float), cudaMemcpyDeviceToHost);
         cudaMemcpy(weight, model_paramaters.attention_head.wo, d_model * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(output_porjection_x, model_paramaters.attention_head.output_porjection_x, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(output_porjection_xt, model_paramaters.attention_head.output_project_xt, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+
         cudaError_t err1 = cudaGetLastError();
         if (err1 != cudaSuccess)
             printf("After wo copy: %s\n", cudaGetErrorString(err1));
@@ -459,7 +466,11 @@ public:
             {{weight, d_model * d_model, "weight_contact.bin"},
              {weight_transpose, d_model * d_model, "weight_contact_transpose.bin"},
              {dattention, batch_size * seq_len * d_model, "dattention_contact.bin"},
-             {dcontact_bias, d_model, "dcontact_bias.bin"}});
+             {dcontact_bias, d_model, "dcontact_bias.bin"},
+             {dweight_projection, d_model * d_model, "dweight_output.bin"},
+             {output_porjection_x, batch_size * seq_len * d_model, "output_porjection_x.bin"},
+             {output_porjection_xt, batch_size * seq_len * d_model, "output_porjection_xt.bin"}
+            });
 
         // cout << "Weight" << endl;
         // utils->printFlatArray2D(weight, d_model, d_model);
@@ -471,6 +482,9 @@ public:
         free(weight_transpose);
         free(dattention);
         free(dcontact_bias);
+        free(dweight_projection);
+        free(output_porjection_x);
+        free(output_porjection_xt);
     }
 
     void pyDebuggerReleaseStage10()

@@ -137,4 +137,18 @@ struct AttentionParamaters
      * @param bias_v location device
      */
     float *bias_v;
+
+    /**
+     * Output projection cache x for backpropagation
+     *
+     * @param output_porjection_x location device
+     */
+    float *output_porjection_x;
+
+    /**
+     * For local gradient weight wt we need this for output project
+     *
+     * @param output_project_xt location device
+     */
+    float *output_project_xt;
 };

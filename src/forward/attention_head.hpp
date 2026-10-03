@@ -22,6 +22,7 @@ extern "C" void QKmatmul(float *Q, float *Kt, float *out, int M, int N, int batc
 extern "C" void UpperTriangularMasking(float *arr, float val, int batch_size, int n_head, int seq_len);
 extern "C" void QKVMatmulFinal(float *QK, float *V, float *out, int seq_len, int d_head, int n_head, int batch_size);
 extern "C" void ReformShapeWapper(float *arr, float *out, int batch_size, int seq_len, int d_model, int num_head, int head_dim);
+extern "C" void ReformBNTH_BTC(float *arr, float *out, int batch_size, int seq_len, int d_model, int num_head, int head_dim);
 
 class Attention
 {
@@ -90,6 +91,11 @@ public:
     float *K_cache;
 
     float *doutput_bias;
+
+    // for backpropagation we need to cache this and transpose of x
+    // that is needed for the local gradients of the weights.
+    float *output_porjection_x;
+    float *output_project_xt;
 
     Attention(
         int d_model,
@@ -180,6 +186,9 @@ public:
 
         cudaMalloc((void **)&doutput_bias, d_model * sizeof(float));
         cudaMalloc((void **)&x_device, batch_size * seq_len * d_model * sizeof(float));
+
+        output_porjection_x = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
+        output_project_xt = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));;
     };
 
     ~Attention()
@@ -217,6 +226,34 @@ public:
         free(P);
         free(O);
         free(value_mat);
+
+        free(output_porjection_x);
+        free(output_project_xt);
+    }
+
+private:
+    void cacheInputForOutputProj(float *expandedPointer, float *compactCache)
+    {
+        ReformBNTH_BTC(
+            expandedPointer,
+            compactCache,
+            batch_size,
+            seq_len,
+            d_model,
+            num_heads,
+            head_dim);
+
+        if (debug)
+        {
+            // float *x = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
+
+            // cudaMemcpy(x, compactCache, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+
+            // std::cout << "X for the output proj contact paramater" << std::endl;
+            // utils->printFlatArray3D(x, batch_size, seq_len, d_model);
+
+            // free(x);
+        }
     }
 
 public:
@@ -540,6 +577,10 @@ public:
         // Now we need to make this go thtrough a Linear Transformation without it the model will just learn to stack information together
         // without learning to mix information from multiple heads together.
 
+        // cache that B_NUMHEAD_SEQLEN_HEADDIM = x for the backpropagation that goes into Linear
+
+        cacheInputForOutputProj(B_NUMHEAD_SEQLEN_HEADDIM, output_porjection_x);
+
         // NOTE: This comes out in the host here.
         float *projectedBTC = outputProj->forward(B_NUMHEAD_SEQLEN_HEADDIM);
 
@@ -677,6 +718,9 @@ public:
             query->getBaiasDevice(),
             key->getBaiasDevice(),
             value->getBaiasDevice(),
+
+            output_porjection_x,
+            output_project_xt
         };
     }
 };
