@@ -20,6 +20,8 @@ extern "C" void addThreeTensor(float *A, float *B, float *C, float *Out, int bat
 extern "C" void layernorm_backward(float *x, float *G, float *mc, float *sdc, float *gamma, float *dgamma, float *dbeta, int B, int T, int C);
 extern "C" void addTwoTensor(float *A, float *B, float *Out, int batch_size, int seq_len, int d_model);
 extern "C" void updateTokenEmbedding(float *G, float *d_emebdding, int *token_ids, int batch_size, int seq_len, int d_model, int vocab_size);
+extern "C" void dl_dw_upstream(float *deta, float *ht, float *out, int B, int T, int C, int vocab_size);
+extern "C" void lm_head_transpose_h(float *h, float *out, int B, int T, int C);
 class FlashAttentionLinear : virtual public AutoGradEngine
 {
 
@@ -89,7 +91,32 @@ private:
             d_model,
             true);
 
-    
+        // transpose x that goes into the all
+        // three q,k,and v linear.
+
+        // lm_head_transpose_h(
+        //     model_paramaters.attention_head.output_porjection_x,
+        //     model_paramaters.attention_head.output_project_xt,
+        //     batch_size,
+        //     seq_len,
+        //     d_model
+        // );
+
+        // for each of the linear layer we need to get the
+        // backpropagation done.
+
+        // linearBack->backward(
+        //     model_paramaters.attention_head.x,
+        //     model_paramaters.qUp,
+        //     model_paramaters.attention_head.device_WQ,
+        //     model_paramaters.WqT,
+        //     model_paramaters.attention_head.output_project_xt,
+        //     model_paramaters.d_weight_k,
+        //     model_paramaters.d_bias_k,
+        //     model_paramaters.kUp,
+        //     false,
+        //     false
+        // );
 
         if (debug)
             pyDebuggerReleaseStage11();

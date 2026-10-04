@@ -556,6 +556,7 @@ public:
 
                 modelParamaters.dl_dz_out_device = dl_dz_out_device;
                 modelParamaters.dl_dz_out_host = dl_dz_out_host;
+             
                 modelParamaters.h = x;                                   // this h is the output of lm head Shape(B, T, vocab_size)
                 modelParamaters.device_h = attention->BorrowBTCDevice(); // (B, T, d_model) on device
                 modelParamaters.device_out_h = out_h;

@@ -157,6 +157,11 @@ public:
         return addedEmbeddingsOut;
     }
 
+    float *getFinalEmbeddingDevice()
+    {
+        return this->deviceFinalEmbeddings;
+    }
+
     float *getEmbeddingsParamaters()
     {
         return this->hostEmbeddings;
