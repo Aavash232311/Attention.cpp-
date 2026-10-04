@@ -54,6 +54,8 @@ public:
      * @param dw The placeholder for the local gradient dW
      * @param db The placeholder for the bias to be updated
      * @param dx The placeholder for the upstrema gradient.
+     * @param special_case True only when we are using lm_head. There the shapes are different.
+     * @param transpse_x True when you pre-compute transposing x. For example in QKV linear backpropagation single x needs to be tranposed.
      *
      * @warning Important Node: The size of these weight might change here.
             For example in the QKV is (C, C) it may differ make sure to pass the right arguement.
@@ -70,17 +72,22 @@ public:
         float *dw, // local gradient W
         float *db, // local gradient bias
         float *dx, // local gradient x
-        bool special_case = false)
+        bool special_case = false,
+        bool transpose_x = true)
     {
         // Considering a linear layer: z = wx + b;
 
         // First step transpose x
-        lm_head_transpose_h(
-            x,
-            xt,
-            batch_size,
-            seq_len,
-            d_model);
+
+        if (transpose_x)
+        {
+            lm_head_transpose_h(
+                x,
+                xt,
+                batch_size,
+                seq_len,
+                d_model);
+        }
 
         if (special_case)
         {

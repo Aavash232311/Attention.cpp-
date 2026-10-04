@@ -68,9 +68,22 @@ struct FlashAttentionPointers : NetAttentionParamaters
 
     // G_x_hat
 
-    // compact values pointers
+    /**
+     * Reshaped weight dQ from the attention head from (batch_size, seq_len, num_head, head_dim) to (b,t,c)
+     * @param qUp location device
+     */
     float *qUp;
+
+    /**
+     * Reshaped weight dQ from the attention head from (batch_size, seq_len, num_head, head_dim) to (b,t,c)
+     * @param kUp location device
+     */
     float *kUp;
+
+    /**
+     * Reshaped weight dQ from the attention head from (batch_size, seq_len, num_head, head_dim) to (b,t,c)
+     * @param vUp location device
+     */
     float *vUp;
 
     // resultant value of
@@ -108,4 +121,5 @@ struct FlashAttentionPointers : NetAttentionParamaters
     float *d_weight_v;
 
     float *d_weight_output_project;
+
 };

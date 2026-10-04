@@ -100,6 +100,15 @@ public:
             model_paramaters.Contact_G_Upstream,
             false
         );
+
+        if (debug)
+        {
+            std::cout << "Original x" << std::endl;
+            this->utils->printFlatArray3D(model_paramaters.attention_head.output_porjection_x, batch_size, seq_len, d_model);
+
+            std::cout << "Transposed x" << std::endl;
+            this->utils->printFlatArray3D(model_paramaters.attention_head.output_project_xt, batch_size, d_model, seq_len);
+        }
         
 
         if (debug)

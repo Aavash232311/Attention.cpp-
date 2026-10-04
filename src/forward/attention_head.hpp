@@ -97,6 +97,8 @@ public:
     float *output_porjection_x;
     float *output_project_xt;
 
+    float *after_embedding_xt;
+
     Attention(
         int d_model,
         int vocab_size,
@@ -189,6 +191,8 @@ public:
 
         output_porjection_x = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
         output_project_xt = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));;
+
+
     };
 
     ~Attention()
@@ -631,6 +635,9 @@ public:
 
         // copy both into the buffer.
         cudaMemcpy(BTCdevice, input, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyHostToDevice);
+
+        // !important unmodified pointer from temp (from final embedding is here as x)
+        // that goes further into the forward pass so we can re-use this in the backpropagation
         cudaMemcpy(tempDevice, temp, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyHostToDevice);
 
         // Keep an EYE on this one, might have only summed the last two dimension IMPORTNATTTT
