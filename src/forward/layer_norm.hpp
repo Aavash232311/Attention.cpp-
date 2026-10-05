@@ -147,4 +147,9 @@ public:
     {
         return this->d_beta;
     }
+
+    float *getInputX()
+    {
+        return this->d_x;
+    }
 };

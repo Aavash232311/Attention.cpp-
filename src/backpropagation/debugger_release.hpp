@@ -522,7 +522,13 @@ public:
         float *bias_q = (float *)malloc(d_model * sizeof(float));
         float *bias_k = (float *)malloc(d_model * sizeof(float));
         float *bias_v = (float *)malloc(d_model * sizeof(float));
-        
+
+        float *normalized_x = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
+        float *normalized_xt = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
+
+        cudaMemcpy(normalized_x, model_paramaters.attention_head.normalized_x, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(normalized_xt, model_paramaters.attention_head.normalized_xt, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+
         cudaMemcpy(d_weight_q, model_paramaters.d_weight_q, d_model * d_model * sizeof(float), cudaMemcpyDeviceToHost);
         cudaMemcpy(d_weight_k, model_paramaters.d_weight_k, d_model * d_model * sizeof(float), cudaMemcpyDeviceToHost);
         cudaMemcpy(d_weight_v, model_paramaters.d_weight_v, d_model * d_model * sizeof(float), cudaMemcpyDeviceToHost);
@@ -535,17 +541,21 @@ public:
         cudaMemcpy(bias_k, model_paramaters.attention_head.bias_k, d_model * sizeof(float), cudaMemcpyDeviceToHost);
         cudaMemcpy(bias_v, model_paramaters.attention_head.bias_v, d_model * sizeof(float), cudaMemcpyDeviceToHost);
 
-        bulkRelease<float>({
-            {d_weight_q, d_model * d_model, "d_weight_q.bin"},
-            {d_weight_k, d_model * d_model, "d_weight_k.bin"},
-            {d_weight_v, d_model * d_model, "d_weight_v.bin"},
-            {d_bias_q, d_model, "d_bias_q.bin"},
-            {d_bias_k, d_model, "d_bias_k.bin"},
-            {d_bias_v, d_model, "d_bias_v.bin"},
-            {bias_q, d_model, "bias_q.bin"},
-            {bias_k, d_model, "bias_k.bin"},
-            {bias_v, d_model, "bias_v.bin"}
-        });
+        bulkRelease<float>({{d_weight_q, d_model * d_model, "d_weight_q.bin"},
+                            {d_weight_k, d_model * d_model, "d_weight_k.bin"},
+                            {d_weight_v, d_model * d_model, "d_weight_v.bin"},
+                            {normalized_x, batch_size * seq_len * d_model, "normalized_x.bin"},
+                            {normalized_xt, batch_size * seq_len * d_model, "normalized_xt.bin"},
+                            {d_bias_q, d_model, "d_bias_q.bin"},
+                            {d_bias_k, d_model, "d_bias_k.bin"},
+                            {d_bias_v, d_model, "d_bias_v.bin"},
+                            {bias_q, d_model, "bias_q.bin"},
+                            {bias_k, d_model, "bias_k.bin"},
+                            {bias_v, d_model, "bias_v.bin"}
+                        });
+
+        free(normalized_x);
+        free(normalized_xt);
 
         free(d_weight_q);
         free(d_weight_k);

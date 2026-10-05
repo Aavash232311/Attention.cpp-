@@ -15,7 +15,7 @@ using namespace std;
 extern "C" void wt_upstream(float *w, float *wt, int c1, int c2);
 extern "C" void dl_dh_upstream(float *detla, float *wt, float *out, int B, int T, int C, int vocab_size, bool sync);
 extern "C" void dbias(float *G, float *dbias, int B, int T, int C, bool sync);
-extern "C" void dl_dw_upstream(float *deta, float *ht, float*out, int B, int T, int C, int vocab_size);
+extern "C" void dl_dw_upstream(float *deta, float *ht, float *out, int B, int T, int C, int vocab_size);
 
 // Contact and add residual backpropagation
 
@@ -98,18 +98,26 @@ public:
             model_paramaters.d_weight_output_project,
             model_paramaters.attention_head.doutput_bias,
             model_paramaters.Contact_G_Upstream,
-            false
-        );
+            false);
 
-        if (debug)
-        {
-            std::cout << "Original x" << std::endl;
-            this->utils->printFlatArray3D(model_paramaters.attention_head.output_porjection_x, batch_size, seq_len, d_model);
+        // if (debug)
+        // {
 
-            std::cout << "Transposed x" << std::endl;
-            this->utils->printFlatArray3D(model_paramaters.attention_head.output_project_xt, batch_size, d_model, seq_len);
-        }
-        
+        //     float *x = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
+        //     float *xt = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
+
+        //     cudaMemcpy(x, model_paramaters.attention_head.output_porjection_x, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        //     cudaMemcpy(xt, model_paramaters.attention_head.output_project_xt, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+
+        //     cout << "x" << endl;
+        //     this->utils->printFlatArray3D(x, batch_size, seq_len, d_model);
+
+        //     cout << "xt" << endl;
+        //     this->utils->printFlatArray3D(xt, batch_size, d_model, seq_len);
+
+        //     free(xt);
+        //     free(x);
+        // }
 
         if (debug)
         {

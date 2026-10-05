@@ -90,6 +90,9 @@ public:
     float *Q_cache;
     float *K_cache;
 
+    float *normalized_xt;
+    // after the normalization we feed that "x" into the QK,andV paramater.
+
     float *doutput_bias;
 
     // for backpropagation we need to cache this and transpose of x
@@ -189,10 +192,12 @@ public:
         cudaMalloc((void **)&doutput_bias, d_model * sizeof(float));
         cudaMalloc((void **)&x_device, batch_size * seq_len * d_model * sizeof(float));
 
-        output_porjection_x = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
-        output_project_xt = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));;
+ 
 
+        cudaMalloc((void **)&output_porjection_x, batch_size * seq_len * d_model * sizeof(float));
+        cudaMalloc((void **)&output_project_xt, batch_size * seq_len * d_model * sizeof(float));
 
+        cudaMalloc((void **)&normalized_xt, batch_size * seq_len * d_model * sizeof(float));
     };
 
     ~Attention()
@@ -231,8 +236,10 @@ public:
         free(O);
         free(value_mat);
 
-        free(output_porjection_x);
-        free(output_project_xt);
+        cudaFree(output_porjection_x);
+        cudaFree(output_project_xt);
+
+        cudaFree(normalized_xt);
     }
 
 private:
@@ -426,6 +433,24 @@ public:
         // }
 
         layerNorm->forward(x);
+
+        if (debug)
+        {
+            // trying to check if the pointer from the getter that is from the device is same as the
+            // x which is modified or not
+
+            // cout << "X pointer passed downstream" << endl;
+            // utils->printFlatArray3D(x, batch_size, seq_len, d_model);
+
+            // cout << "Pointer from the device " << endl;
+            // float *dx = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
+
+            // cudaMemcpy(dx, layerNorm->getInputX(), batch_size * seq_len * d_model*  sizeof(float), cudaMemcpyDeviceToHost);
+
+            // utils->printFlatArray3D(dx, batch_size, seq_len, d_model);
+
+            // free(dx);
+        }
 
         // -------- There is this number  8 what appeans after layer norm -----
         // ofcourse the layer norm is not learned yet.
@@ -705,7 +730,10 @@ public:
             Q_cache,
             K_cache,
 
+
             tempDevice, // last pointer my guess is this wont be modified anytime soon.
+            normalized_xt,
+            layerNorm->getInputX(),
 
             layerNorm->getMean(),
             layerNorm->getStdDev(),
