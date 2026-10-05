@@ -37,59 +37,6 @@ private:
     {
         // Note:- These task does not have to be sequential but we have that sync call in that wrapper we will let it be as it is.
         // weight backpropagation for Q
-        dl_dh_upstream(
-            model_paramaters.dQ,
-            model_paramaters.WqT,
-            model_paramaters.d_weight_q,
-            batch_size,
-            seq_len,
-            d_model,
-            d_model,
-            true);
-
-        dl_dh_upstream(
-            model_paramaters.dK,  // (B, T, C)
-            model_paramaters.WkT, // (C, C)
-            model_paramaters.d_weight_k,
-            batch_size,
-            seq_len,
-            d_model,
-            d_model,
-            true);
-
-        dl_dh_upstream(
-            model_paramaters.dV,
-            model_paramaters.WvT,
-            model_paramaters.d_weight_v,
-            batch_size,
-            seq_len,
-            d_model,
-            d_model,
-            true);
-
-        // this dQ, dK, and dV terms are not your standard B,T,C tensors the are expanded. We need to contact them
-        // and I think from my memory they are re-shapped somewhere because they are
-        dbias(
-            model_paramaters.qUp,
-            model_paramaters.d_bias_q,
-            batch_size,
-            seq_len,
-            d_model,
-            true);
-        dbias(
-            model_paramaters.kUp,
-            model_paramaters.d_bias_k,
-            batch_size,
-            seq_len,
-            d_model,
-            true);
-        dbias(
-            model_paramaters.vUp,
-            model_paramaters.d_bias_v,
-            batch_size,
-            seq_len,
-            d_model,
-            true);
 
         // transpose x that goes into the all
         // three q,k,and v linear.
@@ -104,17 +51,41 @@ private:
         // for each of the linear layer we need to get the
         // backpropagation done.
 
-        // linearBack->backward(
-        //     model_paramaters.attention_head.normalized_x,
-        //     model_paramaters.qUp,
-        //     model_paramaters.attention_head.device_WQ,
-        //     model_paramaters.WqT,
-        //     model_paramaters.attention_head.normalized_xt,
-        //     model_paramaters.d_weight_k,
-        //     model_paramaters.d_bias_k,
-        //     model_paramaters.kUp,
-        //     false,
-        //     true);
+        linearBack->backward(
+            model_paramaters.attention_head.normalized_x,
+            model_paramaters.qUp,
+            model_paramaters.attention_head.device_WQ,
+            model_paramaters.WqT,
+            model_paramaters.attention_head.normalized_xt,
+            model_paramaters.d_weight_q,
+            model_paramaters.d_bias_q,
+            model_paramaters.dqWt,
+            false,
+            false);
+
+        linearBack->backward(
+            model_paramaters.attention_head.normalized_x,
+            model_paramaters.kUp,
+            model_paramaters.attention_head.device_WK,
+            model_paramaters.WkT,
+            model_paramaters.attention_head.normalized_xt,
+            model_paramaters.d_weight_k,
+            model_paramaters.d_bias_k,
+            model_paramaters.dkWt,
+            false,
+            false);
+
+        linearBack->backward(
+            model_paramaters.attention_head.normalized_x,
+            model_paramaters.vUp,
+            model_paramaters.attention_head.device_WV,
+            model_paramaters.WvT,
+            model_paramaters.attention_head.normalized_xt,
+            model_paramaters.d_weight_v,
+            model_paramaters.d_bias_v,
+            model_paramaters.dvWt,
+            false,
+            false);
 
         if (debug)
         {
