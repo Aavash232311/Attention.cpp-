@@ -40,6 +40,21 @@ struct AttentionParamaters
     float *x;
 
     /**
+     * (B,T,C) tensor after net embedding transposed
+     *
+     * @param normalized_xt (BTC) tensor inside of the GPU. Transposing it.
+     */
+    float *normalized_xt;
+
+    /**
+     * (B,T,C) tensor after the layer norm on the forward pass
+     * @note this goes in as "x" in the QKV linear paramaters.
+     *
+     * @param normalized_x (BTC) tensor inside of the GPU. Afrer the lear norm
+     */
+    float *normalized_x;
+
+    /**
      * mean cache from forward pass LayerNorm
      * Shape (B * T, C)
      * @param mean_cache location device

@@ -94,29 +94,45 @@ private:
         // transpose x that goes into the all
         // three q,k,and v linear.
 
-        // lm_head_transpose_h(
-        //     model_paramaters.attention_head.output_porjection_x,
-        //     model_paramaters.attention_head.output_project_xt,
-        //     batch_size,
-        //     seq_len,
-        //     d_model
-        // );
+        lm_head_transpose_h(
+            model_paramaters.attention_head.normalized_x,
+            model_paramaters.attention_head.normalized_xt,
+            batch_size,
+            seq_len,
+            d_model);
 
         // for each of the linear layer we need to get the
         // backpropagation done.
 
         // linearBack->backward(
-        //     model_paramaters.attention_head.x,
+        //     model_paramaters.attention_head.normalized_x,
         //     model_paramaters.qUp,
         //     model_paramaters.attention_head.device_WQ,
         //     model_paramaters.WqT,
-        //     model_paramaters.attention_head.output_project_xt,
+        //     model_paramaters.attention_head.normalized_xt,
         //     model_paramaters.d_weight_k,
         //     model_paramaters.d_bias_k,
         //     model_paramaters.kUp,
         //     false,
-        //     false
-        // );
+        //     true);
+
+        if (debug)
+        {
+            // float *x = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
+            // float *xt = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
+
+            // cudaMemcpy(x, model_paramaters.attention_head.normalized_x, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+            // cudaMemcpy(xt, model_paramaters.attention_head.normalized_xt, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+
+            // cout << "Normalized x" << endl;
+            // this->utils->printFlatArray3D(x, batch_size, seq_len, d_model);
+
+            // cout << "Transposed x" << endl;
+            // this->utils->printFlatArray3D(xt, batch_size, d_model, seq_len);
+
+            // free(xt);
+            // free(x);
+        }
 
         if (debug)
             pyDebuggerReleaseStage11();

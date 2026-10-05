@@ -35,7 +35,8 @@ class DebugFlashAttention(torch.nn.Module):
          self.d_weight_q, self.d_weight_k, self.d_weight_v,
          self.d_bias_q, self.d_bias_k, self.d_bias_v,
          self.bias_q, self.bias_k, self.bias_v, self.d_weight_output_project,
-         self.output_projection_xt, self.output_projection_x) = ReaderFlashAttention(batch_size, seq_len, vocab_size, d_model, num_heads, head_dim)
+         self.output_projection_xt, self.output_projection_x, self.normalized_x,
+         self.normalized_xt) = ReaderFlashAttention(batch_size, seq_len, vocab_size, d_model, num_heads, head_dim)
 
     # dV = P^T G
     # dP = GV^T
@@ -370,3 +371,19 @@ class DebugFlashAttention(torch.nn.Module):
             print(f"checking weight gradient output project local gradient: {RED} {check_local_weight_lm_head} {RESET}")
         else:
             print(f"checking weight gradient output project local gradient:  {GREEN} {check_local_weight_lm_head} {RESET}")
+
+        # self.layer_norm_back_x is something that is fed into the layer norm.
+        # meaning after net embedding.
+
+        # Note: these are normalized so we need to set the comparison loose.
+        check_transpose_norm_x = torch.allclose(
+            self.normalized_x.transpose(1, 2),
+            self.normalized_xt,
+            atol=1e-3,
+            rtol=1e-3
+        )
+
+        if not check_transpose_norm_x:
+            print(f"checking transpose norm x status: {RED} {check_transpose_norm_x} {RESET}")
+        else:
+            print(f"checking transpose norm x status: {GREEN} {check_transpose_norm_x} {RESET}")
