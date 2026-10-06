@@ -29,6 +29,7 @@ public:
         cudaMalloc((void **)&v_d, N * sizeof(float));
     }
 
+
     ~AdamWPhysics()
     {
         cudaFree(m_d);

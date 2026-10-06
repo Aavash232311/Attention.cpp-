@@ -493,8 +493,6 @@ public:
             // std::cout << "Actual" << std::endl;
             // DebugBTCFlatArray3D(yHotEncodeDeviceOut, batch_size, seq_len, vocab_size);
         }
-
-        debug = false;
     }
 
     void train(int epoch)
@@ -556,7 +554,7 @@ public:
 
                 modelParamaters.dl_dz_out_device = dl_dz_out_device;
                 modelParamaters.dl_dz_out_host = dl_dz_out_host;
-             
+
                 modelParamaters.h = x;                                   // this h is the output of lm head Shape(B, T, vocab_size)
                 modelParamaters.device_h = attention->BorrowBTCDevice(); // (B, T, d_model) on device
                 modelParamaters.device_out_h = out_h;
@@ -634,7 +632,31 @@ public:
                 // there is tradeoff between making things modular and fusing everything together.
                 // Lets create a buffer for CPU/GPU memory in this class so that we dont overload the system and free it when the object is destroyed.
                 autograd->backprop(modelParamaters);
-                optimizer->invoke(modelParamaters, *adamMemConfig);
+
+                // if (debug)
+                // {
+                //     float *dh = (float *)malloc(d_model * d_model * sizeof(float));
+                //     cudaMemcpy(dh, modelParamaters.d_weight_q, d_model * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+                //     cout << "Unupdated gradeint w" << endl;
+                //     utils->printFlatArray2D(dh, d_model, d_model);
+
+                //     free(dh);
+                // }
+
+                optimizer->invoke(modelParamaters, *adamMemConfig, epoch);
+
+                // check if something is off with AadamW on sufrace
+
+                // if (debug)
+                // {
+                //     float *dh = (float *)malloc(d_model * d_model * sizeof(float));
+                //     cudaMemcpy(dh, modelParamaters.d_weight_q, d_model * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+                //     cout << "udpated gradeint w" << endl;
+                //     utils->printFlatArray2D(dh, d_model, d_model);
+
+                //     free(dh);
+                // }
+
                 debug = false;
             }
             dataLoader->resetIterator(); // just the weird logic that I wrote.

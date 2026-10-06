@@ -52,10 +52,10 @@ G = debug_autograd(d_model=d_model, seq_len=seq_len, batch_size=batch_size, voca
 flash_attention_debugger = DebugFlashAttention(d_model=d_model, seq_len=seq_len, batch_size=batch_size, vocab_size=vocab_size, num_heads=num_heads, head_dim=d_model // num_heads, dl_dw=G)
 flash_attention_debugger.victor_tango()
 
-optimizer_debug = DebugOptimizer()
-
-
-
+# why would you do this in weird way? well this is a scratch work.
+# if you pay me to write code it won't be this messy
+optimizer_debugger = DebugOptimizer(d_model=d_model, seq_len=seq_len, batch_size=batch_size, vocab_size=vocab_size, num_heads=num_heads, head_dim=d_model // num_heads, dl_dw=G)
+optimizer_debugger.optimizer_health()
 
 # Also note if somewhere in forward pass or early execution sequence if something is
 # corrupted then executing this will take more time than usual
