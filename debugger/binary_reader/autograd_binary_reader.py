@@ -93,6 +93,7 @@ def ReaderFlashAttention(
                       shape=(d_model, d_model),
                       dtype=np.float32
                       ).to(device)
+
     wk = load_tensor("./src/cache/cpp_out/wk.bin",
                       shape=(d_model, d_model),
                       dtype=np.float32
@@ -269,3 +270,18 @@ def Reader(
             y_actual, h, dl_dw_kernel,
             h_t, wt, w, dl_dh, d_bias_lm_head)
 
+
+def load_optimized_grad(
+        batch_size: int,
+        seq_len: int,
+        vocab_size: int,
+        d_model: int,
+        num_heads: int,
+        head_dim: int
+):
+
+    d_weight_q_optimal = load_tensor("./src/cache/cpp_out/d_weight_q_optimal.bin",
+                                   shape=(d_model, d_model),
+                                   dtype=np.float32).to(device)
+
+    return (d_weight_q_optimal)

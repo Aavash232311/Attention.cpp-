@@ -56,6 +56,10 @@ public:
     int vocab_size;
     int num_heads;
 
+    int epochs;
+
+    int t = 0;
+
     AdamWMemConfig(
         int batch_size,
         int seq_len,

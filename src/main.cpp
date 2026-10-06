@@ -47,6 +47,7 @@ int main()
         debug = true;
     #endif
 
+
     int d_model = 32;
     int vocab_size; // that depends upon the data that you are passing.
     int num_heads = 2;

@@ -29,7 +29,6 @@ extern "C" void AdamWSTEP(
     int t,
     int n);
 
-
 using namespace std;
 
 class AdamW
@@ -46,7 +45,10 @@ public:
 
     FlashAttentionPointers modelParamaters;
 
-    virtual void releaseOptimizerHyperparameters() {};
+    virtual void releaseOptimizerHyperparameters(int t) {};
+    virtual void releaseGrad(
+        FlashAttentionPointers modelParamaters,
+        AdamWMemConfig &config) {};
 
     AdamW(
         float lr = 0.01f,
@@ -62,36 +64,56 @@ public:
         this->beta_2 = beta_2;
         this->epsilon = epsilon;
         this->weight_decay = weight_decay;
-
     }
 
     void invoke(
         FlashAttentionPointers modelParamaters,
-        const AdamWMemConfig& config
-    )
+        AdamWMemConfig &config,
+        int epochs)
     {
+
         if (debug)
         {
             // release hyperparameters
-            releaseOptimizerHyperparameters();
+            releaseOptimizerHyperparameters(epochs * config.batch_size);
 
             /*
                 Note:- the sequence does not matter here we go from back to first for all the learnable paramaters, we update them.
             */
         }
 
+        AdamWSTEP(
+            modelParamaters.attention_head.device_WQ,
+            modelParamaters.d_weight_q, // grad that needs to be updated
+            config.dl_dw.m_d,
+            config.dl_dw.v_d,
+            lr,
+            beta_1,
+            beta_2,
+            epsilon,
+            weight_decay,
+            config.t,
+            config.d_model * config.d_model);
+
+
         // AdamWSTEP(
-        //     modelParamaters.dl_dw_device
-        //     modelParamaters.dl_dz_out, // this is the output here in this case.
+        //     modelParamaters.dl_dw_device,
+        //     modelParamaters.d_weight_k,
         //     config.dl_dw.m_d,
-        //     config.dl_dw.m_v,
+        //     config.dl_dw.v_d,
         //     lr,
-        //     beta1,
-        //     beta2,
-        //     eps,
+        //     beta_1,
+        //     beta_2,
+        //     epsilon,
         //     weight_decay,
-        //     t,
-        //     n
-        // );
+        //     config.t,
+        //     config.d_model * config.d_model);
+
+        releaseGrad(
+            modelParamaters,
+            config
+        );
+
+        config.t++;
     }
 };
