@@ -27,8 +27,10 @@ public:
     {
         cudaMalloc((void **)&m_d, N * sizeof(float));
         cudaMalloc((void **)&v_d, N * sizeof(float));
-    }
 
+        cudaMemset(m_d, 0, N * sizeof(float));
+        cudaMemset(v_d, 0, N * sizeof(float));
+    }
 
     ~AdamWPhysics()
     {

@@ -100,7 +100,7 @@ public:
         FlashAttentionPointers modelParamaters,
         AdamWMemConfig &config)
     {
-        DeviceToHost d_weight_q(modelParamaters.d_weight_q, config.d_model * config.d_model);
+        DeviceToHost d_weight_q(modelParamaters.attention_head.device_WQ, config.d_model * config.d_model);
 
         bulkRelease<float>(
             {

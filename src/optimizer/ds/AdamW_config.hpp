@@ -58,7 +58,7 @@ public:
 
     int epochs;
 
-    int t = 0;
+    int t = 1;
 
     AdamWMemConfig(
         int batch_size,
