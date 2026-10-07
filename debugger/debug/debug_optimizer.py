@@ -21,7 +21,10 @@ class DebugOptimizer(DebugFlashAttention):
         self.epsilon = self.params["epsilon"]
         self.weight_decay = self.params["wd"]
         self.lr = self.params["lr"]
-        self.t = self.params["t"]
+        # self.t = self.params["t"]
+        # self.t = 110
+        self.t = 1
+
 
         super().__init__(batch_size, seq_len, vocab_size, d_model, num_heads, head_dim, dl_dw)
 
@@ -57,13 +60,14 @@ class DebugOptimizer(DebugFlashAttention):
             param.grad = self.d_weight_q
             optimizer.step()
 
-        return param.detach()
+        st = optimizer.state[param]
+        return param.detach(), st["exp_avg"].flatten(), st["exp_avg_sq"].flatten()
 
 
     def optimizer_health(self):
 
         # check this one in loose precision
-        torch_wq_optimal = self._optimize()
+        torch_wq_optimal, m_t, v_t = self._optimize()
 
         check_optimizer = torch.allclose(
             self.d_weight_q_optimal,
@@ -92,3 +96,8 @@ class DebugOptimizer(DebugFlashAttention):
 
         print("Optimized from torch")
         print(torch_wq_optimal)
+
+
+
+
+

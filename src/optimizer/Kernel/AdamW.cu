@@ -42,7 +42,7 @@ __global__ void adamw_step(
 
 extern "C"
 {
-        /**
+    /**
      * @class AdamW
      * @brief Optimizes and updates the upstream gradient
      *
@@ -71,10 +71,7 @@ extern "C"
         int n)
 
     {
-        cudaMemset(m, 0, n * sizeof(float));
-        cudaMemset(v, 0, n * sizeof(float));
 
-        
         int threads = 256;
         int blocks = 128;
         adamw_step<<<blocks, threads>>>(theta, grad, m, v, lr, beta1, beta2, eps, weight_decay, t, n);
