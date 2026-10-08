@@ -284,4 +284,22 @@ def load_optimized_grad(
                                    shape=(d_model, d_model),
                                    dtype=np.float32).to(device)
 
-    return (d_weight_q_optimal)
+    # This is the weight before optimizing
+    weight_q = load_tensor("./src/cache/cpp_out/unoptimal_wq.bin",
+                             shape=(d_model, d_model),
+                             dtype=np.float32).to(device)
+
+    # grad
+    grad = load_tensor("./src/cache/cpp_out/inst_grad_q.bin",
+                       shape=(d_model, d_model),
+                       dtype=np.float32).to(device)
+
+    m_d = load_tensor("./src/cache/cpp_out/m_d.bin",
+                      shape=(d_model * d_model),
+                      dtype=np.float32).to(device)
+
+    v_d = load_tensor("./src/cache/cpp_out/v_d.bin",
+                      shape=(d_model * d_model),
+                      dtype=np.float32).to(device)
+
+    return (d_weight_q_optimal, weight_q, grad, m_d, v_d)

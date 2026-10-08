@@ -8,7 +8,13 @@ import torch
 from debug.debug_flash_attention import DebugFlashAttention
 from binary_reader.autograd_binary_reader import load_optimized_grad
 from debug.static import RESET, RED, GREEN
+from ml_components.grad import load_tensor
+import numpy as np
 
+
+device = torch.device("cpu")
+if torch.cuda.is_available():
+    device = torch.device("cuda")
 
 class DebugOptimizer(DebugFlashAttention):
 
@@ -21,14 +27,12 @@ class DebugOptimizer(DebugFlashAttention):
         self.epsilon = self.params["epsilon"]
         self.weight_decay = self.params["wd"]
         self.lr = self.params["lr"]
-        # self.t = self.params["t"]
-        # self.t = 110
-        self.t = 1
-
+        self.t = self.params["t"]
 
         super().__init__(batch_size, seq_len, vocab_size, d_model, num_heads, head_dim, dl_dw)
 
-        (self.d_weight_q_optimal) = load_optimized_grad(batch_size, seq_len, vocab_size, d_model, num_heads, head_dim)
+        (self.d_weight_q_optimal, self.weight_q, self.grad, self.m_d, self.v_d) = load_optimized_grad(batch_size, seq_len, vocab_size, d_model, num_heads, head_dim)
+
 
 
         # print(self.params, self.beta_1, self.beta_2, self.epsilon, self.weight_decay, self.learning_rate)
@@ -46,7 +50,8 @@ class DebugOptimizer(DebugFlashAttention):
             sys.exit(1)
 
     def _optimize(self):
-        param = torch.nn.Parameter(self.wq.detach().clone())
+        # the actual weight that the optimizer gets in
+        param = torch.nn.Parameter(self.weight_q.detach().clone())
 
         optimizer = torch.optim.AdamW(
             [param],
@@ -56,9 +61,18 @@ class DebugOptimizer(DebugFlashAttention):
             weight_decay=self.weight_decay,
         )
 
+
         for _ in range(self.t):
-            param.grad = self.d_weight_q
+            # after the end of the autograd engine it releases the latest binary
+            param.grad = self.grad.clone()
             optimizer.step()
+
+            st = optimizer.state[param]
+            m_t = st["exp_avg"].flatten()
+            v_t = st["exp_avg_sq"].flatten()
+
+            print("m_t and v_t at step: ", _)
+            print(f"m_t :{m_t}, \n v_t :{v_t}")
 
         st = optimizer.state[param]
         return param.detach(), st["exp_avg"].flatten(), st["exp_avg_sq"].flatten()
@@ -91,13 +105,28 @@ class DebugOptimizer(DebugFlashAttention):
         else:
             print(f"AdamW C++ kernel status: {GREEN} {check_optimizer} {RESET}")
 
-        print("Optimized from kernel")
-        print(self.d_weight_q_optimal)
+        # print("Optimized from kernel")
+        # print(self.d_weight_q_optimal)
+        #
+        # print("Optimized from torch")
+        # print(torch_wq_optimal)
 
-        print("Optimized from torch")
-        print(torch_wq_optimal)
 
+        check_md = torch.allclose(self.m_d,
+                                  m_t,
+                                  atol=1e-4,
+                                  rtol=1e-4,)
 
+        check_vd = torch.allclose(self.v_d, v_t, atol=1e-4, rtol=1e-4)
 
+        if not check_md:
+            print(f"check m_t {RED} {check_md} {RESET}")
+        else:
+            print(f"check m_t {GREEN} {check_md} {RESET}")
+
+        if not check_vd:
+            print(f"check v_d {RED} {check_vd} {RESET}")
+        else:
+            print(f"check v_d {GREEN} {check_vd} {RESET}")
 
 

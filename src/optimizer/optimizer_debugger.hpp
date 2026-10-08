@@ -96,15 +96,40 @@ public:
             "./src/cache/optimizer_config.json");
     }
 
-    void releaseGrad(
+    void releaseOptimizedWeight(
         FlashAttentionPointers modelParamaters,
         AdamWMemConfig &config)
     {
         DeviceToHost d_weight_q(modelParamaters.attention_head.device_WQ, config.d_model * config.d_model);
 
+        DeviceToHost m_d(config.dQ.m_d, config.d_model * config.d_model);
+        DeviceToHost v_d(config.dQ.v_d, config.d_model * config.d_model);
+
+        bulkRelease<float>(
+            {{d_weight_q.host_pointer, config.d_model * config.d_model, "d_weight_q_optimal.bin"},
+             {m_d.host_pointer, config.d_model * config.d_model, "m_d.bin"},
+             {v_d.host_pointer, config.d_model * config.d_model, "v_d.bin"}});
+    }
+
+    // release updated weight at a snap
+    // release the gradient at a snap
+    // because that "debug" flag is like a switch
+    // and it breaks everything
+
+    // so what we want is to re-release those weight and
+    // gradient (freshly calculated gradeint pointer)
+
+    void releaseWeightAndGrient(
+        FlashAttentionPointers modelParamaters,
+        AdamWMemConfig &config)
+    {
+        DeviceToHost wq(modelParamaters.attention_head.device_WQ, config.d_model * config.d_model);
+        DeviceToHost d_wq(modelParamaters.d_weight_q, config.d_model * config.d_model);
+
         bulkRelease<float>(
             {
-                {d_weight_q.host_pointer, config.d_model * config.d_model, "d_weight_q_optimal.bin"},
+                {wq.host_pointer, config.d_model * config.d_model, "unoptimal_wq.bin"},
+                {d_wq.host_pointer, config.d_model * config.d_model, "inst_grad_q.bin"},
             });
     }
 };

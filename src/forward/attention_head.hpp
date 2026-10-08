@@ -133,6 +133,17 @@ public:
         query = std::make_unique<Linear>(d_model, d_model, seq_len, batch_size, num_heads, debug);
         value = std::make_unique<Linear>(d_model, d_model, seq_len, batch_size, num_heads, debug);
 
+        // if (debug)
+        // {
+        //     cout << "Inital weights " << endl;
+
+        //     utils->printFlatArray2D(
+        //         query->getWeight(),
+        //         d_model,
+        //         d_model
+        //     );
+        // }
+
         outputProj = std::make_unique<Linear>(d_model, d_model, seq_len, batch_size, num_heads, debug);
 
         layerNorm = std::make_unique<LayerNorm>(batch_size, seq_len, d_model);

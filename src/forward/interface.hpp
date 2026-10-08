@@ -657,9 +657,34 @@ public:
                 //     free(dh);
                 // }
 
-                debug = false;
+                // debug = false;
             }
             dataLoader->resetIterator(); // just the weird logic that I wrote.
         }
+
+        // release hyperparameters
+        // optimizer->releaseOptimizerHyperparameters(adamMemConfig->t - 1);
+        // optimizer->releaseGrad(
+        //         modelParamaters,
+        //         *adamMemConfig);
+
+        /*
+            Note:- the sequence does not matter here we go from back to first for all the learnable paramaters, we update them.
+        */
+
+        // if (debug)
+        // {
+        //     // check
+        //     cout << "Updated weights " << endl;
+        //     float* host_W = (float *)malloc(d_model * d_model * sizeof(float));
+        //     cudaMemcpy(host_W, modelParamaters.attention_head.device_WQ, d_model * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+
+        //     utils->printFlatArray2D(
+        //         host_W,
+        //         d_model,
+        //         d_model);
+
+        //     free(host_W);
+        // }
     }
 };
