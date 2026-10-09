@@ -166,4 +166,9 @@ public:
     {
         return this->hostEmbeddings;
     }
+
+    float *getEmbeddingParmaterDevice()
+    {
+        return deviceEmbeddings;
+    }
 };

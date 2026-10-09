@@ -766,7 +766,9 @@ public:
             value->getBaiasDevice(),
 
             output_porjection_x,
-            output_project_xt
+            output_project_xt,
+
+            embeddings->getEmbeddingParmaterDevice()
         };
     }
 };

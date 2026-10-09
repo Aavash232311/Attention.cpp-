@@ -46,7 +46,6 @@ public:
      *
      * @param arr: pass in the vector
      */
-
     template <typename T>
     void showVector(std::vector<T> &arr)
     {
@@ -64,7 +63,6 @@ public:
      * @param vec: pass in the vector
      * @param shape: bool shows the shape of the vector as if it was a tensor
      */
-
     template <typename T>
     void Print2DVector(const std::vector<std::vector<T>> &vec, bool shape_only = false)
     {
@@ -96,7 +94,6 @@ public:
      * @param vec: pass in the vector
      * @param shape: bool shows the shape of the vector as if it was a tensor
      */
-
     template <typename T>
     void Print3DVector(const std::vector<std::vector<std::vector<T>>> &vec, bool shape_only = false)
     {
@@ -137,7 +134,6 @@ public:
      * @param vec: pass in the vector
      *
      */
-
     template <typename T>
     void print_vector(const std::vector<T> &vec)
     {
@@ -159,7 +155,6 @@ public:
      * @param dim 2
      *
      */
-
     template <typename T>
     void printFlatArray2D(const T *arr, int seq_len, int d_model)
     {
@@ -202,7 +197,6 @@ public:
      * @note Known issue something is wrong here, I noticed that when using this it sometimes crashes next time that happens
      * I will take a look at this one right here.
      */
-
     template <typename T>
     void printFlatArray3D(const T *arr, int seq_len, int batch_size, int embed_dim, bool show_last_dim = false)
     {
@@ -392,7 +386,6 @@ public:
      *
      * @brief Used for debugging
      */
-
     void print2DMatrixLastTwo(
         float *arr,
         int batch_size,
@@ -433,8 +426,6 @@ public:
      *
      * @brief Used for debugging
      */
-
-    // This the more flexible. used for checking dimension in tensor that are swapped.
     void print2DMatrixLastTwoRect(
         float *arr,
         int batch_size,
@@ -572,5 +563,22 @@ public:
                 std::cout << ", ";
         }
         std::cout << "], shape=[" << N << "])\n";
+    }
+
+    template <typename T>
+    float averageFlatStrip2D(const T *arr, int N)
+    {
+
+        if (arr == nullptr || N <= 0)
+            return 0.0f;
+
+        float sum = 0.0f;
+
+        for (int i = 0; i < N; ++i)
+        {
+            sum += static_cast<float>(arr[i]);
+        }
+
+        return sum / N;
     }
 };

@@ -71,16 +71,16 @@ struct AttentionParamaters
     /**
      * local derivative of learnable paramater gamma
      * Shape (C)
-     * @param d_gamma device
+     * @param gamma device
      */
-    float *d_gamma;
+    float *gamma;
 
     /**
      * local derivative of learnable paramater beta
      * Shape (C)
-     * @param d_beta device
+     * @param beta device
      */
-    float *d_beta;
+    float *beta;
 
     /**
      * Weight of query
@@ -166,4 +166,12 @@ struct AttentionParamaters
      * @param output_project_xt location device
      */
     float *output_project_xt;
+
+    /**
+     * Actual embedding He-Init originally generated in host now in device.
+     * That is the "theta" from the AdamW
+     *
+     * @param embedding_device location device
+     */
+    float *device_embedding_paramaters;
 };

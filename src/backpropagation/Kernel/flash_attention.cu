@@ -480,7 +480,7 @@ extern "C"
         int vocab_size)
     {
         cudaMemset(token_ids, 0, batch_size * seq_len * sizeof(int));
-        
+
         dim3 blockDim(256, 1, 1);
         dim3 gridDim(seq_len, batch_size, 1);
 
@@ -510,6 +510,9 @@ extern "C"
     {
         dim3 blockDim(256, 1, 1);
         dim3 gridDim(T, B, 1); // one block per (batch, row)
+
+        cudaMemset(dgamma, 0, C * sizeof(float));
+        cudaMemset(debta, 0, C * sizeof(float));
 
         LayerNormBackPropgationKernel<<<gridDim, blockDim>>>(
             x, G, mc, sdc, gamma, dgamma, debta, B, T, C);

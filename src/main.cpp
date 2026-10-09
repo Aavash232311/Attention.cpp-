@@ -50,10 +50,10 @@ int main()
 
     int d_model = 32;
     int vocab_size; // that depends upon the data that you are passing.
-    int num_heads = 2;
+    int num_heads = 4;
     int batch_size = 8;
     int seq_len = 4;
-    int epoch = 12;
+    int epoch = 62;
     bool drop_last = true; // for training set this to false, if someone is serious about this email me. the cost of implementing this feature will affect everything in depth many tradeoffs
 
     bool hyperParamaterRelease = false;
@@ -79,7 +79,7 @@ int main()
         num_heads); // write the hyperparamaters down
 
     // we just need a simple shample.
-    epoch = debug == true ? 1 : epoch;
+    // epoch = debug == true ? 1 : epoch;
 
     const std::vector<int> &encodedData = helper->getEncodedList();
 
