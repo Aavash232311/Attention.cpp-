@@ -49,7 +49,7 @@ __global__ void KaimingInitKernel(float *arr, curandState *state, int x, int y)
 
     // registers are ultra fast memory within SM's in the GPU
     curandState local = state[idx]; // global mem to register ex pos 0
-    float std = sqrtf(2.0f / (float)x);
+    float std = 0.02f; // this is normal init change the name later. I noticed weights are larger so.
     arr[idx] = curand_normal(&local) * std; // local goes to pos 1
 
     // That opreation from global memory to register is physcially copied

@@ -273,7 +273,7 @@ public:
 
         cudaMemcpy(mean_host, model_paramaters.attention_head.mean_cache, batch_size * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
         cudaMemcpy(std_dev_host, model_paramaters.attention_head.std_dev_cache, batch_size * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
-        cudaMemcpy(gamma_host, model_paramaters.attention_head.d_gamma, d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(gamma_host, model_paramaters.attention_head.gamma, d_model * sizeof(float), cudaMemcpyDeviceToHost);
 
         bulkRelease<float>(
             {{dQ_host, batch_size * seq_len * num_heads * head_dim, "dq.bin"},
@@ -348,7 +348,7 @@ public:
         cudaMemcpy(G_x_hat_host, model_paramaters.G_x_hat, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
 
         cudaMemcpy(layer_norm_x, model_paramaters.attention_head.x, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
-        cudaMemcpy(d_beta, model_paramaters.attention_head.d_beta, d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(d_beta, model_paramaters.attention_head.beta, d_model * sizeof(float), cudaMemcpyDeviceToHost);
 
         cudaMemcpy(d_delta_beta, model_paramaters.debeta, d_model * sizeof(float), cudaMemcpyDeviceToHost);
         cudaMemcpy(d_delta_gamma, model_paramaters.dgamma, d_model * sizeof(float), cudaMemcpyDeviceToHost);

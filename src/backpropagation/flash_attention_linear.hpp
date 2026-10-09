@@ -166,7 +166,7 @@ private:
             model_paramaters.G_x_hat,
             model_paramaters.attention_head.mean_cache,
             model_paramaters.attention_head.std_dev_cache,
-            model_paramaters.attention_head.d_gamma,
+            model_paramaters.attention_head.gamma,
             model_paramaters.dgamma,
             model_paramaters.debeta,
             batch_size,

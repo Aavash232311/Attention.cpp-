@@ -219,7 +219,7 @@ public:
             batch_size,
             debug);
 
-        optimizer = std::make_unique<OptimizerDebugger>(0.01f, 0.0f, 0.9f, 0.999f, 1e-8f, debug);
+        optimizer = std::make_unique<OptimizerDebugger>(1e-4, 0.0f, 0.9f, 0.999f, 1e-8f, debug);
 
         // pass in the derived class for proper inheritance
         autograd = std::make_unique<AutogradEngineDebuggerRelease>(
@@ -499,8 +499,11 @@ public:
     {
         Batch batch;
 
+        float loss = 0.0f;
         for (int i = 0; i < epoch; ++i)
         {
+            float loss_per_batch = 0.0f;
+            int batch_count = 0;
             while (!(batch = dataLoader->iter()).empty())
             {
                 // std::cout << batch.width << std::endl;
@@ -509,12 +512,6 @@ public:
                 // Shape (B, T, C) only pointer dependent upon the channel dimension is here
                 // And there is an illegal memory access somewhere here.
                 float *x = attention->forward(batch);
-
-                // if (debug)
-                // {
-                //     std::cout << " Before LM head " << std::endl;
-                //     this->utils->printFlatArray3D(x, batch_size, seq_len, d_model);
-                // }
 
                 float *prob = lm_head->forward(x); // Shape (B, T, vocab_size) x is not changed here.
 
@@ -538,6 +535,9 @@ public:
                 // }
 
                 softmaxAcrossProballityCrossEntropyLoss(prob, batch.y);
+
+                loss_per_batch += this->utils->averageFlatStrip2D(outCrossEntropyHost, batch_size * seq_len);
+              //  cout << "Loss per batch: " << this->utils->averageFlatStrip2D(outCrossEntropyHost, batch_size * seq_len) << endl;
 
                 // if (debug)
                 // {
@@ -643,7 +643,7 @@ public:
                 //     free(dh);
                 // }
 
-                optimizer->invoke(modelParamaters, *adamMemConfig, epoch);
+             //   optimizer->invoke(modelParamaters, *adamMemConfig, epoch);
 
                 // check if something is off with AadamW on sufrace
 
@@ -657,10 +657,24 @@ public:
                 //     free(dh);
                 // }
 
-                // debug = false;
+                debug = false;
+
+                batch_count++;
             }
+
+            loss_per_batch /= batch_count;
+
             dataLoader->resetIterator(); // just the weird logic that I wrote.
+
+            if (!(debug))
+            {
+                std::cout << "Epoch: " << (i + 1) << " Loss: " << loss_per_batch << std::endl;
+            }
+
+            loss += loss_per_batch;
         }
+
+        loss /= epoch;
 
         // release hyperparameters
         // optimizer->releaseOptimizerHyperparameters(adamMemConfig->t - 1);
