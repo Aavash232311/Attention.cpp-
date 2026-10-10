@@ -48,7 +48,6 @@ public:
      */
 
     void transpose4DLastTwoPT(
-        float *arr_h,
         float *arr_d,
         float *arr_d_out,
         int x,
@@ -69,8 +68,6 @@ public:
             seq_len);
 
         */
-        cudaMemcpy(arr_d, arr_h, x * y * z * z1 * sizeof(float), cudaMemcpyHostToDevice);
-
         TransposeKey(
             arr_d,
             arr_d_out,
@@ -91,7 +88,6 @@ public:
      */
 
     void transpose4DLastTwoVT(
-        float *arr_h,
         float *arr_d,
         float *arr_d_out,
         int x, //
@@ -99,8 +95,6 @@ public:
         int z,
         int z1)
     {
-        cudaMemcpy(arr_d, arr_h, x * y * z * z1 * sizeof(float), cudaMemcpyHostToDevice);
-
         TransposeKey(
             arr_d,
             arr_d_out,
@@ -267,10 +261,9 @@ public:
 
         // For P^T
         transpose4DLastTwoPT(
-            model_paramaters.attention_head.P, // (batch_size * num_heads * seq_len * seq_len )
-            model_paramaters.P_T_device,
-            model_paramaters.P_T_device_out, // out
-            batch_size,                      // according to the shape of P
+            model_paramaters.attention_head.P, 
+            model_paramaters.P_T_device_out, 
+            batch_size,                  
             num_heads,
             seq_len,
             seq_len);
@@ -284,7 +277,6 @@ public:
         // For V^T
         transpose4DLastTwoVT(
             model_paramaters.attention_head.V, // (B, n_head, T, head_dim)
-            model_paramaters.V_T_device,
             model_paramaters.V_T_device_out, // (B, n_head, head_dim, T) out
             num_heads,                       // according to the shape of P
             head_dim,
@@ -295,7 +287,7 @@ public:
         // we need to re-arrange in terms of (batch_size, seq_len, num_head, head_dim)
         // Remember:- this does not changes the values just the way of writing it, its flat anyway.
         multiHeadG(
-            model_paramaters.Contact_G_Upstream,   // (B, T, C)
+            model_paramaters.upstream_grad_output_proj,   // (B, T, C)
             model_paramaters.Uncontact_G_Upstream, // (B, n_head, seq_len, head_dim)
             num_heads,
             head_dim,
@@ -345,6 +337,9 @@ public:
             batch_size,
             seq_len,
             num_heads);
+
+        // dQ, and dK gradient is from this so 
+        // I used using output project thats the bug-+ 
 
         // Bug found pointer P is modified somewhere in the code.
 

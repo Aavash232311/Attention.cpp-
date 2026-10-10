@@ -21,8 +21,22 @@ struct AttentionParamaters
     SingleEmbeddings Embeddings;
 
     float *S;
+
+    /**
+     * Softmaxed value in the procress of attention score.
+     *
+     * @note Shape (batch_size, num_heads, seq_len, seq_len)
+     * @param P 
+     */
     float *P;
     float *O;
+
+        /**
+     * Value matrix
+     *
+     * @note Shape (batch_size, num_heads, seq_len, head_dim)
+     * @param V location device
+     */
     float *V;
 
     // We are re-using the buffer for BTC and Batch Seq Number of head and head dim to save reources

@@ -215,12 +215,12 @@ public:
         }
 
         linearBack->backward(
-            paramaters.device_h,
+            paramaters.x,
             model_paramaters.dl_dz_out_device,
             paramaters.weight_lm_head,
-            paramaters.wt_out_d,
-            paramaters.device_out_h,
-            paramaters.dl_dw_device,
+            paramaters.wt_lm_head_deice,
+            paramaters.xt_device,
+            paramaters.dweight_lm_head,
             paramaters.dbias_lm_head_pred,
             paramaters.dl_dh_output,
             true);

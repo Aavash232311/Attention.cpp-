@@ -84,7 +84,7 @@ class AttentionInterface
     FlashAttentionPointers modelParamaters;
 
     // ---------- Autograd engine declaration --------------------
-    float *out_h;
+    float *ht_device;
 
     // even for SWE after years of building things on my own
     // now I realize how stupid I was, sure this is the dumbest possible thing
@@ -111,8 +111,6 @@ class AttentionInterface
     float *O_device;
 
     // P^T and V^T device alloication
-    float *P_T_device;
-    float *V_T_device;
 
     float *P_T_device_out;
     float *V_T_device_out;
@@ -263,7 +261,7 @@ public:
         // -- For testing if the kernel launch for one hot works, we have wrapped two kernels for the cross entropy loss REMOVE FOR PERFORMACE
         outHotEncodeOut = (float *)malloc(batch_size * seq_len * vocab_size * sizeof(float));
 
-        cudaMalloc((void **)&out_h, batch_size * seq_len * vocab_size * sizeof(float));
+        cudaMalloc((void **)&ht_device, batch_size * seq_len * vocab_size * sizeof(float));
 
         cudaMalloc((void **)&dl_dw_out_device, d_model * vocab_size * sizeof(float));
 
@@ -275,11 +273,6 @@ public:
         cudaMalloc((void **)&S_device, seq_len * batch_size * num_heads * head_dim * sizeof(float));
         cudaMalloc((void **)&P_device, batch_size * num_heads * seq_len * seq_len * sizeof(float));
         cudaMalloc((void **)&O_device, batch_size * num_heads * seq_len * head_dim * sizeof(float));
-
-        // same size as P just re-arranged row and cols by the def.
-        cudaMalloc((void **)&P_T_device, batch_size * num_heads * seq_len * seq_len * sizeof(float));
-        // Shape of value matrix  (B, n_head, T, head_dim)
-        cudaMalloc((void **)&V_T_device, batch_size * num_heads * seq_len * head_dim * sizeof(float));
 
         // output, I know not the most efficient kernel or way but lets get to the end-result here first.
         cudaMalloc((void **)&P_T_device_out, batch_size * num_heads * seq_len * seq_len * sizeof(float));
@@ -359,7 +352,7 @@ public:
         cudaFree(dl_dz_out_device);
         free(dl_dz_out_host);
 
-        cudaFree(out_h);
+        cudaFree(ht_device);
 
         cudaFree(dl_dw_out_device);
 
@@ -370,8 +363,6 @@ public:
         cudaFree(P_device);
         cudaFree(O_device);
 
-        cudaFree(P_T_device);
-        cudaFree(V_T_device);
 
         cudaFree(V_T_device_out);
         cudaFree(P_T_device_out);
@@ -555,28 +546,26 @@ public:
                 modelParamaters.dl_dz_out_device = dl_dz_out_device;
                 modelParamaters.dl_dz_out_host = dl_dz_out_host;
 
-                modelParamaters.h = x;                                   // this h is the output of lm head Shape(B, T, vocab_size)
-                modelParamaters.device_h = attention->BorrowBTCDevice(); // (B, T, d_model) on device
-                modelParamaters.device_out_h = out_h;
+                modelParamaters.x_host = x;                                   // this h is the output of lm head Shape(B, T, vocab_size)
+                modelParamaters.x = attention->BorrowBTCDevice(); // (B, T, d_model) on device
+                modelParamaters.xt_device = ht_device;
 
                 modelParamaters.dbias_lm_head_pred = dbias_lm_head_pred;
 
                 // for dl_dw = delta h^T derived in flashback.md
 
-                modelParamaters.dl_dw_device = dl_dw_out_device;
+                modelParamaters.dweight_lm_head = dl_dw_out_device;
 
                 // these are just borrowed pointers
-                modelParamaters.wt_out_d = w_out_d;
+                modelParamaters.wt_lm_head_deice = w_out_d;
 
-                modelParamaters.P_T_device = P_T_device;
-                modelParamaters.V_T_device = V_T_device;
 
                 modelParamaters.P_T_device_out = P_T_device_out;
                 modelParamaters.V_T_device_out = V_T_device_out;
 
                 // GDDR RAM
                 modelParamaters.Uncontact_G_Upstream = Uncontact_G_Upstream;
-                modelParamaters.Contact_G_Upstream = Contact_G_Upstream;
+                modelParamaters.upstream_grad_output_proj = Contact_G_Upstream;
 
                 modelParamaters.dV = dV;
                 modelParamaters.dP = dP;
