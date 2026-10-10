@@ -85,7 +85,7 @@ public:
     float *S = nullptr;
     float *P = nullptr;
     float *O = nullptr;
-    float *value_mat = nullptr;
+    float *value_mat;
 
     float *Q_cache;
     float *K_cache;
@@ -194,11 +194,13 @@ public:
 
         // ---- S, P, O ---- are required for backpropagation allocate here according to reqired size.
         S = (float *)malloc(seq_len * batch_size * num_heads * head_dim * sizeof(float));
-        P = (float *)malloc(batch_size * num_heads * seq_len * seq_len * sizeof(float));
+        
+        cudaMalloc((void **)&P, batch_size * num_heads * seq_len * seq_len * sizeof(float));
+
         O = (float *)malloc(batch_size * num_heads * seq_len * head_dim * sizeof(float));
 
         // (B, n_head, T, head_dim) s
-        value_mat = (float *)malloc(batch_size * num_heads * seq_len * head_dim * sizeof(float));
+        cudaMalloc((void **)&value_mat, batch_size * num_heads * seq_len * head_dim * sizeof(float));
 
         cudaMalloc((void **)&doutput_bias, d_model * sizeof(float));
         cudaMalloc((void **)&x_device, batch_size * seq_len * d_model * sizeof(float));
@@ -243,9 +245,9 @@ public:
         free(B_NUMHEAD_SEQLEN_HEADDIM);
 
         free(S);
-        free(P);
+        cudaFree(P);
         free(O);
-        free(value_mat);
+        cudaFree(value_mat);
 
         cudaFree(output_porjection_x);
         cudaFree(output_project_xt);
@@ -488,7 +490,9 @@ public:
 
         // we need value for our autograd engine so we are storing the value mat as v here
         // not using V because it is already used.
-        std::memcpy(value_mat, V, batch_size * num_heads * seq_len * head_dim * sizeof(float));
+        // std::memcpy(value_mat, V, batch_size * num_heads * seq_len * head_dim * sizeof(float));
+
+        cudaMemcpy(value_mat, V,  batch_size * num_heads * seq_len * head_dim * sizeof(float), cudaMemcpyDeviceToDevice);
 
         /*
             Note: the host pointer might be modified here, but the device pointer remains
@@ -578,14 +582,20 @@ public:
         cudaMemcpy(B_NUMHEAD_T_T, deviceSoftmaxOut, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
 
         // ------------ Stage Softmax(P) ----------------
-        std::memcpy(P, B_NUMHEAD_T_T, batch_size * num_heads * seq_len * seq_len * sizeof(float));
+        cudaMemcpy(P, B_NUMHEAD_T_T, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyDeviceToDevice);
 
         // deviceQKTSqrtD Shape(batch_size, n_head, T, T)
 
         // if (debug == true)
         // {
+        //     float* P_host = (float *)malloc(batch_size * num_heads * seq_len * seq_len * sizeof(float));
+
+        //     cudaMemcpy(P_host, P, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
+
         //     std::cout << "After softmax " << sizeof(P) << std::endl;
-        //     utils->print2DMatrixLastTwo(P, batch_size, num_heads, seq_len, seq_len);
+        //     utils->print2DMatrixLastTwo(P_host, batch_size, num_heads, seq_len, seq_len);
+
+        //     free(P_host);
         // }
 
         // value Shape(batch_size, n_head, seq_len, d_head)

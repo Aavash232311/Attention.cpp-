@@ -97,8 +97,9 @@ public:
             model_paramaters.attention_head.output_project_xt,
             model_paramaters.d_weight_output_project,
             model_paramaters.attention_head.doutput_bias,
-            model_paramaters.Contact_G_Upstream,
-            false);
+            model_paramaters.upstream_grad_output_proj,
+            false,
+            true);
 
         // if (debug)
         // {

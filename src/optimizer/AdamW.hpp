@@ -83,7 +83,7 @@ public:
         // weight for lm head
         AdamWSTEP(
             modelParamaters.weight_lm_head,
-            modelParamaters.dl_dw_device, // grad that needs to be updated
+            modelParamaters.dweight_lm_head, // grad that needs to be updated
             config.dl_dw.m_d,
             config.dl_dw.v_d,
             lr,

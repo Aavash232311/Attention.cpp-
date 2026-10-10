@@ -66,7 +66,7 @@ public:
         bulkRelease<float>({{host_y_actual, batch_size * seq_len * vocab_size, "y_actual.bin"},
                             {host_y_prediced, batch_size * seq_len * vocab_size, "y_prediced.bin"},
                             {model_paramaters.dl_dz_out_host, batch_size * seq_len * vocab_size, "delta.bin"},
-                            {model_paramaters.h, batch_size * seq_len * d_model, "h.bin"}});
+                            {model_paramaters.x_host, batch_size * seq_len * d_model, "h.bin"}});
 
         // if (debug)
         // {
@@ -106,7 +106,7 @@ public:
         // copy w^T to host for the python script to read the binary
 
         float *dl_dw_host = (float *)malloc(batch_size * d_model * vocab_size * sizeof(float));
-        cudaMemcpy(dl_dw_host, model_paramaters.dl_dw_device, d_model * vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(dl_dw_host, model_paramaters.dweight_lm_head, d_model * vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
 
         // In this fix, we have ignored the host memory as it is expensive to move data back and fourth
         // between the PCIE express BUS.
@@ -115,7 +115,7 @@ public:
 
         float *transposed_h = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
 
-        cudaMemcpy(transposed_h, model_paramaters.device_out_h, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(transposed_h, model_paramaters.xt_device, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
 
         // This H is the one that got transpoed and my head is spinning round and round here.
         bulkRelease<float>({
@@ -129,7 +129,7 @@ public:
         float *bias_lm_head_host = (float *)malloc(vocab_size * sizeof(float));
         float *w_host = (float *)malloc(d_model * vocab_size * sizeof(float));
 
-        cudaMemcpy(wt_host, model_paramaters.wt_out_d, d_model * vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(wt_host, model_paramaters.wt_lm_head_deice, d_model * vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
         cudaMemcpy(dl_dh_host, model_paramaters.dl_dh_output, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
         cudaMemcpy(bias_lm_head_host, model_paramaters.dbias_lm_head_pred, vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
         cudaMemcpy(w_host, model_paramaters.weight_lm_head, vocab_size * d_model * sizeof(float), cudaMemcpyDeviceToHost);
@@ -162,11 +162,20 @@ public:
     void pyDebuggerReleaseStage4()
     {
 
+        float *P_host = (float *)malloc(batch_size * num_heads * seq_len * seq_len * sizeof(float));
+        float *V_host = (float *)malloc(batch_size * num_heads * seq_len * head_dim * sizeof(float));
+
+        cudaMemcpy(P_host, model_paramaters.attention_head.P, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(V_host, model_paramaters.attention_head.V, batch_size * num_heads * seq_len * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
+
         bulkRelease<float>(
             {
-                {model_paramaters.attention_head.P, batch_size * num_heads * seq_len * seq_len, "P.bin"},
-                {model_paramaters.attention_head.V, batch_size * num_heads * seq_len * head_dim, "V.bin"},
+                {P_host, batch_size * num_heads * seq_len * seq_len, "P.bin"},
+                {V_host, batch_size * num_heads * seq_len * head_dim, "V.bin"},
             });
+
+        free(P_host);
+        free(V_host);
     }
 
     /**
@@ -452,7 +461,7 @@ public:
         if (err2 != cudaSuccess)
             printf("After woT copy: %s\n", cudaGetErrorString(err2));
 
-        cudaMemcpy(dattention, model_paramaters.Contact_G_Upstream, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(dattention, model_paramaters.upstream_grad_output_proj, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
         cudaError_t err3 = cudaGetLastError();
         if (err3 != cudaSuccess)
             printf("After dattn_out copy: %s\n", cudaGetErrorString(err3));
@@ -551,8 +560,7 @@ public:
                             {d_bias_v, d_model, "d_bias_v.bin"},
                             {bias_q, d_model, "bias_q.bin"},
                             {bias_k, d_model, "bias_k.bin"},
-                            {bias_v, d_model, "bias_v.bin"}
-                        });
+                            {bias_v, d_model, "bias_v.bin"}});
 
         free(normalized_x);
         free(normalized_xt);
