@@ -230,7 +230,7 @@ public:
     void pyDebuggerReleaseStage6()
     {
         float *G = (float *)malloc(batch_size * num_heads * seq_len * seq_len * sizeof(float));
-        cudaMemcpy(G, d_scores_device, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(G, model_paramaters.d_softmax_upstream, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
 
         // Note:- in P = softmax(S)
         // Normal to see bunch of zeros because of softmax
@@ -356,7 +356,7 @@ public:
 
         cudaMemcpy(G_x_hat_host, model_paramaters.G_x_hat, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
 
-        cudaMemcpy(layer_norm_x, model_paramaters.attention_head.x, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(layer_norm_x, model_paramaters.dx, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
         cudaMemcpy(d_beta, model_paramaters.attention_head.beta, d_model * sizeof(float), cudaMemcpyDeviceToHost);
 
         cudaMemcpy(d_delta_beta, model_paramaters.debeta, d_model * sizeof(float), cudaMemcpyDeviceToHost);

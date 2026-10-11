@@ -17,7 +17,7 @@ extern "C" void dbias(float *G, float *dbias, int B, int T, int C, bool sync);
 extern "C" void dl_dh_upstream(float *A, float *B, float *C, int a, int b, int c, int d, bool sync);
 extern "C" void ReformBNTH_BTC(float *arr, float *out, int batch_size, int seq_len, int d_model, int num_head, int head_dim);
 extern "C" void addThreeTensor(float *A, float *B, float *C, float *Out, int batch_size, int seq_len, int d_model);
-extern "C" void layernorm_backward(float *x, float *G, float *mc, float *sdc, float *gamma, float *dgamma, float *dbeta, int B, int T, int C);
+extern "C" void layernorm_backward(float *x, float* dx, float *G, float *mc, float *sdc, float *gamma, float *dgamma, float *dbeta, int B, int T, int C);
 extern "C" void addTwoTensor(float *A, float *B, float *Out, int batch_size, int seq_len, int d_model);
 extern "C" void updateTokenEmbedding(float *G, float *d_emebdding, int *token_ids, int batch_size, int seq_len, int d_model, int vocab_size);
 extern "C" void dl_dw_upstream(float *deta, float *ht, float *out, int B, int T, int C, int vocab_size);
@@ -149,13 +149,7 @@ private:
         // pass in the compact shape (B,T,C)
         addThreeTensor(model_paramaters.dqWt, model_paramaters.dkWt, model_paramaters.dvWt, model_paramaters.G_x_hat, batch_size, seq_len, d_model);
 
-        // copy that x after the net_embedding to device
-
-        cudaMemcpy(model_paramaters.attention_head.x,
-                   model_paramaters.attention_head.x,
-                   batch_size * seq_len * d_model * sizeof(float),
-                   cudaMemcpyHostToDevice);
-
+        
         /***
          * @warning the first arguement pointer is modified here.
          * Which might cause confusion and problems but it is what it is.
@@ -163,6 +157,7 @@ private:
          */
         layernorm_backward(
             model_paramaters.attention_head.x,
+            model_paramaters.dx,
             model_paramaters.G_x_hat,
             model_paramaters.attention_head.mean_cache,
             model_paramaters.attention_head.std_dev_cache,
@@ -179,7 +174,7 @@ private:
         // my anxiety and lack of sleep has caused be to do many simple mistakes recently :)
         addTwoTensor(
             model_paramaters.dl_dh_output,
-            model_paramaters.attention_head.x,
+            model_paramaters.dx,
             model_paramaters.d_add_residual_output,
             batch_size,
             seq_len,
@@ -187,13 +182,26 @@ private:
 
         // update the embedding gradient
         updateTokenEmbedding(
-            model_paramaters.attention_head.x,
+            model_paramaters.d_add_residual_output,
             model_paramaters.d_embedding,
             model_paramaters.attention_head.token_id,
             batch_size,
             seq_len,
             d_model,
             vocab_size);
+
+        // if (debug)
+        // {
+        //     // updated embedding
+        //     cout << "Embedding gradient first run" << endl;
+
+        //     float *e = (float *)malloc(vocab_size * d_model * sizeof(float));
+        //     cudaMemcpy(e, model_paramaters.d_embedding, vocab_size * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+
+        //     utils->printFlatArray2D(e, vocab_size, seq_len);
+
+        //     free(e);
+        // }
 
         if (debug)
             pyDebuggerReleaseStage10();

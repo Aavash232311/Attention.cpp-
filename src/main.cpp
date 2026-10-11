@@ -42,7 +42,7 @@ int main()
     cudaDeviceSynchronize();
     auto start = std::chrono::high_resolution_clock::now();
 
-    bool debug = true;
+    bool debug = false;
     #ifdef DEBUG
         debug = true;
     #endif
@@ -53,7 +53,7 @@ int main()
     int num_heads = 4;
     int batch_size = 8;
     int seq_len = 4;
-    int epoch = 62;
+    int epoch = 20;
     bool drop_last = true; // for training set this to false, if someone is serious about this email me. the cost of implementing this feature will affect everything in depth many tradeoffs
 
     bool hyperParamaterRelease = false;

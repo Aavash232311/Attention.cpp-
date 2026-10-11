@@ -332,7 +332,7 @@ public:
         softmaxBackGrad(
             model_paramaters.attention_head.P, // (B, H, T, T)
             model_paramaters.dP,               // (B, H, T, T)
-            model_paramaters.P_T_device_out,   // (B, num_head, T, T) buffer re-used
+            model_paramaters.d_softmax_upstream,  
             soft_back_total,
             batch_size,
             seq_len,
@@ -357,8 +357,7 @@ public:
             // if any pointer is modified now that will tell me the root cause
         }
 
-        // Just to alias it properly for readability
-        d_scores_device = model_paramaters.P_T_device_out;
+   
 
         if (debug)
             pyDebuggerReleaseStage6();
@@ -366,7 +365,7 @@ public:
         //  dQ = 1/sqrt(dk) GK
         GolfKiloBackGrad(
             1.0 / sqrtf((float)head_dim), // constant that I like to call
-            d_scores_device,              // G (B, H, T, T)
+            model_paramaters.d_softmax_upstream,              // G (B, H, T, T)
             model_paramaters.attention_head.K_cache,
             model_paramaters.dQ, // (batch_size, num_head, seq_len, head_dim)
             batch_size,
@@ -376,7 +375,7 @@ public:
 
         // G^T here without wrapper method, just do it.
         TransposeKey(
-            d_scores_device,
+            model_paramaters.d_softmax_upstream,
             model_paramaters.d_score_t,
             num_heads,  // num_heads
             seq_len,    // seq_len

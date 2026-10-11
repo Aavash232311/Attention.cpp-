@@ -33,9 +33,6 @@ public:
     AdamWPhysics weight_output_proj;
     AdamWPhysics bias_output_proj;
 
-    AdamWPhysics dQ;
-    AdamWPhysics dK;
-    AdamWPhysics dV;
 
     AdamWPhysics Ln_gamma;
     AdamWPhysics Ln_beta;
@@ -81,10 +78,6 @@ public:
         bias_output_proj.init(d_model);
 
         // dear me these are not "learnable"
-        dQ.init(d_model * d_model);
-        dK.init(d_model * d_model);
-        dV.init(d_model * d_model);
-
     
 
         Ln_gamma.init(d_model);

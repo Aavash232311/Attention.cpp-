@@ -293,7 +293,7 @@ class DebugFlashAttention(torch.nn.Module):
 
 
         d_token_embedding_torch = compute_token_embedding_grad(
-            self.layer_norm_back_x,
+            self.final_gradient_from_add_residual,
             self.token_ids,
             self.vocab_size
         )

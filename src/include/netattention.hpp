@@ -70,24 +70,12 @@ struct NetAttentionParamaters
 struct FlashAttentionPointers : NetAttentionParamaters
 {
 
-    /**
-     * @brief Transposed P = softmax() from the attention procress
-     *
-     * @note shape (B, num_head, seq_len, head_dim)
-     *
-     * @concept device to device copy in attention head
-     * 
-     * @param P_T_device location device
-     */
-    float *P_T_device;
-
     // wewe P_T and V_T to be output such that we can consume the passed arr
     float *P_T_device_out;
 
-
     /**
      * @brief Value matrix transposed to
-     * 
+     *
      * Org  : (B, n_head, T, head_dim)
      * Shape: (B, n_head, head_dim, T)
      *
@@ -116,6 +104,15 @@ struct FlashAttentionPointers : NetAttentionParamaters
      */
     float *upstream_grad_output_proj;
 
+    /**
+     * @brief Upstream gradient from softmat.
+     *
+     * @note (B, H, T, T)
+     *
+     * @param d_softmax_upstream location device
+     */
+    float *d_softmax_upstream;
+
     float *dV;
     float *dP;
 
@@ -124,6 +121,15 @@ struct FlashAttentionPointers : NetAttentionParamaters
     float *dQ;
     float *dK;
 
+    float *dx;
+
+    /**
+     * @brief tranpose of upstream gradient from d softmax
+     *
+     * @note (B, H, T, T)
+     *
+     * @param d_score_t location device
+     */
     float *d_score_t;
 
     // weights of Q, K and V

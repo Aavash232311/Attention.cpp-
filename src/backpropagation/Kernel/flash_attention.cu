@@ -215,6 +215,7 @@ __device__ __forceinline__ void ParallelReducer(float &localSum)
  */
 __global__ void LayerNormBackPropgationKernel(
     float *x,     // Shape (B, T, C)
+    float *dx,    // Shape (B, T, C)
     float *G,     // Shape (B, T, C) aftermath shape is this
     float *mc,    // mean cache (B*T, C)
     float *sdc,   // sdc cache (B*T,)
@@ -233,6 +234,8 @@ __global__ void LayerNormBackPropgationKernel(
     // skipping index formula
     float *x_row = x + batch_idx * (T * C) + row_idx * C;
     float *G_row = G + batch_idx * (T * C) + row_idx * C;
+
+     float *dx_row = dx + batch_idx * (T * C) + row_idx * C;
 
     int lane = threadIdx.x % 32;
     int warp_id = threadIdx.x / 32;
@@ -302,7 +305,7 @@ __global__ void LayerNormBackPropgationKernel(
         float curr_xhat = (x_row[i] - mean_val) / sqrtf(std_val * std_val + epsilon);
 
         float final_comp = first_component * (dl_x_hat - sum_term_1 - curr_xhat * sum_term_2);
-        x_row[i] = final_comp;
+        dx_row[i] = final_comp;
     }
 }
 
@@ -498,6 +501,7 @@ extern "C"
 
     void layernorm_backward(
         float *x,
+        float *dx,
         float *G,
         float *mc,
         float *sdc,
@@ -515,7 +519,7 @@ extern "C"
         cudaMemset(debta, 0, C * sizeof(float));
 
         LayerNormBackPropgationKernel<<<gridDim, blockDim>>>(
-            x, G, mc, sdc, gamma, dgamma, debta, B, T, C);
+            x, dx, G, mc, sdc, gamma, dgamma, debta, B, T, C);
 
         cudaDeviceSynchronize();
     }

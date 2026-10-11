@@ -80,6 +80,8 @@ class AttentionInterface
 
     float *dl_dw_out_device;
 
+    float *d_softmax_upstream;
+
     // GPU buffer for the autograd engine in the attention interface.
     FlashAttentionPointers modelParamaters;
 
@@ -168,6 +170,8 @@ class AttentionInterface
 
     float *d_weight_output_project;
 
+    float *dx;
+
 private:
     // ----------- TEMPORARY DEBUGGER SCRIPT ---------------------
 
@@ -217,7 +221,7 @@ public:
             batch_size,
             debug);
 
-        optimizer = std::make_unique<OptimizerDebugger>(1e-4, 0.0f, 0.9f, 0.999f, 1e-8f, debug);
+        optimizer = std::make_unique<OptimizerDebugger>(0.1, 0.0f, 0.9f, 0.999f, 1e-8f, debug);
 
         // pass in the derived class for proper inheritance
         autograd = std::make_unique<AutogradEngineDebuggerRelease>(
@@ -333,6 +337,10 @@ public:
         cudaMalloc((void **)&d_weight_v, d_model * d_model * sizeof(float));
 
         cudaMalloc((void **)&d_weight_output_project, d_model * d_model * sizeof(float));
+
+        cudaMalloc((void **)&d_softmax_upstream, batch_size * num_heads * seq_len * seq_len * sizeof(float));
+
+        cudaMalloc((void **)&dx, batch_size * seq_len * d_model * sizeof(float));
     }
 
     ~AttentionInterface()
@@ -362,7 +370,6 @@ public:
         cudaFree(S_device);
         cudaFree(P_device);
         cudaFree(O_device);
-
 
         cudaFree(V_T_device_out);
         cudaFree(P_T_device_out);
@@ -420,6 +427,10 @@ public:
         cudaFree(d_weight_v);
 
         cudaFree(d_weight_output_project);
+
+        cudaFree(d_softmax_upstream);
+
+        cudaFree(dx);
     }
 
     LinearParams getLmHeadParams()
@@ -519,16 +530,15 @@ public:
                 // }
                 modelParamaters.bias_lm_head = lm_head->getBaiasDevice();
 
-                // if (debug)
-                // {
-                //     std::cout << " After LM head " << std::endl;
-                //     this->utils->printLastOneOf3D(prob, batch_size, seq_len, vocab_size);
-                // }
+          
+                    std::cout << " LM head " << std::endl;
+                    this->utils->printLastOneOf3D(prob, batch_size, seq_len, vocab_size);
+             
 
                 softmaxAcrossProballityCrossEntropyLoss(prob, batch.y);
 
                 loss_per_batch += this->utils->averageFlatStrip2D(outCrossEntropyHost, batch_size * seq_len);
-              //  cout << "Loss per batch: " << this->utils->averageFlatStrip2D(outCrossEntropyHost, batch_size * seq_len) << endl;
+                //  cout << "Loss per batch: " << this->utils->averageFlatStrip2D(outCrossEntropyHost, batch_size * seq_len) << endl;
 
                 // if (debug)
                 // {
@@ -546,7 +556,7 @@ public:
                 modelParamaters.dl_dz_out_device = dl_dz_out_device;
                 modelParamaters.dl_dz_out_host = dl_dz_out_host;
 
-                modelParamaters.x_host = x;                                   // this h is the output of lm head Shape(B, T, vocab_size)
+                modelParamaters.x_host = x;                       // this h is the output of lm head Shape(B, T, vocab_size)
                 modelParamaters.x = attention->BorrowBTCDevice(); // (B, T, d_model) on device
                 modelParamaters.xt_device = ht_device;
 
@@ -558,7 +568,6 @@ public:
 
                 // these are just borrowed pointers
                 modelParamaters.wt_lm_head_deice = w_out_d;
-
 
                 modelParamaters.P_T_device_out = P_T_device_out;
                 modelParamaters.V_T_device_out = V_T_device_out;
@@ -614,6 +623,9 @@ public:
                 modelParamaters.d_embedding = d_embedding;
 
                 modelParamaters.d_weight_output_project = d_weight_output_project;
+                modelParamaters.d_softmax_upstream = d_softmax_upstream;
+
+                modelParamaters.dx = dx;
 
                 // because the backprops needs to be done for each epoch.
                 // we need to keep in mind that the things hurting performace like cuda malloc and everything declared
@@ -632,7 +644,7 @@ public:
                 //     free(dh);
                 // }
 
-             //   optimizer->invoke(modelParamaters, *adamMemConfig, epoch);
+                optimizer->invoke(modelParamaters, *adamMemConfig, epoch);
 
                 // check if something is off with AadamW on sufrace
 
@@ -646,7 +658,7 @@ public:
                 //     free(dh);
                 // }
 
-                debug = false;
+                // debug = false;
 
                 batch_count++;
             }
@@ -655,10 +667,10 @@ public:
 
             dataLoader->resetIterator(); // just the weird logic that I wrote.
 
-            if (!(debug))
-            {
-                std::cout << "Epoch: " << (i + 1) << " Loss: " << loss_per_batch << std::endl;
-            }
+            // if (!(debug))
+            // {
+            //     std::cout << "Epoch: " << (i + 1) << " Loss: " << loss_per_batch << std::endl;
+            // }
 
             loss += loss_per_batch;
         }

@@ -71,9 +71,6 @@ class DebugOptimizer(DebugFlashAttention):
             m_t = st["exp_avg"].flatten()
             v_t = st["exp_avg_sq"].flatten()
 
-            print("m_t and v_t at step: ", _)
-            print(f"m_t :{m_t}, \n v_t :{v_t}")
-
         st = optimizer.state[param]
         return param.detach(), st["exp_avg"].flatten(), st["exp_avg_sq"].flatten()
 
