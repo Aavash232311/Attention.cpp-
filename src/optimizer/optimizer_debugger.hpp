@@ -100,15 +100,15 @@ public:
         FlashAttentionPointers modelParamaters,
         AdamWMemConfig &config)
     {
-        DeviceToHost d_weight_q(modelParamaters.attention_head.device_WQ, config.d_model * config.d_model);
+        // DeviceToHost d_weight_q(modelParamaters.attention_head.device_WQ, config.d_model * config.d_model);
 
-        DeviceToHost m_d(config.dQ.m_d, config.d_model * config.d_model);
-        DeviceToHost v_d(config.dQ.v_d, config.d_model * config.d_model);
+        // DeviceToHost m_d(config.dQ.m_d, config.d_model * config.d_model);
+        // DeviceToHost v_d(config.dQ.v_d, config.d_model * config.d_model);
 
-        bulkRelease<float>(
-            {{d_weight_q.host_pointer, config.d_model * config.d_model, "d_weight_q_optimal.bin"},
-             {m_d.host_pointer, config.d_model * config.d_model, "m_d.bin"},
-             {v_d.host_pointer, config.d_model * config.d_model, "v_d.bin"}});
+        // bulkRelease<float>(
+        //     {{d_weight_q.host_pointer, config.d_model * config.d_model, "d_weight_q_optimal.bin"},
+        //      {m_d.host_pointer, config.d_model * config.d_model, "m_d.bin"},
+        //      {v_d.host_pointer, config.d_model * config.d_model, "v_d.bin"}});
     }
 
     // release updated weight at a snap

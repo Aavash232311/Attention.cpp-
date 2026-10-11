@@ -9,7 +9,6 @@
 #include <cuda_runtime.h>
 #include <curand_kernel.h>
 
-
 // Cross entropy tank
 // we will fuse everything here.
 __global__ void oneHotKernel(
@@ -27,7 +26,6 @@ __global__ void oneHotKernel(
         out[idx * width + label] = 1.0f;
     }
 }
-
 
 // this y is typically (B, T)
 
@@ -62,7 +60,6 @@ __global__ void crossEntropyLoss(
     // for each B,T shape you have 1 thats B,T
 }
 
-
 extern "C"
 {
     void CrossEntropy(
@@ -77,6 +74,8 @@ extern "C"
         int N = batch_size * seq_len;
         int threadsPerBlock = 256;
         int blocksPerGrid = (N + threadsPerBlock - 1) / threadsPerBlock;
+
+        cudaMemset(oneHotOut, 0, (size_t)N * vocab_size * sizeof(float));
 
         dim3 grid(blocksPerGrid);
         dim3 block(threadsPerBlock);

@@ -233,8 +233,8 @@ public:
 
         outputProj();
 
-        // Calls the backpropagation for the attention head items
-        opv_upstream_gradient({batch_size, seq_len, vocab_size});
+        // // Calls the backpropagation for the attention head items
+         opv_upstream_gradient({batch_size, seq_len, vocab_size});
         // Ignoring the FFN for now we will call the flash attention layer.
 
         // if (debug)
