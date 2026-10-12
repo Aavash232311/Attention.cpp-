@@ -581,4 +581,27 @@ public:
 
         return sum / N;
     }
+
+    template <typename T>
+    void checkBuf(const char *name, T *d, size_t n)
+    {
+        std::vector<float> h(n);
+        cudaMemcpy(h.data(), d, n * sizeof(T), cudaMemcpyDeviceToHost);
+        size_t nans = 0, infs = 0;
+        float mx = 0;
+        for (float v : h)
+        {
+            if (std::isnan(v))
+                nans++;
+            else if (std::isinf(v))
+                infs++;
+            else
+                mx = std::max(mx, std::fabs(v));
+        }
+
+        if (nans > 0 || infs > 0)
+        {
+            printf("%-22s nan=%zu inf=%zu max|x|=%g\n", name, nans, infs, mx);
+        }
+    }
 };

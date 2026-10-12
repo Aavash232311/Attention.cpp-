@@ -17,7 +17,7 @@ extern "C" void dbias(float *G, float *dbias, int B, int T, int C, bool sync);
 extern "C" void dl_dh_upstream(float *A, float *B, float *C, int a, int b, int c, int d, bool sync);
 extern "C" void ReformBNTH_BTC(float *arr, float *out, int batch_size, int seq_len, int d_model, int num_head, int head_dim);
 extern "C" void addThreeTensor(float *A, float *B, float *C, float *Out, int batch_size, int seq_len, int d_model);
-extern "C" void layernorm_backward(float *x, float* dx, float *G, float *mc, float *sdc, float *gamma, float *dgamma, float *dbeta, int B, int T, int C);
+extern "C" void layernorm_backward(float *x, float *dx, float *G, float *mc, float *sdc, float *gamma, float *dgamma, float *dbeta, int B, int T, int C);
 extern "C" void addTwoTensor(float *A, float *B, float *Out, int batch_size, int seq_len, int d_model);
 extern "C" void updateTokenEmbedding(float *G, float *d_emebdding, int *token_ids, int batch_size, int seq_len, int d_model, int vocab_size);
 extern "C" void dl_dw_upstream(float *deta, float *ht, float *out, int B, int T, int C, int vocab_size);
@@ -149,7 +149,6 @@ private:
         // pass in the compact shape (B,T,C)
         addThreeTensor(model_paramaters.dqWt, model_paramaters.dkWt, model_paramaters.dvWt, model_paramaters.G_x_hat, batch_size, seq_len, d_model);
 
-        
         /***
          * @warning the first arguement pointer is modified here.
          * Which might cause confusion and problems but it is what it is.
@@ -190,27 +189,26 @@ private:
             d_model,
             vocab_size);
 
-        // if (debug)
-        // {
-        //     // updated embedding
-        //     cout << "Embedding gradient first run" << endl;
+        // updated embedding
+        // cout << "Embedding gradient runs" << endl;
 
-        //     float *e = (float *)malloc(vocab_size * d_model * sizeof(float));
-        //     cudaMemcpy(e, model_paramaters.d_embedding, vocab_size * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        // float *e = (float *)malloc(vocab_size * d_model * sizeof(float));
+        // cudaMemcpy(e, model_paramaters.d_embedding, vocab_size * d_model * sizeof(float), cudaMemcpyDeviceToHost);
 
-        //     utils->printFlatArray2D(e, vocab_size, seq_len);
+        // utils->printFlatArray2D(e, vocab_size, seq_len);
 
-        //     free(e);
-        // }
+        // free(e);
 
         if (debug)
             pyDebuggerReleaseStage10();
     }
 
+    bool engine_run;
+
 public:
     FlashAttentionLinear(int d_model, int vocab_size, int num_heads,
-                         int seq_len, int batch_size, bool debug)
-        : AutoGradEngine(d_model, vocab_size, num_heads, seq_len, batch_size, debug)
+                         int seq_len, int batch_size, bool debug, bool engine_run)
+        : AutoGradEngine(d_model, vocab_size, num_heads, seq_len, batch_size, debug, engine_run)
     {
     }
 

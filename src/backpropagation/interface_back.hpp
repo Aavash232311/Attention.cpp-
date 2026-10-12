@@ -49,8 +49,6 @@ void DebugBuffer(size_t count, PrintFunc print)
 // The chain rule
 class AutoGradEngine
 {
-    // welcome to my calculas class
-
 protected:
     FlashAttentionPointers model_paramaters;
 
@@ -119,13 +117,15 @@ private:
     }
 
 public:
+    bool engine_run;
     AutoGradEngine(
         int d_model,
         int vocab_size,
         int num_heads,
         int seq_len,
         int batch_size,
-        bool debug)
+        bool debug,
+        bool engine_run)
     {
         this->d_model = d_model;
         this->vocab_size = vocab_size;
@@ -133,6 +133,7 @@ public:
         this->seq_len = seq_len;
         this->batch_size = batch_size;
         this->debug = debug;
+        this->engine_run = engine_run;
 
         this->head_dim = d_model / num_heads;
 
@@ -141,7 +142,8 @@ public:
             seq_len,
             d_model,
             vocab_size,
-            debug);
+            debug,
+            engine_run);
 
         // NOTE- Memory allocation in RAM or VRAM is done per epoch if done here
         // huritng the performace, allocate and re-use ones from the attention
@@ -182,6 +184,8 @@ public:
         //         vocab_size);
         // }
 
+        
+
         dl_dz_upstream_gradient(
             paramaters.y_actual, // Note:- these are on device
             paramaters.y_predicted,
@@ -190,6 +194,8 @@ public:
             batch_size,
             seq_len,
             vocab_size);
+
+
 
         // if (debug) {
         //     // before transpose the shape if (B, T, C)

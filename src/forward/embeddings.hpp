@@ -13,7 +13,6 @@
 #include "../include/cache_out.hpp"
 #include "../include/data_loader.hpp"
 
-
 extern "C" void positionalEmbeddings(float *out, int seq_len, int d_model);
 extern "C" void lookup(int *x, float *embeddings, float *C, int d_model, int seq_len, int batch_size, int vocab_size);
 extern "C" void addEmbeddings(float *lookedUpEmbeddings, float *sinosudialEncoding, float *C, int d_model, int seq_len, int batch_size);
@@ -73,7 +72,7 @@ public:
             // float *d_pe = (float *)malloc(d_model * seq_len * sizeof(float));
             // cudaMemcpy(d_pe, devicePositionalEncoding, seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
             // this->utils->printFlatArray2D(d_pe, seq_len, d_model);
-            // free(d_pe); // 9 hr of react dev hit me forgot to free
+            // free(d_pe);
         }
         else
         {
@@ -130,11 +129,10 @@ public:
 
         cudaMemcpy(addedEmbeddingsOut, deviceFinalEmbeddings, actual_batch * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
 
-        // if (debug)
-        // {
-        //     std::cout << " Added embeddings from embedding method " << std::endl;
-        //     this->utils->printFlatArray3D(addedEmbeddingsOut, actual_batch, seq_len, d_model);
-        // }
+   
+            // std::cout << " Added embeddings from embedding method " << std::endl;
+            // this->utils->printFlatArray3D(addedEmbeddingsOut, actual_batch, seq_len, d_model);
+        
 
         if (debug)
         {

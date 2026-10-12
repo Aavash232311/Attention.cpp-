@@ -238,8 +238,8 @@ private: // Note-: very limied kernel opreations here so for readability I am pa
 
 public:
     FlashAttention(int d_model, int vocab_size, int num_heads,
-                   int seq_len, int batch_size, bool debug)
-        : AutoGradEngine(d_model, vocab_size, num_heads, seq_len, batch_size, debug)
+                   int seq_len, int batch_size, bool debug, bool engine_run)
+        : AutoGradEngine(d_model, vocab_size, num_heads, seq_len, batch_size, debug, engine_run)
     {
     }
 
@@ -294,6 +294,7 @@ public:
             batch_size,
             d_model,
             seq_len);
+
 
         // now we are doing to multiuply P^T G and G V^T
 

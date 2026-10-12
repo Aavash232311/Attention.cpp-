@@ -172,6 +172,8 @@ class AttentionInterface
 
     float *dx;
 
+    bool engine_run;
+
 private:
     // ----------- TEMPORARY DEBUGGER SCRIPT ---------------------
 
@@ -199,7 +201,9 @@ public:
         int batch_size,
         int seq_len,
         bool drop_last,
-        const std::vector<int> &data, bool debug) : data(data)
+        const std::vector<int> &data,
+        bool debug,
+        bool engine_run = false) : data(data)
     {
         this->d_model = d_model;
         this->vocab_size = data.size();
@@ -208,6 +212,7 @@ public:
         this->drop_last = drop_last;
         this->num_heads = num_heads;
         this->debug = debug;
+        this->engine_run = engine_run;
 
         this->head_dim = d_model / num_heads;
 
@@ -230,7 +235,8 @@ public:
             num_heads,
             seq_len,
             batch_size,
-            debug);
+            debug,
+            engine_run);
 
         adamMemConfig = std::make_unique<AdamWMemConfig>(
             batch_size,
@@ -530,10 +536,8 @@ public:
                 // }
                 modelParamaters.bias_lm_head = lm_head->getBaiasDevice();
 
-          
-                    std::cout << " LM head " << std::endl;
-                    this->utils->printLastOneOf3D(prob, batch_size, seq_len, vocab_size);
-             
+                // std::cout << " LM head " << std::endl;
+                // this->utils->printLastOneOf3D(prob, batch_size, seq_len, vocab_size);
 
                 softmaxAcrossProballityCrossEntropyLoss(prob, batch.y);
 
@@ -667,10 +671,10 @@ public:
 
             dataLoader->resetIterator(); // just the weird logic that I wrote.
 
-            // if (!(debug))
-            // {
-            //     std::cout << "Epoch: " << (i + 1) << " Loss: " << loss_per_batch << std::endl;
-            // }
+            if (!(debug))
+            {
+                std::cout << "Epoch: " << (i + 1) << " Loss: " << loss_per_batch << std::endl;
+            }
 
             loss += loss_per_batch;
         }
