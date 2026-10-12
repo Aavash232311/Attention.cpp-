@@ -43,10 +43,17 @@ int main()
     auto start = std::chrono::high_resolution_clock::now();
 
     bool debug = false;
-    #ifdef DEBUG
-        debug = true;
-    #endif
+#ifdef DEBUG
+    debug = true;
+#endif
 
+    bool engine_run = false;
+
+#ifdef ENGINE_RUN
+    engine_run = true;
+#endif
+
+    
 
     int d_model = 32;
     int vocab_size; // that depends upon the data that you are passing.
@@ -90,7 +97,8 @@ int main()
         seq_len,
         drop_last,
         encodedData,
-        debug);
+        debug,
+        engine_run);
 
     model->train(epoch);
 

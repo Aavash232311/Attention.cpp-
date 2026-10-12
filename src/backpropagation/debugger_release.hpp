@@ -30,11 +30,11 @@ class AutogradEngineDebuggerRelease : public FlashAttention, public FlashAttenti
 {
 public:
     AutogradEngineDebuggerRelease(int d_model, int vocab_size, int num_heads,
-                                  int seq_len, int batch_size, bool debug)
-        : AutoGradEngine(d_model, vocab_size, num_heads, seq_len, batch_size, debug),
-          FlashAttention(d_model, vocab_size, num_heads, seq_len, batch_size, debug),
-          ContactResidualBack(d_model, vocab_size, num_heads, seq_len, batch_size, debug),
-          FlashAttentionLinear(d_model, vocab_size, num_heads, seq_len, batch_size, debug)
+                                  int seq_len, int batch_size, bool debug, bool engine_run)
+        : AutoGradEngine(d_model, vocab_size, num_heads, seq_len, batch_size, debug, engine_run),
+          FlashAttention(d_model, vocab_size, num_heads, seq_len, batch_size, debug, engine_run),
+          ContactResidualBack(d_model, vocab_size, num_heads, seq_len, batch_size, debug, engine_run),
+          FlashAttentionLinear(d_model, vocab_size, num_heads, seq_len, batch_size, debug, engine_run)
     {
     }
 

@@ -138,93 +138,93 @@ public:
             config.t,
             config.d_model);
 
-        // // QKV update
+        // QKV update
 
-        // // Q weight
+        // Q weight
 
-        // AdamWSTEP(
-        //     modelParamaters.attention_head.device_WQ,
-        //     modelParamaters.d_weight_q,
-        //     config.d_weight_q.m_d,
-        //     config.d_weight_q.v_d,
-        //     lr,
-        //     beta_1,
-        //     beta_2,
-        //     epsilon,
-        //     weight_decay,
-        //     config.t,
-        //     config.d_model * config.d_model);
+        AdamWSTEP(
+            modelParamaters.attention_head.device_WQ,
+            modelParamaters.d_weight_q,
+            config.d_weight_q.m_d,
+            config.d_weight_q.v_d,
+            lr,
+            beta_1,
+            beta_2,
+            epsilon,
+            weight_decay,
+            config.t,
+            config.d_model * config.d_model);
 
-        // // Q bias
+        // Q bias
 
-        // AdamWSTEP(
-        //     modelParamaters.attention_head.bias_q,
-        //     modelParamaters.d_bias_q,
-        //     config.d_bias_q.m_d,
-        //     config.d_bias_q.v_d,
-        //     lr,
-        //     beta_1,
-        //     beta_2,
-        //     epsilon,
-        //     weight_decay,
-        //     config.t,
-        //     config.d_model);
+        AdamWSTEP(
+            modelParamaters.attention_head.bias_q,
+            modelParamaters.d_bias_q,
+            config.d_bias_q.m_d,
+            config.d_bias_q.v_d,
+            lr,
+            beta_1,
+            beta_2,
+            epsilon,
+            weight_decay,
+            config.t,
+            config.d_model);
 
-        // // // K wieght
-        // AdamWSTEP(
-        //     modelParamaters.attention_head.device_WK,
-        //     modelParamaters.d_weight_k,
-        //     config.d_weight_k.m_d,
-        //     config.d_weight_k.v_d,
-        //     lr,
-        //     beta_1,
-        //     beta_2,
-        //     epsilon,
-        //     weight_decay,
-        //     config.t,
-        //     config.d_model * config.d_model);
+        // K wieght
+        AdamWSTEP(
+            modelParamaters.attention_head.device_WK,
+            modelParamaters.d_weight_k,
+            config.d_weight_k.m_d,
+            config.d_weight_k.v_d,
+            lr,
+            beta_1,
+            beta_2,
+            epsilon,
+            weight_decay,
+            config.t,
+            config.d_model * config.d_model);
 
-        // // K bias
-        // AdamWSTEP(
-        //     modelParamaters.attention_head.bias_k,
-        //     modelParamaters.d_bias_k,
-        //     config.d_bias_k.m_d,
-        //     config.d_bias_k.v_d,
-        //     lr,
-        //     beta_1,
-        //     beta_2,
-        //     epsilon,
-        //     weight_decay,
-        //     config.t,
-        //     config.d_model);
+        // K bias
+        AdamWSTEP(
+            modelParamaters.attention_head.bias_k,
+            modelParamaters.d_bias_k,
+            config.d_bias_k.m_d,
+            config.d_bias_k.v_d,
+            lr,
+            beta_1,
+            beta_2,
+            epsilon,
+            weight_decay,
+            config.t,
+            config.d_model);
 
-        // // v weight
-        // AdamWSTEP(
-        //     modelParamaters.attention_head.device_WV,
-        //     modelParamaters.d_weight_v,
-        //     config.d_weight_v.m_d,
-        //     config.d_weight_v.v_d,
-        //     lr,
-        //     beta_1,
-        //     beta_2,
-        //     epsilon,
-        //     weight_decay,
-        //     config.t,
-        //     config.d_model * config.d_model);
+        // v weight
+        AdamWSTEP(
+            modelParamaters.attention_head.device_WV,
+            modelParamaters.d_weight_v,
+            config.d_weight_v.m_d,
+            config.d_weight_v.v_d,
+            lr,
+            beta_1,
+            beta_2,
+            epsilon,
+            weight_decay,
+            config.t,
+            config.d_model * config.d_model);
 
-        // // v bias
-        // AdamWSTEP(
-        //     modelParamaters.attention_head.bias_v,
-        //     modelParamaters.d_bias_v,
-        //     config.d_bias_v.m_d,
-        //     config.d_bias_v.v_d,
-        //     lr,
-        //     beta_1,
-        //     beta_2,
-        //     epsilon,
-        //     weight_decay,
-        //     config.t,
-        //     config.d_model);
+        // v bias
+        AdamWSTEP(
+            modelParamaters.attention_head.bias_v,
+            modelParamaters.d_bias_v,
+            config.d_bias_v.m_d,
+            config.d_bias_v.v_d,
+            lr,
+            beta_1,
+            beta_2,
+            epsilon,
+            weight_decay,
+            config.t,
+            config.d_model);
 
         // // gamma and beta of the normalization paramater
 

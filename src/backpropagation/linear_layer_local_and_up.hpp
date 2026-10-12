@@ -28,19 +28,22 @@ public:
     int d_model;
     int vocab_size;
     bool debug;
+    bool engine_run;
 
     LinearLayerBackpropagation(
         int batch_size,
         int seq_len,
         int d_model,
         int vocab_size,
-        bool debug)
+        bool debug,
+        bool engine_run)
     {
         this->batch_size = batch_size;
         this->seq_len = seq_len;
         this->d_model = d_model;
         this->vocab_size = vocab_size;
         this->debug = debug;
+        this->engine_run = engine_run;
     }
 
     /**

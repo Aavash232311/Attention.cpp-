@@ -485,14 +485,14 @@ public:
         float *V = value->forward(x);
 
         Q = query->reshapeHead();
-        K = key->reshapeHead();
+        K = key->reshapeHead(); // returned values are in HOST
         V = value->reshapeHead(); // (B, n_head, T, head_dim) so no tranpose needed or adjustment needed
 
         // we need value for our autograd engine so we are storing the value mat as v here
         // not using V because it is already used.
         // std::memcpy(value_mat, V, batch_size * num_heads * seq_len * head_dim * sizeof(float));
 
-        cudaMemcpy(value_mat, V,  batch_size * num_heads * seq_len * head_dim * sizeof(float), cudaMemcpyDeviceToDevice);
+        cudaMemcpy(value_mat, V,  batch_size * num_heads * seq_len * head_dim * sizeof(float), cudaMemcpyHostToDevice);
 
         /*
             Note: the host pointer might be modified here, but the device pointer remains
@@ -582,7 +582,7 @@ public:
         cudaMemcpy(B_NUMHEAD_T_T, deviceSoftmaxOut, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
 
         // ------------ Stage Softmax(P) ----------------
-        cudaMemcpy(P, B_NUMHEAD_T_T, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyDeviceToDevice);
+        cudaMemcpy(P, deviceSoftmaxOut, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyDeviceToDevice);
 
         // deviceQKTSqrtD Shape(batch_size, n_head, T, T)
 
