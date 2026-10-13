@@ -66,6 +66,7 @@ public:
     template <typename T>
     void Print2DVector(const std::vector<std::vector<T>> &vec, bool shape_only = false)
     {
+
         if (shape_only == false)
         {
             for (const auto &row : vec)
@@ -156,8 +157,16 @@ public:
      *
      */
     template <typename T>
-    void printFlatArray2D(const T *arr, int seq_len, int d_model)
+    void printFlatArray2D(const T *arr, int seq_len, int d_model, std::string pointer_type = "host")
     {
+
+        T *h_arr = (T *)malloc(seq_len * d_model * sizeof(T));
+        if (pointer_type == "device")
+        {
+            cudaMemcpy(h_arr, arr, seq_len * d_model * sizeof(T), cudaMemcpyDeviceToHost);
+            arr = h_arr;
+        }
+
         const int M = 16;
 
         printf("tensor([\n");
@@ -181,6 +190,11 @@ public:
             printf("],\n");
         }
         printf("], shape=[%d, %d])\n", seq_len, d_model);
+
+        if (pointer_type == "device")
+        {
+            free(h_arr);
+        }
     }
 
     /**
@@ -198,8 +212,17 @@ public:
      * I will take a look at this one right here.
      */
     template <typename T>
-    void printFlatArray3D(const T *arr, int seq_len, int batch_size, int embed_dim, bool show_last_dim = false)
+    void printFlatArray3D(const T *arr, int seq_len, int batch_size, int embed_dim, bool show_last_dim = false, std::string pointer_type = "host")
     {
+
+        T *h_arr = nullptr;
+        if (pointer_type == "device")
+        {
+            h_arr = (T *)malloc(seq_len * batch_size * embed_dim * sizeof(T));
+            cudaMemcpy(h_arr, arr, seq_len * batch_size * embed_dim * sizeof(T), cudaMemcpyDeviceToHost);
+            arr = h_arr;
+        }
+
         const int M = 1024;
 
         printf("tensor([\n");
@@ -264,6 +287,11 @@ public:
                     printf("]\n");
                 }
             }
+        }
+
+        if (h_arr != nullptr)
+        {
+            free(h_arr);
         }
     }
 
@@ -386,13 +414,23 @@ public:
      *
      * @brief Used for debugging
      */
+    template <typename T>
     void print2DMatrixLastTwo(
-        float *arr,
+        T *arr,
         int batch_size,
         int n_head,
         int dim_row,
-        int dim_col)
+        int dim_col,
+        std::string pointer_type = "host")
     {
+
+        T *h_arr = (T *)malloc(batch_size * n_head * dim_row * dim_col * sizeof(T));
+        if (pointer_type == "device")
+        {
+            cudaMemcpy(h_arr, arr, batch_size * n_head * dim_row * dim_col * sizeof(T), cudaMemcpyDeviceToHost);
+            arr = h_arr;
+        }
+
         for (int b = 0; b < batch_size; b++)
         {
             for (int h = 0; h < n_head; h++)
@@ -411,6 +449,11 @@ public:
                 printf("\n");
             }
         }
+
+        if (pointer_type == "device")
+        {
+            free(h_arr);
+        }
     }
 
     /**
@@ -426,14 +469,25 @@ public:
      *
      * @brief Used for debugging
      */
+    template <typename T>
     void print2DMatrixLastTwoRect(
-        float *arr,
+        T *arr,
         int batch_size,
         int n_head,
         int seq_len,
         int head_dim,
-        const char *label = "Matrix")
+        const char *label = "Matrix",
+        std::string pointer_type = "host")
     {
+
+        T *h_arr = nullptr;
+        if (pointer_type == "device")
+        {
+            h_arr = (T *)malloc(batch_size * n_head * seq_len * head_dim * sizeof(T));
+            cudaMemcpy(h_arr, arr, batch_size * n_head * seq_len * head_dim * sizeof(T), cudaMemcpyDeviceToHost);
+            arr = h_arr;
+        }
+
         for (int b = 0; b < batch_size; b++)
         {
             for (int h = 0; h < n_head; h++)
@@ -452,6 +506,11 @@ public:
                 printf("\n");
             }
         }
+
+        if (h_arr != nullptr)
+        {
+            free(h_arr);
+        }
     }
 
     /**
@@ -467,8 +526,17 @@ public:
      * @brief Used for debugging
      */
     template <typename T>
-    void printFlarArray4D(T *data, int B, int S, int num_heads, int head_dim)
+    void printFlarArray4D(T *data, int B, int S, int num_heads, int head_dim, std::string pointer_type = "host")
     {
+        float *h_arr = nullptr;
+
+        if (pointer_type == "device")
+        {
+            h_arr = (T *)malloc(B * S * num_heads * head_dim * sizeof(T));
+            cudaMemcpy(h_arr, data, B * S * num_heads * head_dim * sizeof(T), cudaMemcpyDeviceToHost);
+            data = h_arr;
+        }
+
         std::cout << "shape: (" << B << ", " << S << ", " << num_heads << ", " << head_dim << ")\n";
         std::cout << "total elements: " << B * S * num_heads * head_dim << "\n\n";
 
@@ -484,6 +552,11 @@ public:
                     }
                     std::cout << "\n";
                 }
+
+        if (h_arr != nullptr)
+        {
+            free(h_arr);
+        }
     }
 
     /*

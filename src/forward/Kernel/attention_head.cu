@@ -480,8 +480,11 @@ extern "C"
         int batch_size,
         int num_heads)
     {
+
         dim3 block(16, 16);
-        dim3 grid((N + 15) / 16, (M + 15) / 16, batch_size * num_heads);
+        dim3 grid((M + block.x - 1) / block.x,
+                  (M + block.y - 1) / block.y,
+                  batch_size * num_heads);
 
         QKmatmulKernel<<<grid, block>>>(Q, Kt, out, M, N, num_heads);
 
@@ -575,12 +578,12 @@ extern "C"
       After:- Shape(batch_size, n_head, T, d_head)
     */
     void SwapNS(
+        float *arr, // Shape(batch_size, num_heads, seq_len, head_dim)
+        float *out, // Shape(batch_size,seq_len, num_head, head_dim)
+        int batch_size,
+        int seq_len,
         int num_heads,
         int head_dim,
-        float *arr,     // Shape(batch_size, num_heads, seq_len, head_dim)
-        float *out,     // Shape(batch_size,seq_len, num_head, head_dim)
-        int batch_size, // batch_size
-        int seq_len,    // seq_len
         bool reverse)
     {
         dim3 block(head_dim);
