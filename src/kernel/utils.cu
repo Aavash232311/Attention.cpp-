@@ -101,8 +101,62 @@ __global__ void TransposeKeyKernel(
         out[currentIdx] = arr[idxOut];
 }
 
+__global__ void TranposeMiddleTensor4Kernel(
+    float *arr, // (Batch_size, seq_len, num_head, head_dim)
+    float *out, // (Batch_size, num_head, seq_len, head_dim)
+    int batch_size,
+    int seq_len,
+    int num_head,
+    int head_dim)
+{
+    int h = blockIdx.x * blockDim.x + threadIdx.x;
+    int t = blockIdx.y * blockDim.y + threadIdx.y;
+    int b = blockIdx.z;
+
+    if (b >= batch_size || t >= seq_len || h >= num_head)
+        return;
+
+    for (int i = 0; i < head_dim; ++i)
+    {
+        int curr_idx = b * (seq_len * num_head * head_dim) +
+                       t * (num_head * head_dim) + h * (head_dim) + i;
+
+        int out_index = b * (num_head * seq_len * head_dim) +
+                        h * (seq_len * head_dim) + t * (head_dim) + i;
+
+        out[out_index] = arr[curr_idx];
+    }
+}
+
 extern "C"
 {
+
+    void TranposeMiddleTensor4(
+        float *arr, // (Batch_size, seq_len, num_head, head_dim)
+        float *out, // (Batch_size, num_head, seq_len, head_dim)
+        int batch_size,
+        int seq_len,
+        int num_head,
+        int head_dim)
+    {
+        dim3 block(16, 16, 1);
+
+        dim3 grid(
+            (num_head + block.x - 1) / block.x, // grid.x covers the num_head axis
+            (seq_len + block.y - 1) / block.y,  // grid.y covers the seq_len axis
+            batch_size                          // grid.z handles batch elements
+        );
+        TranposeMiddleTensor4Kernel<<<grid, block>>>(
+            arr,
+            out,
+            batch_size,
+            seq_len,
+            num_head,
+            head_dim);
+
+        cudaDeviceSynchronize();
+    }
+
     // We are re-using this kernel so that last dimension can be anything
     // does not have to seq_len batch_size whatever just whatever.
     void TransposeKey(

@@ -446,7 +446,6 @@ public:
 
     void softmaxAcrossProballityCrossEntropyLoss(float *probality, int *y)
     {
-        cudaMemcpy(DeviceSoftmaxBLin, probality, batch_size * seq_len * vocab_size * sizeof(float), cudaMemcpyHostToDevice);
         cudaMemcpy(deviceY, y, batch_size * seq_len * sizeof(int), cudaMemcpyHostToDevice);
 
         // this accounts for whatever we are doing softmax on being greater than 32 i.e warp size.
@@ -458,13 +457,11 @@ public:
             outCrossEntropyDevice: CE out flat list
         */
         softmax2D(
-            DeviceSoftmaxBLin,
+            probality,
             DeviceSoftmaxBLout,
             batch_size,
             seq_len,
             vocab_size);
-
-        cudaMemcpy(probality, DeviceSoftmaxBLout, batch_size * seq_len * vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
 
         CrossEntropy(
             DeviceSoftmaxBLout, // out from softmaxed
@@ -521,7 +518,7 @@ public:
                 // And there is an illegal memory access somewhere here.
                 float *x = attention->forward(batch);
 
-                float *prob = lm_head->forward(x); // Shape (B, T, vocab_size) x is not changed here.
+                float *prob = lm_head->forward(x, "device"); // Shape (B, T, vocab_size) x is not changed here.
 
                 modelParamaters.weight_lm_head = lm_head->getWeightDevice();
 
@@ -636,7 +633,7 @@ public:
                 // inside of the constructor of autograd engine is costly.
                 // there is tradeoff between making things modular and fusing everything together.
                 // Lets create a buffer for CPU/GPU memory in this class so that we dont overload the system and free it when the object is destroyed.
-                autograd->backprop(modelParamaters);
+               // autograd->backprop(modelParamaters);
 
                 // if (debug)
                 // {
@@ -648,7 +645,7 @@ public:
                 //     free(dh);
                 // }
 
-                optimizer->invoke(modelParamaters, *adamMemConfig, epoch);
+          //      optimizer->invoke(modelParamaters, *adamMemConfig, epoch);
 
                 // check if something is off with AadamW on sufrace
 
