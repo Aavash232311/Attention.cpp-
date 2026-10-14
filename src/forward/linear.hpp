@@ -122,9 +122,20 @@ public:
         cudaMalloc(&d_state_bias, fan_out * sizeof(curandState));
         cudaMalloc((void **)&device_bias, fan_out * sizeof(float));
 
+        // making sure these seeds are different
+        unsigned long seed_1 = static_cast<unsigned long>(
+            std::chrono::high_resolution_clock::now()
+                .time_since_epoch()
+                .count());
+
+        unsigned long seed_2 = static_cast<unsigned long>(
+            std::chrono::high_resolution_clock::now()
+                .time_since_epoch()
+                .count());
+
         // we need tow kernal launches here
-        KaimingInit(device_weight, d_state_weight, fan_in, fan_out, 42);
-        KaimingInit(device_bias, d_state_bias, 1, fan_out, 43);
+        KaimingInit(device_weight, d_state_weight, fan_in, fan_out, seed_1);
+        KaimingInit(device_bias, d_state_bias, 1, fan_out, seed_2);
 
         cudaMemcpy(weight, device_weight, fan_in * fan_out * sizeof(float), cudaMemcpyDeviceToHost);
         cudaMemcpy(bias, device_bias, fan_out * sizeof(float), cudaMemcpyDeviceToHost);
@@ -171,20 +182,9 @@ public:
 
         cudaMemcpy(ws, weighted_sum_device, seq_len * batch_size * f_out * sizeof(float), cudaMemcpyDeviceToHost);
 
-        if (debug)
-        {
-            std::cout << "Weight" << std::endl;
-            utils->printFlatArray2D(weight, f_in, f_out);
+        debug =
 
-            std::cout << "Bias" << std::endl;
-            utils->printFlatArray3D(bias, 1, 1, f_out);
-
-            utils->printFlatArray3D(ws, batch_size, seq_len, f_out, true);
-        }
-
-        debug = false;
-
-        dLinear = false;
+            dLinear = false;
 
         return weighted_sum_device;
     }

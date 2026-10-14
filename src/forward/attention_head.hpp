@@ -258,7 +258,7 @@ private:
     {
         float *h_key = (float *)malloc(n * sizeof(float));
 
-        cudaMemcpy(h_key, DeviceKt, n * sizeof(float), cudaMemcpyDeviceToDevice);
+        cudaMemcpy(h_key, key, n * sizeof(float), cudaMemcpyDeviceToHost);
 
         bulkRelease<float>(
             {{h_key, n * sizeof(float), name}});
@@ -326,8 +326,6 @@ public:
         float *K = key->forward(x);
         float *V = value->forward(x);
 
-        // if (debug)
-        //     utils->printFlatArray3D(Q, batch_size, seq_len, d_model, "device");
 
         // (B, T, C) to (batch_size, seq_len, num_head, head_dim)
         Q = query->reshapeHead();
@@ -336,6 +334,7 @@ public:
 
         if (debug)
             originalMultiHeadedQKVShapeDebugger(Q, K, V);
+
         // (batch_size, seq_len, num_head, head_dim) to (batch_size, num_head, seq_len, head_dim)
 
         Q = query->transposeMiddle4DTensor(); // (batch_size, num_head, seq_len, head_dim)
@@ -353,7 +352,12 @@ public:
 
         QKmatmul(Q, DeviceKt, DeviceQKT, seq_len, head_dim, batch_size, num_heads);
 
+        if (debug)
+            releaseBin(DeviceQKT, "qkt.bin", batch_size * seq_len * num_heads * seq_len);
+
         scalerDvisionAcrossMat(DeviceQKT); // sqrt(head_dim)
+
+
 
         // -1e9f
         masking(DeviceQKT, -INFINITY);

@@ -668,10 +668,8 @@ public:
 
             dataLoader->resetIterator(); // just the weird logic that I wrote.
 
-            if (!(debug))
-            {
                 std::cout << "Epoch: " << (i + 1) << " Loss: " << loss_per_batch << std::endl;
-            }
+            
 
             loss += loss_per_batch;
         }
