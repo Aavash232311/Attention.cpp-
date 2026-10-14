@@ -57,8 +57,9 @@ def quick_attention_check():
     print("v:", torch.allclose(v_reshaped, v_org.transpose(1, 2).contiguous(), atol=1e-6, rtol=1e-6))
 
     print("kt:", torch.allclose(kt, k_reshaped.transpose(-1, -2).contiguous(), atol=1e-6, rtol=1e-6))
-    print("q vs k differ:", not torch.allclose(q_reshaped, k_reshaped))
 
-    print(torch.allclose(q_reshaped, v_reshaped, atol=1e-6, rtol=1e-6))
+    check_qkt = torch.allclose(q_reshaped @ kt, qkt, atol=1e-6, rtol=1e-6)
+    print("Check QKT matmul: ", check_qkt)
 
-    print(q_reshaped[0])
+
+

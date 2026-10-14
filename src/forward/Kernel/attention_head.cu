@@ -540,6 +540,8 @@ extern "C"
         cudaDeviceSynchronize();
     }
 
+    // This is an assignment for me to better understand cuda
+    // make this in fixed thread launch
     void ScalerDvisionElem(
         float *arr, // (batch, n_head, seq_len, seq_len)
         int batch,

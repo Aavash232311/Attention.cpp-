@@ -48,8 +48,8 @@ __global__ void KaimingInitKernel(float *arr, curandState *state, int x, int y)
         return;
 
     // registers are ultra fast memory within SM's in the GPU
-    curandState local = state[idx]; // global mem to register ex pos 0
-    float std = 0.02f; // this is normal init change the name later. I noticed weights are larger so.
+    curandState local = state[idx];         // global mem to register ex pos 0
+    float std = 0.02f;                      // this is normal init change the name later. I noticed weights are larger so.
     arr[idx] = curand_normal(&local) * std; // local goes to pos 1
 
     // That opreation from global memory to register is physcially copied
@@ -73,7 +73,6 @@ __global__ void SetUpRnd(curandState *state, unsigned long seed, int max_threads
     curand_init(seed, idx, 0, &state[idx]); // we can think of this as creating an instance of random class inside of global device memory.
 }
 
-
 extern "C"
 {
 
@@ -89,7 +88,9 @@ extern "C"
         int blocks = (total + threads - 1) / threads;
 
         SetUpRnd<<<blocks, threads>>>(state, seed, total);
+        cudaDeviceSynchronize();
         KaimingInitKernel<<<blocks, threads>>>(arr, state, x, y);
+        cudaDeviceSynchronize();
     }
 
     void WeightedSum(
@@ -109,5 +110,4 @@ extern "C"
 
         cudaDeviceSynchronize();
     }
-
 }
