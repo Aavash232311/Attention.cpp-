@@ -174,6 +174,8 @@ class AttentionInterface
 
     bool engine_run;
 
+    float *attn_head_out;
+
 private:
     // ----------- TEMPORARY DEBUGGER SCRIPT ---------------------
 
@@ -347,6 +349,8 @@ public:
         cudaMalloc((void **)&d_softmax_upstream, batch_size * num_heads * seq_len * seq_len * sizeof(float));
 
         cudaMalloc((void **)&dx, batch_size * seq_len * d_model * sizeof(float));
+
+        cudaMalloc((void **)&attn_head_out, batch_size * seq_len * d_model * sizeof(float));
     }
 
     ~AttentionInterface()
@@ -437,6 +441,8 @@ public:
         cudaFree(d_softmax_upstream);
 
         cudaFree(dx);
+
+        cudaFree(attn_head_out);
     }
 
     LinearParams getLmHeadParams()
@@ -518,6 +524,8 @@ public:
                 // And there is an illegal memory access somewhere here.
                 float *x = attention->forward(batch);
 
+                cudaMemcpy(attn_head_out, x, batch_size * seq_len * sizeof(float), cudaMemcpyDeviceToDevice);
+
                 float *prob = lm_head->forward(x, "device"); // Shape (B, T, vocab_size) x is not changed here.
 
                 modelParamaters.weight_lm_head = lm_head->getWeightDevice();
@@ -557,8 +565,8 @@ public:
                 modelParamaters.dl_dz_out_device = dl_dz_out_device;
                 modelParamaters.dl_dz_out_host = dl_dz_out_host;
 
-                modelParamaters.x_host = x;                       // this h is the output of lm head Shape(B, T, vocab_size)
-                modelParamaters.x = attention->BorrowBTCDevice(); // (B, T, d_model) on device
+
+                modelParamaters.x = attn_head_out;      // (B, T, d_model) on device
                 modelParamaters.xt_device = ht_device;
 
                 modelParamaters.dbias_lm_head_pred = dbias_lm_head_pred;
@@ -633,7 +641,7 @@ public:
                 // inside of the constructor of autograd engine is costly.
                 // there is tradeoff between making things modular and fusing everything together.
                 // Lets create a buffer for CPU/GPU memory in this class so that we dont overload the system and free it when the object is destroyed.
-               // autograd->backprop(modelParamaters);
+                autograd->backprop(modelParamaters);
 
                 // if (debug)
                 // {
@@ -645,7 +653,7 @@ public:
                 //     free(dh);
                 // }
 
-          //      optimizer->invoke(modelParamaters, *adamMemConfig, epoch);
+                optimizer->invoke(modelParamaters, *adamMemConfig, epoch);
 
                 // check if something is off with AadamW on sufrace
 
@@ -668,8 +676,7 @@ public:
 
             dataLoader->resetIterator(); // just the weird logic that I wrote.
 
-                std::cout << "Epoch: " << (i + 1) << " Loss: " << loss_per_batch << std::endl;
-            
+            std::cout << "Epoch: " << (i + 1) << " Loss: " << loss_per_batch << std::endl;
 
             loss += loss_per_batch;
         }

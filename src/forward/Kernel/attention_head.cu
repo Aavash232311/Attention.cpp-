@@ -23,14 +23,13 @@ __global__ void ReformShapeKernel(
     int head_idx = blockIdx.x;
     int hd_idx = threadIdx.x;
 
-    int idx = batch_idx * (seq_len * num_head * head_dim) +
-              seq_idx * (num_head * head_dim) + head_idx * (head_dim) + hd_idx;
 
-    // d_model = num_head * head_dim
-    // (B, T, num_head * head_dim)
+    // input: (batch_size, num_head, seq_len, head_dim)
+    int idx = ((batch_idx * num_head + head_idx) * seq_len + seq_idx) * head_dim + hd_idx;
 
-    int c_idx = head_idx * head_dim + hd_idx;
-    int outIdx = batch_idx * (seq_len * d_model) + seq_idx * (d_model) + c_idx;
+    // output: (B, T, C), C = num_head * head_dim
+    int outIdx = (batch_idx * seq_len + seq_idx) * d_model + head_idx * head_dim + hd_idx;
+
     out[outIdx] = arr[idx];
 }
 
