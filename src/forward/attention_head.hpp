@@ -66,7 +66,7 @@ public:
     float *BTCHost = nullptr;
     float *BTCdevice;
     // same buffer for temp
-    float *tempDevice;
+
     float *resedualOutDevice;
 
     float *tempX;
@@ -101,6 +101,8 @@ public:
     float *output_project_xt;
 
     float *after_embedding_xt;
+
+    float *normalized_x;
 
     Attention(
         int d_model,
@@ -177,7 +179,6 @@ public:
 
         cudaMalloc((void **)&tempX, batch_size * seq_len * d_model * sizeof(float));
 
-        cudaMalloc((void **)&tempDevice, batch_size * seq_len * d_model * sizeof(float));
         cudaMalloc((void **)&resedualOutDevice, batch_size * seq_len * d_model * sizeof(float));
 
         // ---- S, P, O ---- are required for backpropagation allocate here according to reqired size.
@@ -189,6 +190,8 @@ public:
 
         // (B, n_head, T, head_dim) s
         cudaMalloc((void **)&value_mat, batch_size * num_heads * seq_len * head_dim * sizeof(float));
+        cudaMalloc((void **)&Q_cache, batch_size * num_heads * seq_len * head_dim * sizeof(float));
+        cudaMalloc((void **)&K_cache, batch_size * num_heads * seq_len * head_dim * sizeof(float));
 
         cudaMalloc((void **)&doutput_bias, d_model * sizeof(float));
         cudaMalloc((void **)&x_device, batch_size * seq_len * d_model * sizeof(float));
@@ -197,6 +200,8 @@ public:
         cudaMalloc((void **)&output_project_xt, batch_size * seq_len * d_model * sizeof(float));
 
         cudaMalloc((void **)&normalized_xt, batch_size * seq_len * d_model * sizeof(float));
+
+        cudaMalloc((void **)&normalized_x, batch_size * seq_len * d_model * sizeof(float));
     };
 
     ~Attention()
@@ -209,8 +214,6 @@ public:
         cudaFree(softmaxed_qkv);
 
         cudaFree(deviceQKTSqrtD);
-
-        cudaFree(tempDevice);
 
         (BTC_MULTI_HEAD_BUFFER_HOST != nullptr ? free(BTC_MULTI_HEAD_BUFFER_HOST) : void());
 
@@ -239,6 +242,10 @@ public:
         cudaFree(output_project_xt);
 
         cudaFree(normalized_xt);
+        cudaFree(normalized_x);
+
+        cudaFree(Q_cache);
+        cudaFree(K_cache);
     }
 
 private:
@@ -316,16 +323,27 @@ public:
     {
         float *x = embeddings->forward(currentBatch);
 
-        cudaMemcpy(tempX, x, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToDevice);
+        //     cudaMemcpy(tempX, x, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToDevice);
+
+        if (debug)
+            releaseBin(tempX, "temp_x.bin", batch_size * seq_len * d_model);
 
         // Layer normalization of x. Note: that the x pointer is modified.
         layerNorm->forward(x);
+
+        //    cudaMemcpy(normalized_x, x, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToDevice);
+
+        if (debug)
+        {
+            releaseBin(x, "layer_norm_forward.bin", batch_size * seq_len * d_model);
+            releaseBin(layerNorm->getGammaDevice(), "gamma_device.bin", d_model);
+            releaseBin(layerNorm->getBeta(), "beta_device.bin", d_model);
+        }
 
         // Linear transformation of QKV matrix
         float *Q = query->forward(x);
         float *K = key->forward(x);
         float *V = value->forward(x);
-
 
         // (B, T, C) to (batch_size, seq_len, num_head, head_dim)
         Q = query->reshapeHead();
@@ -340,6 +358,11 @@ public:
         Q = query->transposeMiddle4DTensor(); // (batch_size, num_head, seq_len, head_dim)
         K = key->transposeMiddle4DTensor();   // (batch_size, num_head, seq_len, head_dim)
         V = value->transposeMiddle4DTensor(); // (batch_size, num_head, seq_len, head_dim)
+
+        // QKV cache
+        cudaMemcpy(Q_cache, Q, batch_size * seq_len * num_heads * head_dim * sizeof(float), cudaMemcpyDeviceToDevice);
+        cudaMemcpy(K_cache, K, batch_size * seq_len * num_heads * head_dim * sizeof(float), cudaMemcpyDeviceToDevice);
+        cudaMemcpy(value_mat, V, batch_size * seq_len * num_heads * head_dim * sizeof(float), cudaMemcpyDeviceToDevice);
 
         if (debug)
             resehapedQKVShapeDebugger(Q, K, V);
@@ -357,12 +380,22 @@ public:
 
         scalerDvisionAcrossMat(DeviceQKT); // sqrt(head_dim)
 
-
+        if (debug)
+            releaseBin(DeviceQKT, "sqrt_d_head.bin", batch_size * seq_len * num_heads * seq_len);
 
         // -1e9f
         masking(DeviceQKT, -INFINITY);
 
+        if (debug)
+            releaseBin(DeviceQKT, "casual_masking.bin", batch_size * seq_len * num_heads * seq_len);
+
         softmax(DeviceQKT, deviceSoftmaxOut, batch_size * num_heads * seq_len * seq_len, seq_len, num_heads, batch_size);
+
+        // cache P = softmax(x)
+        //     cudaMemcpy(P, deviceSoftmaxOut, batch_size * seq_len * num_heads * seq_len * sizeof(float), cudaMemcpyDeviceToDevice);
+
+        if (debug)
+            releaseBin(deviceSoftmaxOut, "softmaxed_attn.bin", batch_size * seq_len * num_heads * seq_len);
 
         QKVMatmulFinal(
             deviceSoftmaxOut, // (batch_size, num_head, seq_len, seq_len)
@@ -373,13 +406,28 @@ public:
             num_heads,
             batch_size);
 
+        if (debug)
+            releaseBin(softmaxed_qkv, "attn_score.bin", batch_size * num_heads * seq_len * head_dim);
+
         float *reformed_tensor = ReformShape(softmaxed_qkv);
+
+        if (debug)
+            releaseBin(reformed_tensor, "re_shaped_multi_head.bin", batch_size * seq_len * d_model);
+
+        //    cudaMemcpy(output_porjection_x, reformed_tensor, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToDevice);
 
         float *projectedBTC = outputProj->forward(reformed_tensor, "device");
 
+        float *residual_out = addResidual(projectedBTC, tempX);
+
+        if (debug)
+            releaseBin(residual_out, "final_attn_out.bin", batch_size * seq_len * d_model);
+        if (debug)
+            releaseBin(projectedBTC, "out_put_proj.bin", batch_size * seq_len * d_model);
+
         debug = false;
 
-        return addResidual(projectedBTC, tempX);
+        return residual_out;
     };
 
     float *addResidual(float *input, float *temp)
@@ -388,29 +436,6 @@ public:
         vectorKernel(input, temp, resedualOutDevice, batch_size * seq_len * d_model);
 
         return resedualOutDevice;
-    }
-
-    float *BorrowBTCDevice()
-    {
-
-        /*
-        Engineer inside of me will have a hard time if I do not know what I am doing.
-        This is not a easy project to do. I promise. I PROMISE.
-
-        Now whats happenning here is our final.
-
-        BorrowBTCDevice brorrows this, Please forgive me (to myself) no body will ever read this.
-        THis is weid. but we will make it work anyhow.
-
-        BorrowBTCDevice() borrows this pointer as a final (B,T,C)
-        meaning BorrowBTCDevice() = attention(x) (B,T,C) tensor.
-
-        NOT NECESSARY SHDFJHSJDHSJD BUT JUST THE WAY I DID IT BEFORE;
-        */
-
-        cudaMemcpy(BTCdevice, BTCHost, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyHostToDevice);
-
-        return this->BTCdevice;
     }
 
     AttentionParamaters attentionParamaters; // just the reference so stack allocation is fine
@@ -448,7 +473,7 @@ public:
             Q_cache,
             K_cache,
 
-            tempDevice, // last pointer my guess is this wont be modified anytime soon.
+            tempX, // last pointer my guess is this wont be modified anytime soon.
             normalized_xt,
             layerNorm->getInputX(),
 

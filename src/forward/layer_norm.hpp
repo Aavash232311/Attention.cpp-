@@ -90,11 +90,9 @@ public:
         // second standard deviation
         // then normalize gama and beta are the learnable paramaters.
 
-        // copy x to device
-        cudaMemcpy(d_x, x, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyHostToDevice);
-        layerNormalization(d_x, d_gamma, d_beta, std_dev_cache, mean_cache, batch_size, seq_len, d_model);
-        cudaMemcpy(x, d_x, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
 
+        layerNormalization(d_x, d_gamma, d_beta, std_dev_cache, mean_cache, batch_size, seq_len, d_model);
+ 
         // if (debug)
         // {
         //     float *mean_host = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
