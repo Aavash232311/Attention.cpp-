@@ -104,6 +104,8 @@ public:
 
     float *normalized_x;
 
+    float *layer_norm_x;
+
     Attention(
         int d_model,
         int vocab_size,
@@ -202,6 +204,8 @@ public:
         cudaMalloc((void **)&normalized_xt, batch_size * seq_len * d_model * sizeof(float));
 
         cudaMalloc((void **)&normalized_x, batch_size * seq_len * d_model * sizeof(float));
+
+        cudaMalloc((void **)&layer_norm_x, batch_size * seq_len * d_model * sizeof(float));
     };
 
     ~Attention()
@@ -246,6 +250,8 @@ public:
 
         cudaFree(Q_cache);
         cudaFree(K_cache);
+
+        cudaFree(layer_norm_x);
     }
 
 private:
@@ -323,13 +329,15 @@ public:
     {
         float *x = embeddings->forward(currentBatch);
 
-        //     cudaMemcpy(tempX, x, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToDevice);
+        cudaMemcpy(tempX, x, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToDevice);
 
         if (debug)
             releaseBin(tempX, "temp_x.bin", batch_size * seq_len * d_model);
 
         // Layer normalization of x. Note: that the x pointer is modified.
         layerNorm->forward(x);
+
+        cudaMemcpy(layer_norm_x, x, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToDevice);
 
         //    cudaMemcpy(normalized_x, x, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToDevice);
 
@@ -416,7 +424,7 @@ public:
 
         //    cudaMemcpy(output_porjection_x, reformed_tensor, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToDevice);
 
-        float *projectedBTC = outputProj->forward(reformed_tensor, "device");
+        float *projectedBTC = outputProj->forward(reformed_tensor);
 
         float *residual_out = addResidual(projectedBTC, tempX);
 
@@ -443,25 +451,7 @@ public:
     AttentionParamaters getParamaters()
     {
 
-        LinearParams Q_p{query->getWeight(), query->getBias()};
-        LinearParams K_p{query->getWeight(), query->getBias()};
-        LinearParams V_p{query->getWeight(), query->getBias()};
-
-        LinearParams OutputProject_p{outputProj->getWeight(), outputProj->getWeight()};
-
-        LinearParams LayerNorm_p{layerNorm->getGamma(), layerNorm->getBetta()};
-
-        SingleEmbeddings emebdding_p{embeddings->getEmbeddingsParamaters()};
-
         return {
-            Q_p, // weight and bias of QKV
-            K_p,
-            V_p,
-
-            OutputProject_p,
-            LayerNorm_p,
-            emebdding_p,
-
             S, // actual value copied from QKV
             P,
             O,
@@ -475,7 +465,7 @@ public:
 
             tempX, // last pointer my guess is this wont be modified anytime soon.
             normalized_xt,
-            layerNorm->getInputX(),
+            layer_norm_x,
 
             layerNorm->getMean(),
             layerNorm->getStdDev(),

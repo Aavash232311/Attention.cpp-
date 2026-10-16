@@ -75,8 +75,7 @@ class AttentionInterface
 
     // LOW LEVEL BY DESIGN IS LITTLE BIT MESSY COMES WITH A TRADE OFFS ANYWAY
 
-    float *dl_dz_out_device;
-    float *dl_dz_out_host;
+    float *upstream_softmax_ce;
 
     float *dl_dw_out_device;
 
@@ -228,7 +227,7 @@ public:
             batch_size,
             debug);
 
-        optimizer = std::make_unique<OptimizerDebugger>(0.1, 0.0f, 0.9f, 0.999f, 1e-8f, debug);
+        optimizer = std::make_unique<OptimizerDebugger>(0.01, 0.0f, 0.9f, 0.999f, 1e-8f, debug);
 
         // pass in the derived class for proper inheritance
         autograd = std::make_unique<AutogradEngineDebuggerRelease>(
@@ -248,8 +247,7 @@ public:
             num_heads);
 
         // BUFFER CPU/GPU allocation for the auto grad engine
-        dl_dz_out_host = (float *)malloc(batch_size * seq_len * vocab_size * sizeof(float));
-        cudaMalloc((void **)&dl_dz_out_device, batch_size * seq_len * vocab_size * sizeof(float));
+        cudaMalloc((void **)&upstream_softmax_ce, batch_size * seq_len * vocab_size * sizeof(float));
 
         dataLoader = std::make_unique<DataLoader>(batch_size, data, seq_len, drop_last);
 
@@ -367,9 +365,7 @@ public:
 
         (outHotEncodeOut != nullptr ? free(outHotEncodeOut) : void());
 
-        cudaFree(dl_dz_out_device);
-        free(dl_dz_out_host);
-
+        cudaFree(upstream_softmax_ce);
         cudaFree(ht_device);
 
         cudaFree(dl_dw_out_device);
@@ -447,7 +443,7 @@ public:
 
     LinearParams getLmHeadParams()
     {
-        return LinearParams{lm_head->getWeight(), lm_head->getBias()};
+        return LinearParams{lm_head->getWeightDevice(), lm_head->getBaiasDevice()};
     }
 
     void softmaxAcrossProballityCrossEntropyLoss(float *probality, int *y)
@@ -526,7 +522,7 @@ public:
 
                 cudaMemcpy(attn_head_out, x, batch_size * seq_len * sizeof(float), cudaMemcpyDeviceToDevice);
 
-                float *prob = lm_head->forward(x, "device"); // Shape (B, T, vocab_size) x is not changed here.
+                float *prob = lm_head->forward(x); // Shape (B, T, vocab_size) x is not changed here.
 
                 modelParamaters.weight_lm_head = lm_head->getWeightDevice();
 
@@ -542,7 +538,7 @@ public:
                 modelParamaters.bias_lm_head = lm_head->getBaiasDevice();
 
                 // std::cout << " LM head " << std::endl;
-                // this->utils->printLastOneOf3D(prob, batch_size, seq_len, vocab_size);
+                // this->utils->printLastOneOf3D(prob, batch_size, seq_len, vocab_size, "device");
 
                 softmaxAcrossProballityCrossEntropyLoss(prob, batch.y);
 
@@ -557,16 +553,14 @@ public:
 
                 // ----------- Lets gather overall paramaters here ---------- //
                 modelParamaters.attention_head = attention->getParamaters();
-                modelParamaters.lm_head = LinearParams{lm_head->getWeight(), lm_head->getBias()};
+                modelParamaters.lm_head = LinearParams{lm_head->getWeightDevice(), lm_head->getBaiasDevice()};
                 modelParamaters.L = outCrossEntropyDevice;        // CE Out
                 modelParamaters.y_actual = yHotEncodeDeviceOut;   // (B, T, vocab_size) from actual
                 modelParamaters.y_predicted = DeviceSoftmaxBLout; // (B, T, vocab_size) to predicted proballity
 
-                modelParamaters.dl_dz_out_device = dl_dz_out_device;
-                modelParamaters.dl_dz_out_host = dl_dz_out_host;
+                modelParamaters.upsteram_out_softmax_ce = upstream_softmax_ce;
 
-
-                modelParamaters.x = attn_head_out;      // (B, T, d_model) on device
+                modelParamaters.final_attn_tensor = attn_head_out; // (B, T, d_model) on device
                 modelParamaters.xt_device = ht_device;
 
                 modelParamaters.dbias_lm_head_pred = dbias_lm_head_pred;
@@ -641,17 +635,18 @@ public:
                 // inside of the constructor of autograd engine is costly.
                 // there is tradeoff between making things modular and fusing everything together.
                 // Lets create a buffer for CPU/GPU memory in this class so that we dont overload the system and free it when the object is destroyed.
+
                 autograd->backprop(modelParamaters);
 
-                // if (debug)
-                // {
-                //     float *dh = (float *)malloc(d_model * d_model * sizeof(float));
-                //     cudaMemcpy(dh, modelParamaters.d_weight_q, d_model * d_model * sizeof(float), cudaMemcpyDeviceToHost);
-                //     cout << "Unupdated gradeint w" << endl;
-                //     utils->printFlatArray2D(dh, d_model, d_model);
+                // // if (debug)
+                // // {
+                // //     float *dh = (float *)malloc(d_model * d_model * sizeof(float));
+                // //     cudaMemcpy(dh, modelParamaters.d_weight_q, d_model * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+                // //     cout << "Unupdated gradeint w" << endl;
+                // //     utils->printFlatArray2D(dh, d_model, d_model);
 
-                //     free(dh);
-                // }
+                // //     free(dh);
+                // // }
 
                 optimizer->invoke(modelParamaters, *adamMemConfig, epoch);
 

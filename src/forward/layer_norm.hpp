@@ -22,7 +22,6 @@ class LayerNorm
     float *d_gamma;
     float *d_beta;
 
-    float *d_x;
 
     int batch_size;
     int seq_len;
@@ -56,7 +55,6 @@ public:
         // allocate memory for the device
         cudaMalloc((void **)&d_gamma, d_model * sizeof(float));
         cudaMalloc((void **)&d_beta, d_model * sizeof(float));
-        cudaMalloc((void **)&d_x, batch_size * seq_len * d_model * sizeof(float));
 
         // copy to device for both now, should be done in constuctor to get the performace advantage.
         // H2D copy
@@ -75,7 +73,6 @@ public:
 
         cudaFree(d_beta);
         cudaFree(d_gamma);
-        cudaFree(d_x);
 
         cudaFree(std_dev_cache);
         cudaFree(mean_cache);
@@ -91,7 +88,7 @@ public:
         // then normalize gama and beta are the learnable paramaters.
 
 
-        layerNormalization(d_x, d_gamma, d_beta, std_dev_cache, mean_cache, batch_size, seq_len, d_model);
+        layerNormalization(x, d_gamma, d_beta, std_dev_cache, mean_cache, batch_size, seq_len, d_model);
  
         // if (debug)
         // {
@@ -111,24 +108,9 @@ public:
         debug = false;
     }
 
-    float *getGammaHost()
-    {
-        return this->h_gamma; // of course these are tuneable.
-    }
-
     float *getGammaDevice() // for the most part we only care about whats insdie of the GPU
     {
         return this->d_gamma;
-    }
-
-    float *getGamma()
-    {
-        return this->h_gamma;
-    }
-
-    float *getBetta()
-    {
-        return this->h_beta;
     }
 
     float *getStdDev()
@@ -146,8 +128,4 @@ public:
         return this->d_beta;
     }
 
-    float *getInputX()
-    {
-        return this->d_x;
-    }
 };

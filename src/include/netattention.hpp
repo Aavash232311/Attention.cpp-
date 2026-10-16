@@ -15,7 +15,16 @@ struct NetAttentionParamaters
     // MAKE SURE THAT THSE ARE VARIABLES FROM THE DEVICE
     float *y_actual;
     float *y_predicted;
-    float *dl_dz_out_device;
+
+    /**
+     *
+     * @note upsteam gradient out from softmax + CE
+     *
+     * @param upsteram_out_softmax_ce location device
+     * @warning location is at the device
+     */
+    float *upsteram_out_softmax_ce;
+
     float *dl_dz_out_host; // upstream gradient dl/dz
 
     float *weight_lm_head;
@@ -47,7 +56,7 @@ struct NetAttentionParamaters
      * @param x location device
      * @warning location is at the device
      */
-    float *x;
+    float *final_attn_tensor;
 
     /**
      * x = attention(x)

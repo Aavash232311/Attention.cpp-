@@ -82,6 +82,8 @@ extern "C"
         // actual (B, T) to one-hot encoded (B, T, vocab_size)
         oneHotKernel<<<grid, block>>>(y, oneHotOut, N, vocab_size);
 
+        cudaDeviceSynchronize();
+
         crossEntropyLoss<<<grid, block>>>(x, y, lossOut, seq_len, vocab_size, N);
 
         cudaDeviceSynchronize();

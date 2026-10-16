@@ -25,9 +25,6 @@ class Linear
 
     float *h_mha;
 
-    float *d_x;
-    float *d_w;
-    float *d_b;
     float *weighted_sum_device;
 
     int f_in;
@@ -52,9 +49,6 @@ class Linear
     curandState *d_state_bias;
 
 public:
-    float *weight = nullptr;
-    float *bias = nullptr;
-
     Linear(int feature_in, int feature_out, int seq_len, int batch_size, int n_head, bool debug)
     {
         this->seq_len = seq_len;
@@ -71,14 +65,7 @@ public:
 
         this->ws = (float *)malloc(seq_len * batch_size * f_out * sizeof(float));
 
-        cudaMalloc((void **)&d_x, seq_len * batch_size * f_in * sizeof(float));
-        cudaMalloc((void **)&d_w, f_in * f_out * sizeof(float)); // (M, K)
-        cudaMalloc((void **)&d_b, f_out * sizeof(float));
         cudaMalloc((void **)&weighted_sum_device, seq_len * batch_size * f_out * sizeof(float));
-
-        // copy to the device, those allocated weight and biases.
-        cudaMemcpy(d_w, weight, f_in * f_out * sizeof(float), cudaMemcpyHostToDevice);
-        cudaMemcpy(d_b, bias, f_out * sizeof(float), cudaMemcpyHostToDevice);
 
         /// allocate the memory for multi headed attention Shape(B, T, num_heads, head_dim), JUST BTC when in
         cudaMalloc((void **)&device_hhead_in, seq_len * batch_size * f_out * sizeof(float)); // copy ws here
@@ -92,12 +79,7 @@ public:
     ~Linear()
     {
         free(ws);
-        free(weight);
-        free(bias);
 
-        cudaFree(d_x);
-        cudaFree(d_w);
-        cudaFree(d_b);
         cudaFree(weighted_sum_device);
 
         cudaFree(deviceArrInTranspose);
@@ -114,12 +96,11 @@ public:
     void LinearParams(int fan_in, int fan_out)
     {
 
-        weight = (float *)malloc(fan_in * fan_out * sizeof(float)); // these are out for both weight and biases.
-        bias = (float *)malloc(fan_out * sizeof(float));
-
-        cudaMalloc((void **)&device_weight, fan_in * fan_out * sizeof(float));
+        // To imporve the kernel performance this is pre-init and then used in the second kernel.
         cudaMalloc(&d_state_weight, fan_in * fan_out * sizeof(curandState));
         cudaMalloc(&d_state_bias, fan_out * sizeof(curandState));
+
+        cudaMalloc((void **)&device_weight, fan_in * fan_out * sizeof(float));
         cudaMalloc((void **)&device_bias, fan_out * sizeof(float));
 
         // making sure these seeds are different
@@ -136,34 +117,11 @@ public:
         // we need tow kernal launches here
         KaimingInit(device_weight, d_state_weight, fan_in, fan_out, seed_1);
         KaimingInit(device_bias, d_state_bias, 1, fan_out, seed_2);
-
-        cudaMemcpy(weight, device_weight, fan_in * fan_out * sizeof(float), cudaMemcpyDeviceToHost);
-        cudaMemcpy(bias, device_bias, fan_out * sizeof(float), cudaMemcpyDeviceToHost);
-
-        // if (!(debug))
-        // {
-        //     std::cout << "Weight" << std::endl;
-        //     utils->printFlatArray2D(weight, fan_in, fan_out);
-        //     std::cout << "Bias" << std::endl;
-        //     utils->printFlatArray2D(this->bias, fan_out, 1);
-        //     std::cout << "Fan in: " << fan_in << " Fan out: " << fan_out << std::endl;
-        // }
-    }
-
-    float *getBias()
-    {
-        // get bias from derive
-        return this->bias;
     }
 
     float *getBaiasDevice()
     {
-        return this->d_b;
-    }
-
-    float *getWeight()
-    {
-        return this->weight;
+        return this->device_bias;
     }
 
     float *getWeightDevice()
@@ -171,33 +129,24 @@ public:
         return this->device_weight;
     }
 
-    float *forward(float *val)
-    {
-        this->x = val;
-        int m = batch_size * seq_len;
-
-        cudaMemcpy(d_x, x, seq_len * batch_size * f_in * sizeof(float), cudaMemcpyHostToDevice);
-
-        WeightedSum(d_x, d_w, d_b, weighted_sum_device, m, f_in, f_out);
-
-        cudaMemcpy(ws, weighted_sum_device, seq_len * batch_size * f_out * sizeof(float), cudaMemcpyDeviceToHost);
-
-        debug =
-
-            dLinear = false;
-
-        return weighted_sum_device;
-    }
-
-    float *forward(float *val, std::string type)
-    {
-        WeightedSum(val, d_w, d_b, weighted_sum_device, batch_size * seq_len, f_in, f_out);
-        return weighted_sum_device;
-    }
-
     float *getMultiHeadedDeivce()
     {
         return this->mhead_out_device;
+    }
+
+
+    /**
+     *
+     * @class forward()
+     * @brief expects BTC tenosr for Linear transformation
+     *
+     * @warning  Expects a device pointer
+     * @return (Linear transformed tensor)
+     */
+    float *forward(float *val)
+    {
+        WeightedSum(val, device_weight, device_bias, weighted_sum_device, batch_size * seq_len, f_in, f_out);
+        return weighted_sum_device;
     }
 
     /**
