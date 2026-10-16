@@ -578,10 +578,19 @@ public:
     }
 
     template <typename T>
-    void printLastOneOf3D(const T *arr, int D0, int D1, int D2)
+    void printLastOneOf3D(const T *arr, int D0, int D1, int D2,  std::string pointer_type = "host")
     {
         int i = D0 - 1; // last batch
         int j = D1 - 1; // last row
+
+        float *d_arr = nullptr;
+
+        if (pointer_type == "device")
+        {
+            d_arr = (float *)malloc(D0 * D1 * D2 * sizeof(T));
+            cudaMemcpy(d_arr, arr, D0 * D1 * D2 * sizeof(T), cudaMemcpyDeviceToHost);
+            arr = d_arr;
+        }
 
         std::cout << "[";
         for (int k = 0; k < D2; ++k)
@@ -592,6 +601,11 @@ public:
                 std::cout << ", ";
         }
         std::cout << "]\n";
+
+        if (pointer_type == "device")
+        {
+            free(d_arr);
+        }
     }
 
     // THIS IS FOR PRINTHING ALL THE ROWS OF ONE HOT ENCODED ARRAY

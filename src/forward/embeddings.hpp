@@ -38,7 +38,6 @@ public:
 
     // Initlize memory here, in a method that is frequently called is more costly.
     float *lookedUpEmbeddings = nullptr;
-    float *addedEmbeddingsOut = nullptr;
 
     float *hostEmbeddings;
 
@@ -85,8 +84,6 @@ public:
         int sizeTokenEmbeddings = seq_len * batch_size * d_model * sizeof(float);
 
         lookedUpEmbeddings = (float *)malloc(sizeFinalEmbeddings);
-        addedEmbeddingsOut = (float *)malloc(sizeFinalEmbeddings); // this is the out.
-
         // copy to GPU memory
         // copy embeddings to the GPU after making int flat
         cudaMalloc((void **)&deviceEmbeddings, vocab_size * d_model * sizeof(float));
@@ -103,7 +100,6 @@ public:
     ~Embeddings()
     {
         (lookedUpEmbeddings != nullptr ? free(lookedUpEmbeddings) : void());
-        (addedEmbeddingsOut != nullptr ? free(addedEmbeddingsOut) : void());
 
         delete[] hostEmbeddings;
 
@@ -115,6 +111,18 @@ public:
         cudaFree(lookupDeviceOut);
     }
 
+    /**
+     * @class Embeddings
+     * @brief Embedding forward, token embeddings and positional encoding.
+     *
+     *
+     * @param currentBatch batch (B, T) from the host.
+     *
+     * @warning  returns BTC tensor from the device
+     * @returns returns BTC tensor from the device
+     * @author Avash Lamichhane
+     *
+     */
     float *forward(Batch currentBatch)
     {
         // THIS SIZE MIGHT CHANGE ACCORDING TO THE DROP LAST PARAMATER AND WE NEED TO KEEP TRACK OF THIS.
@@ -127,42 +135,33 @@ public:
         // Now this result gets added
         addEmbeddings(lookupDeviceOut, devicePositionalEncoding, deviceFinalEmbeddings, d_model, seq_len, actual_batch);
 
-        cudaMemcpy(addedEmbeddingsOut, deviceFinalEmbeddings, actual_batch * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
-
-   
-            // std::cout << " Added embeddings from embedding method " << std::endl;
-            // this->utils->printFlatArray3D(addedEmbeddingsOut, actual_batch, seq_len, d_model);
-        
+        // std::cout << " Added embeddings from embedding method " << std::endl;
+        // this->utils->printFlatArray3D(addedEmbeddingsOut, actual_batch, seq_len, d_model);
 
         if (debug)
         {
-            // lets release that x from C++, this happens once
-            // but we must release it because python needs that.
+            // // lets release that x from C++, this happens once
+            // // but we must release it because python needs that.
 
-            releaseFile( // 1 item of a batch
-                "x.bin",
-                hostX,
-                actual_batch * seq_len);
+            // releaseFile( // 1 item of a batch
+            //     "x.bin",
+            //     hostX,
+            //     actual_batch * seq_len);
 
-            // release net embeddings to a binary file
-            releaseFile(
-                "embedding.bin",
-                addedEmbeddingsOut,
-                actual_batch * seq_len * d_model);
+            // // release net embeddings to a binary file
+            // releaseFile(
+            //     "embedding.bin",
+            //     addedEmbeddingsOut,
+            //     actual_batch * seq_len * d_model);
         }
 
         debug = false;
-        return addedEmbeddingsOut;
+        return deviceFinalEmbeddings;
     }
 
     float *getFinalEmbeddingDevice()
     {
         return this->deviceFinalEmbeddings;
-    }
-
-    float *getEmbeddingsParamaters()
-    {
-        return this->hostEmbeddings;
     }
 
     float *getEmbeddingParmaterDevice()

@@ -97,7 +97,6 @@ private:
         float *actual,            // (B, T, vocab_size) on device
         float *predicted,         // (B, T, vocab_size) on device
         float *delta,             // (B, T, vocab_size) on device upstream gradient
-        float *delta_host,
         int B,
         int T,
         int vocab_size)
@@ -111,9 +110,6 @@ private:
             T,
             vocab_size);
 
-        // upstream gradient to host, we can keep this in the device but we will fix this later, first goal is to get the result right
-        cudaMemcpy(delta_host, delta, B * T * vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
-        // delta_host = partial L / partial z
     }
 
 public:
@@ -189,8 +185,7 @@ public:
         dl_dz_upstream_gradient(
             paramaters.y_actual, // Note:- these are on device
             paramaters.y_predicted,
-            paramaters.dl_dz_out_device, // delta
-            paramaters.dl_dz_out_host,   // writes DELTA HERE
+            paramaters.upsteram_out_softmax_ce, // delta
             batch_size,
             seq_len,
             vocab_size);
@@ -221,8 +216,8 @@ public:
         }
 
         linearBack->backward(
-            paramaters.x,
-            model_paramaters.dl_dz_out_device,
+            paramaters.final_attn_tensor,
+            model_paramaters.upsteram_out_softmax_ce,
             paramaters.weight_lm_head,
             paramaters.wt_lm_head_deice,
             paramaters.xt_device,

@@ -10,15 +10,7 @@
 // todo: add a production grade comment after a single working prototype comes into play
 struct AttentionParamaters
 {
-    LinearParams Q_params;
-    LinearParams K_params;
-    LinearParams V_params;
 
-    LinearParams Projection;
-
-    LinearParams LayerNorm;
-
-    SingleEmbeddings Embeddings;
 
     float *S;
 
