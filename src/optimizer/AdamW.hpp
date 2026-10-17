@@ -35,7 +35,7 @@ class AdamW
 {
 
 public:
-    bool debug = false;
+    bool debug = true;
 
     float lr;
     float weight_decay;
@@ -80,6 +80,12 @@ public:
 
         // lm head weight and bias
 
+        if (debug)
+        {
+            cout << "Gradient in weight lm head " << endl;
+            utils->printFlatArray2D(modelParamaters.weight_lm_head, config.d_model, config.d_model, "device");
+        }
+
         // weight for lm head
         AdamWSTEP(
             modelParamaters.weight_lm_head,
@@ -93,6 +99,12 @@ public:
             weight_decay,
             config.t,
             config.d_model * config.vocab_size);
+
+        if (debug)
+        {
+            cout << "Gradient out weight lm head " << endl;
+            utils->printFlatArray2D(modelParamaters.dweight_lm_head, config.d_model, config.d_model, "device");
+        }
 
         // bias for lm head
         AdamWSTEP(
@@ -272,6 +284,8 @@ public:
             config.vocab_size * config.d_model);
 
         cudaDeviceSynchronize();
+
+        debug = false;
 
         config.t++;
     }

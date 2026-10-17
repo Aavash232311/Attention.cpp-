@@ -12,6 +12,8 @@ from debug.debug_optimizer import DebugOptimizer
 from binary_reader.hyperparamaters import read_hyperparamaters
 
 from debug.quick_binary_check_forward import quick_attention_check
+from Analysis.plots import Analysis
+
 
 
 
@@ -26,8 +28,8 @@ from debug.quick_binary_check_forward import quick_attention_check
     just focuses on mathematical operations.
  '''
 # Make sure we are able to read C++ project directory from here
-os.chdir(Path.cwd().parent)
-quick_attention_check()
+# os.chdir(Path.cwd().parent)
+# quick_attention_check()
 
 # Read release hyperparameters, compiles the C++ and releases the hyperparamaters.
 # d_model, vocab_size, batch_size, seq_len, num_heads = read_hyperparamaters()

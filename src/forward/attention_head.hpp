@@ -339,8 +339,6 @@ public:
 
         cudaMemcpy(layer_norm_x, x, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToDevice);
 
-        //    cudaMemcpy(normalized_x, x, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToDevice);
-
         if (debug)
         {
             releaseBin(x, "layer_norm_forward.bin", batch_size * seq_len * d_model);
@@ -358,8 +356,14 @@ public:
         K = key->reshapeHead();
         V = value->reshapeHead();
 
+        // release one weight to check what's happenning here.
+        // weights are generated equally right
+
         if (debug)
+        {
+            releaseBin(query->getWeightDevice(), "attn_weight_q.bin", d_model * d_model);
             originalMultiHeadedQKVShapeDebugger(Q, K, V);
+        }
 
         // (batch_size, seq_len, num_head, head_dim) to (batch_size, num_head, seq_len, head_dim)
 
