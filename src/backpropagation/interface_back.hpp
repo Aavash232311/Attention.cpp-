@@ -64,7 +64,7 @@ protected:
 
     // ---------- Handy methods -----------
     std::unique_ptr<Utility> utils = std::make_unique<Utility>();
-        std::unique_ptr<LinearLayerBackpropagation> linearBack;
+    std::unique_ptr<LinearLayerBackpropagation> linearBack;
 
 private:
     // ----------- TEMPORARY DEBUGGER SCRIPT ---------------------
@@ -109,7 +109,6 @@ private:
             B,
             T,
             vocab_size);
-
     }
 
 public:
@@ -180,8 +179,6 @@ public:
         //         vocab_size);
         // }
 
-        
-
         dl_dz_upstream_gradient(
             paramaters.y_actual, // Note:- these are on device
             paramaters.y_predicted,
@@ -189,8 +186,6 @@ public:
             batch_size,
             seq_len,
             vocab_size);
-
-
 
         // if (debug) {
         //     // before transpose the shape if (B, T, C)
@@ -224,6 +219,7 @@ public:
             paramaters.dweight_lm_head,
             paramaters.dbias_lm_head_pred,
             paramaters.dl_dh_output,
+            true,
             true);
 
         if (debug)
@@ -235,7 +231,7 @@ public:
         outputProj();
 
         // // Calls the backpropagation for the attention head items
-         opv_upstream_gradient({batch_size, seq_len, vocab_size});
+        opv_upstream_gradient({batch_size, seq_len, vocab_size});
         // Ignoring the FFN for now we will call the flash attention layer.
 
         // if (debug)

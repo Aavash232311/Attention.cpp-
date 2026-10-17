@@ -636,7 +636,7 @@ public:
                 // there is tradeoff between making things modular and fusing everything together.
                 // Lets create a buffer for CPU/GPU memory in this class so that we dont overload the system and free it when the object is destroyed.
 
-                autograd->backprop(modelParamaters);
+              autograd->backprop(modelParamaters);
 
                 // // if (debug)
                 // // {
@@ -648,7 +648,7 @@ public:
                 // //     free(dh);
                 // // }
 
-                optimizer->invoke(modelParamaters, *adamMemConfig, epoch);
+               optimizer->invoke(modelParamaters, *adamMemConfig, epoch);
 
                 // check if something is off with AadamW on sufrace
 
@@ -671,7 +671,7 @@ public:
 
             dataLoader->resetIterator(); // just the weird logic that I wrote.
 
-            std::cout << "Epoch: " << (i + 1) << " Loss: " << loss_per_batch << std::endl;
+     //       std::cout << "Epoch: " << (i + 1) << " Loss: " << loss_per_batch << std::endl;
 
             loss += loss_per_batch;
         }
