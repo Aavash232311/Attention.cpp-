@@ -1,8 +1,6 @@
 #pragma once
 #include <iostream>
 
-
-
 using namespace std;
 
 // in the phase of learning I did it myway shouldn't be like this,
@@ -10,25 +8,19 @@ using namespace std;
 class Initializer
 {
 public:
-    vector<std::vector<float>> HeInit(int vocabSize, int dModel)
+    vector<vector<float>> EmbeddingInit(int vocabSize, int dModel)
     {
-        float stdDev = std::sqrt(2.0f / dModel);
+        std::mt19937 gen(1234);
+        float stdDev = 0.02f; // GPT-style; use std::sqrt(2.0f / dModel) for He init
 
-        vector<vector<float>> tokenEmbeddings(
-            vocabSize,
-            vector<float>(dModel));
+        normal_distribution<float> gaussian(0.0f, stdDev);
 
-        random_device rd;
-        mt19937 gen(rd());
-        normal_distribution<float> gaussian(0.0f, 1.0f); // mean 0 std dev
+        vector<vector<float>> tokenEmbeddings(vocabSize, vector<float>(dModel));
 
         for (int i = 0; i < vocabSize; ++i)
-        {
             for (int j = 0; j < dModel; ++j)
-            {
                 tokenEmbeddings[i][j] = gaussian(gen);
-            }
-        }
+
         return tokenEmbeddings;
     }
 };

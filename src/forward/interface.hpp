@@ -68,9 +68,6 @@ class AttentionInterface
 
     int *deviceY;
 
-    // ------ For testing one hot encode kernel --------- //
-    float *outHotEncodeOut = nullptr;
-
     std::unique_ptr<AutogradEngineDebuggerRelease> autograd;
 
     // LOW LEVEL BY DESIGN IS LITTLE BIT MESSY COMES WITH A TRADE OFFS ANYWAY
@@ -268,9 +265,6 @@ public:
 
         outCrossEntropyHost = (float *)malloc(batch_size * seq_len * vocab_size * sizeof(float));
 
-        // -- For testing if the kernel launch for one hot works, we have wrapped two kernels for the cross entropy loss REMOVE FOR PERFORMACE
-        outHotEncodeOut = (float *)malloc(batch_size * seq_len * vocab_size * sizeof(float));
-
         cudaMalloc((void **)&ht_device, batch_size * seq_len * vocab_size * sizeof(float));
 
         cudaMalloc((void **)&dl_dw_out_device, d_model * vocab_size * sizeof(float));
@@ -362,8 +356,6 @@ public:
         cudaFree(deviceY);
 
         free(outCrossEntropyHost);
-
-        (outHotEncodeOut != nullptr ? free(outHotEncodeOut) : void());
 
         cudaFree(upstream_softmax_ce);
         cudaFree(ht_device);
@@ -458,12 +450,24 @@ public:
             yHotEncodeDeviceOut: Actual Y (B, T) -> (B, T, vocab_size)
             outCrossEntropyDevice: CE out flat list
         */
+
+        if (debug)
+        {
+            utils->printFlatArray3D(probality, batch_size, seq_len, vocab_size, "device");
+        }
+
+        if (debug)
+            attention->releaseBin(probality, "lm_head_out.bin", batch_size * seq_len * vocab_size);
+
         softmax2D(
             probality,
             DeviceSoftmaxBLout,
             batch_size,
             seq_len,
             vocab_size);
+
+        if (debug)
+            attention->releaseBin(DeviceSoftmaxBLout, "ce_softmax_out.bin", batch_size * seq_len * vocab_size);
 
         CrossEntropy(
             DeviceSoftmaxBLout, // out from softmaxed
@@ -475,8 +479,6 @@ public:
             vocab_size);
 
         cudaMemcpy(outCrossEntropyHost, outCrossEntropyDevice, batch_size * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
-
-        cudaMemcpy(outHotEncodeOut, yHotEncodeDeviceOut, batch_size * vocab_size * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
 
         if (debug)
         {
@@ -636,7 +638,7 @@ public:
                 // there is tradeoff between making things modular and fusing everything together.
                 // Lets create a buffer for CPU/GPU memory in this class so that we dont overload the system and free it when the object is destroyed.
 
-              autograd->backprop(modelParamaters);
+                autograd->backprop(modelParamaters);
 
                 // // if (debug)
                 // // {
@@ -648,7 +650,7 @@ public:
                 // //     free(dh);
                 // // }
 
-               optimizer->invoke(modelParamaters, *adamMemConfig, epoch);
+                optimizer->invoke(modelParamaters, *adamMemConfig, epoch);
 
                 // check if something is off with AadamW on sufrace
 
@@ -671,7 +673,7 @@ public:
 
             dataLoader->resetIterator(); // just the weird logic that I wrote.
 
-     //       std::cout << "Epoch: " << (i + 1) << " Loss: " << loss_per_batch << std::endl;
+            // std::cout << "Epoch: " << (i + 1) << " Loss: " << loss_per_batch << std::endl;
 
             loss += loss_per_batch;
         }

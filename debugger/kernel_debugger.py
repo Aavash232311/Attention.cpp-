@@ -12,10 +12,6 @@ from debug.debug_optimizer import DebugOptimizer
 from binary_reader.hyperparamaters import read_hyperparamaters
 
 from debug.quick_binary_check_forward import quick_attention_check
-from Analysis.plots import Analysis
-
-
-
 
 ''' Automated debugging script for CUDA kernel in attention.cpp
     File based dump verification.
@@ -27,29 +23,33 @@ from Analysis.plots import Analysis
     Wont notice things like infinitely large values in a kernel sometimes,
     just focuses on mathematical operations.
  '''
+
 # Make sure we are able to read C++ project directory from here
-# os.chdir(Path.cwd().parent)
-# quick_attention_check()
+os.chdir(Path.cwd().parent)
 
-# Read release hyperparameters, compiles the C++ and releases the hyperparamaters.
+
+# After hyperparamaters are loaded, we need to load those binary that the C++ releases
+os.system("nvcc --time=build_time.log -DDEBUG -DDRUN -I. src/main.cpp src/kernel/utils.cu src/forward/Kernel/layer_norm.cu src/forward/Kernel/embedding.cu src/forward/Kernel/linear.cu src/forward/Kernel/attention_head.cu src/forward/Kernel/interface.cu src/backpropagation/Kernel/interface_back.cu src/backpropagation/Kernel/flash_attention.cu src/optimizer/Kernel/AdamW.cu -o src/bin/attention")
+os.system("./src/bin/attention") # this releases the forward pass binary as well
+
+
+print("\n")
+print('*' * 60)
+print("Forward pass ")
+print('*' * 60)
+quick_attention_check()
+
+# # Read release hyperparameters, compiles the C++ and releases the hyperparamaters.
 # d_model, vocab_size, batch_size, seq_len, num_heads = read_hyperparamaters()
-
-
-
-
-# token_emb = release_token_embeddings(d_model=d_model, seq_len=seq_len, vocab_size=vocab_size, batch_size=batch_size)
-#
-# # After hyperparamaters are loaded, we need to load those binary that the C++ releases
-# os.system("nvcc --time=build_time.log -DDEBUG -DDRUN -I. src/main.cpp src/kernel/utils.cu src/forward/Kernel/layer_norm.cu src/forward/Kernel/embedding.cu src/forward/Kernel/linear.cu src/forward/Kernel/attention_head.cu src/forward/Kernel/interface.cu src/backpropagation/Kernel/interface_back.cu src/backpropagation/Kernel/flash_attention.cu src/optimizer/Kernel/AdamW.cu -o src/bin/attention")
-# os.system("./src/bin/attention")
 #
 # print("\n")
 # print('*' * 60)
-# print("Forward pass ")
-# print('*' * 60)
 #
-# # check if embedding component of the transformer is okay.
-# verify_embeddings(d_model=d_model, seq_len=seq_len, batch_size=batch_size, vocab_size=vocab_size, num_heads=num_heads, token_embeddings=token_emb)
+# # token_emb = release_token_embeddings(d_model=d_model, seq_len=seq_len, vocab_size=vocab_size, batch_size=batch_size)
+# #
+# #
+# # # check if embedding component of the transformer is okay.
+# # verify_embeddings(d_model=d_model, seq_len=seq_len, batch_size=batch_size, vocab_size=vocab_size, num_heads=num_heads, token_embeddings=token_emb)
 #
 # torch.set_printoptions(precision=4)
 #
@@ -68,5 +68,3 @@ from Analysis.plots import Analysis
 # optimizer_debugger = DebugOptimizer(d_model=d_model, seq_len=seq_len, batch_size=batch_size, vocab_size=vocab_size, num_heads=num_heads, head_dim=d_model // num_heads, dl_dw=G)
 # optimizer_debugger.optimizer_health()
 #
-# # Also note if somewhere in forward pass or early execution sequence if something is
-# # corrupted then executing this will take more time than usual
