@@ -25,7 +25,6 @@ struct NetAttentionParamaters
      */
     float *upsteram_out_softmax_ce;
 
-    float *dl_dz_out_host; // upstream gradient dl/dz
 
     float *weight_lm_head;
 
@@ -38,15 +37,6 @@ struct NetAttentionParamaters
      */
     float *dweight_lm_head;
 
-    /**
-     * x = attention(x)
-     *
-     * @note x is the tensor right after attenton layer
-     *
-     * @param x location host
-     * @warning location is at the HOST
-     */
-    float *x_host;
 
     /**
      * x = attention(x)

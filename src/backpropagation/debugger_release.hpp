@@ -56,27 +56,33 @@ public:
         // y_actual and y_predicted are in GDDR VRAM
         // for debugging its fine to allocate here and free it
 
-        // float *host_y_actual = (float *)malloc(batch_size * seq_len * vocab_size * sizeof(float));
-        // float *host_y_prediced = (float *)malloc(batch_size * seq_len * vocab_size * sizeof(float));
+        float *host_y_actual = (float *)malloc(batch_size * seq_len * vocab_size * sizeof(float));
+        float *host_y_prediced = (float *)malloc(batch_size * seq_len * vocab_size * sizeof(float));
+        float *dl_dz_out_host = (float *)malloc(batch_size * seq_len * vocab_size * sizeof(float));
+        float *x_host = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
 
-        // // happens only one that that also for debugging so it should be fine.
-        // cudaMemcpy(host_y_actual, model_paramaters.y_actual, batch_size * seq_len * vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
-        // cudaMemcpy(host_y_prediced, model_paramaters.y_predicted, batch_size * seq_len * vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
+        // happens only one that that also for debugging so it should be fine.
+        cudaMemcpy(host_y_actual, model_paramaters.y_actual, batch_size * seq_len * vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(host_y_prediced, model_paramaters.y_predicted, batch_size * seq_len * vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(dl_dz_out_host, model_paramaters.upsteram_out_softmax_ce, batch_size * seq_len * vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(x_host, model_paramaters.final_attn_tensor, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
 
-        // bulkRelease<float>({{host_y_actual, batch_size * seq_len * vocab_size, "y_actual.bin"},
-        //                     {host_y_prediced, batch_size * seq_len * vocab_size, "y_prediced.bin"},
-        //                     {model_paramaters.dl_dz_out_host, batch_size * seq_len * vocab_size, "delta.bin"},
-        //                     {model_paramaters.x_host, batch_size * seq_len * d_model, "h.bin"}});
+        bulkRelease<float>({{host_y_actual, batch_size * seq_len * vocab_size, "y_actual.bin"},
+                            {host_y_prediced, batch_size * seq_len * vocab_size, "y_prediced.bin"},
+                            {dl_dz_out_host, batch_size * seq_len * vocab_size, "delta.bin"},
+                            {x_host, batch_size * seq_len * d_model, "h.bin"}});
 
-        // // if (debug)
-        // // {
-        // //     cout << "delta" << endl;
-        // //     utils->printFlatArray3D(model_paramaters.dl_dz_out_host, batch_size,
-        // //     seq_len, vocab_size);
-        // // }
+        // if (debug)
+        // {
+        //     cout << "delta" << endl;
+        //     utils->printFlatArray3D(model_paramaters.dl_dz_out_host, batch_size,
+        //     seq_len, vocab_size);
+        // }
 
-        // free(host_y_actual);
-        // free(host_y_prediced);
+        free(host_y_actual);
+        free(host_y_prediced);
+        free(dl_dz_out_host);
+        free(x_host);
     }
 
     /**
@@ -103,50 +109,50 @@ public:
 
     void pyDebuggerReleaseStage3()
     {
-        // copy w^T to host for the python script to read the binary
+       // copy w^T to host for the python script to read the binary
 
-        // float *dl_dw_host = (float *)malloc(batch_size * d_model * vocab_size * sizeof(float));
-        // cudaMemcpy(dl_dw_host, model_paramaters.dweight_lm_head, d_model * vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
+        float *dl_dw_host = (float *)malloc(batch_size * d_model * vocab_size * sizeof(float));
+        cudaMemcpy(dl_dw_host, model_paramaters.dweight_lm_head, d_model * vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
 
-        // // In this fix, we have ignored the host memory as it is expensive to move data back and fourth
-        // // between the PCIE express BUS.
+        // In this fix, we have ignored the host memory as it is expensive to move data back and fourth
+        // between the PCIE express BUS.
 
-        // // YOU'RE A GOD DAMN GENIOUS
+        // YOU'RE A GOD DAMN GENIOUS
 
-        // float *transposed_h = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
+        float *transposed_h = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
 
-        // cudaMemcpy(transposed_h, model_paramaters.xt_device, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(transposed_h, model_paramaters.xt_device, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
 
-        // // This H is the one that got transpoed and my head is spinning round and round here.
-        // bulkRelease<float>({
-        //     {transposed_h, batch_size * seq_len * d_model, "h_t.bin"},
-        // }); // out delta h^T binary
+        // This H is the one that got transpoed and my head is spinning round and round here.
+        bulkRelease<float>({
+            {transposed_h, batch_size * seq_len * d_model, "h_t.bin"},
+        }); // out delta h^T binary
 
-        // free(transposed_h);
+        free(transposed_h);
 
-        // float *wt_host = (float *)malloc(d_model * vocab_size * sizeof(float));
-        // float *dl_dh_host = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
-        // float *bias_lm_head_host = (float *)malloc(vocab_size * sizeof(float));
-        // float *w_host = (float *)malloc(d_model * vocab_size * sizeof(float));
+        float *wt_host = (float *)malloc(d_model * vocab_size * sizeof(float));
+        float *dl_dh_host = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
+        float *bias_lm_head_host = (float *)malloc(vocab_size * sizeof(float));
+        float *w_host = (float *)malloc(d_model * vocab_size * sizeof(float));
 
-        // cudaMemcpy(wt_host, model_paramaters.wt_lm_head_deice, d_model * vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
-        // cudaMemcpy(dl_dh_host, model_paramaters.dl_dh_output, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
-        // cudaMemcpy(bias_lm_head_host, model_paramaters.dbias_lm_head_pred, vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
-        // cudaMemcpy(w_host, model_paramaters.weight_lm_head, vocab_size * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(wt_host, model_paramaters.wt_lm_head_deice, d_model * vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(dl_dh_host, model_paramaters.dl_dh_output, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(bias_lm_head_host, model_paramaters.dbias_lm_head_pred, vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(w_host, model_paramaters.weight_lm_head, vocab_size * d_model * sizeof(float), cudaMemcpyDeviceToHost);
 
-        // bulkRelease<float>(
-        //     {{wt_host, d_model * vocab_size, "wt.bin"},
-        //      {w_host, d_model * vocab_size, "w.bin"},
-        //      // for now this is the G shape (B, T, C)
-        //      {dl_dh_host, batch_size * seq_len * d_model, "dl_dh.bin"},
-        //      {bias_lm_head_host, vocab_size, "dbias_lm_head.bin"},
-        //      {dl_dw_host, d_model * vocab_size, "dl_dw.bin"}});
+        bulkRelease<float>(
+            {{wt_host, d_model * vocab_size, "wt.bin"},
+             {w_host, d_model * vocab_size, "w.bin"},
+             // for now this is the G shape (B, T, C)
+             {dl_dh_host, batch_size * seq_len * d_model, "dl_dh.bin"},
+             {bias_lm_head_host, vocab_size, "dbias_lm_head.bin"},
+             {dl_dw_host, d_model * vocab_size, "dl_dw.bin"}});
 
-        // free(dl_dh_host);
-        // free(wt_host);
-        // free(bias_lm_head_host);
-        // free(w_host);
-        // free(dl_dw_host);
+        free(dl_dh_host);
+        free(wt_host);
+        free(bias_lm_head_host);
+        free(w_host);
+        free(dl_dw_host);
     }
 
     /**
@@ -162,20 +168,20 @@ public:
     void pyDebuggerReleaseStage4()
     {
 
-        // float *P_host = (float *)malloc(batch_size * num_heads * seq_len * seq_len * sizeof(float));
-        // float *V_host = (float *)malloc(batch_size * num_heads * seq_len * head_dim * sizeof(float));
+        float *P_host = (float *)malloc(batch_size * num_heads * seq_len * seq_len * sizeof(float));
+        float *V_host = (float *)malloc(batch_size * num_heads * seq_len * head_dim * sizeof(float));
 
-        // cudaMemcpy(P_host, model_paramaters.attention_head.P, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
-        // cudaMemcpy(V_host, model_paramaters.attention_head.V, batch_size * num_heads * seq_len * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(P_host, model_paramaters.attention_head.P, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(V_host, model_paramaters.attention_head.V, batch_size * num_heads * seq_len * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
 
-        // bulkRelease<float>(
-        //     {
-        //         {P_host, batch_size * num_heads * seq_len * seq_len, "P.bin"},
-        //         {V_host, batch_size * num_heads * seq_len * head_dim, "V.bin"},
-        //     });
+        bulkRelease<float>(
+            {
+                {P_host, batch_size * num_heads * seq_len * seq_len, "P.bin"},
+                {V_host, batch_size * num_heads * seq_len * head_dim, "V.bin"},
+            });
 
-        // free(P_host);
-        // free(V_host);
+        free(P_host);
+        free(V_host);
     }
 
     /**
@@ -189,35 +195,35 @@ public:
      */
     void pyDebuggerReleaseStage5()
     {
-        // // Uncontact_G_Upstream is in Global mem
-        // float *UncG_host = (float *)malloc(batch_size * seq_len * num_heads * head_dim * sizeof(float));
-        // float *dP = (float *)malloc(batch_size * num_heads * seq_len * seq_len * sizeof(float));
-        // float *dV = (float *)malloc(batch_size * num_heads * seq_len * head_dim * sizeof(float));
+        // Uncontact_G_Upstream is in Global mem
+        float *UncG_host = (float *)malloc(batch_size * seq_len * num_heads * head_dim * sizeof(float));
+        float *dP = (float *)malloc(batch_size * num_heads * seq_len * seq_len * sizeof(float));
+        float *dV = (float *)malloc(batch_size * num_heads * seq_len * head_dim * sizeof(float));
 
-        // float *Pt = (float *)malloc(batch_size * num_heads * seq_len * seq_len * sizeof(float));
-        // float *Vt = (float *)malloc(batch_size * num_heads * head_dim * seq_len * sizeof(float));
+        float *Pt = (float *)malloc(batch_size * num_heads * seq_len * seq_len * sizeof(float));
+        float *Vt = (float *)malloc(batch_size * num_heads * head_dim * seq_len * sizeof(float));
 
-        // cudaMemcpy(UncG_host, model_paramaters.Uncontact_G_Upstream, batch_size * seq_len * num_heads * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
-        // cudaMemcpy(dP, model_paramaters.dP, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
-        // cudaMemcpy(dV, model_paramaters.dV, batch_size * num_heads * seq_len * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(UncG_host, model_paramaters.Uncontact_G_Upstream, batch_size * seq_len * num_heads * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(dP, model_paramaters.dP, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(dV, model_paramaters.dV, batch_size * num_heads * seq_len * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
 
-        // cudaMemcpy(Pt, model_paramaters.P_T_device_out, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
-        // cudaMemcpy(Vt, model_paramaters.V_T_device_out, batch_size * num_heads * head_dim * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(Pt, model_paramaters.P_T_device_out, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(Vt, model_paramaters.V_T_device_out, batch_size * num_heads * head_dim * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
 
-        // bulkRelease<float>(
-        //     {{Pt, batch_size * num_heads * seq_len * seq_len, "pt.bin"},
-        //      {Vt, batch_size * num_heads * head_dim * seq_len, "vt.bin"}, // keep in mind of the transposed shape here
-        //      {UncG_host, batch_size * seq_len * num_heads * head_dim, "G_uncontact.bin"},
-        //      {dP, batch_size * num_heads * seq_len * seq_len, "dp.bin"},
-        //      {dV, batch_size * num_heads * seq_len * head_dim, "dv.bin"}});
+        bulkRelease<float>(
+            {{Pt, batch_size * num_heads * seq_len * seq_len, "pt.bin"},
+             {Vt, batch_size * num_heads * head_dim * seq_len, "vt.bin"}, // keep in mind of the transposed shape here
+             {UncG_host, batch_size * seq_len * num_heads * head_dim, "G_uncontact.bin"},
+             {dP, batch_size * num_heads * seq_len * seq_len, "dp.bin"},
+             {dV, batch_size * num_heads * seq_len * head_dim, "dv.bin"}});
 
-        // // after part I release we are going to release
-        // free(UncG_host);
-        // free(dP);
-        // free(dV);
+        // after part I release we are going to release
+        free(UncG_host);
+        free(dP);
+        free(dV);
 
-        // free(Pt);
-        // free(Vt);
+        free(Pt);
+        free(Vt);
     }
     /**
      * @class pyDebuggerReleaseStage6
@@ -229,27 +235,27 @@ public:
 
     void pyDebuggerReleaseStage6()
     {
-        // float *G = (float *)malloc(batch_size * num_heads * seq_len * seq_len * sizeof(float));
-        // cudaMemcpy(G, model_paramaters.d_softmax_upstream, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
+        float *G = (float *)malloc(batch_size * num_heads * seq_len * seq_len * sizeof(float));
+        cudaMemcpy(G, model_paramaters.d_softmax_upstream, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
 
-        // // Note:- in P = softmax(S)
-        // // Normal to see bunch of zeros because of softmax
-        // // make sure the row sums to one
+        // Note:- in P = softmax(S)
+        // Normal to see bunch of zeros because of softmax
+        // make sure the row sums to one
 
-        // // this gets called only when debugger flag is on remember?
-        // // std::cout << "From the kernel itself " << std::endl;
-        // // utils->print2DMatrixLastTwo(
+        // this gets called only when debugger flag is on remember?
+        // std::cout << "From the kernel itself " << std::endl;
+        // utils->print2DMatrixLastTwo(
 
-        // //     G,
-        // //     batch_size,
-        // //     num_heads,
-        // //     seq_len,
-        // //     seq_len);
+        //     G,
+        //     batch_size,
+        //     num_heads,
+        //     seq_len,
+        //     seq_len);
 
-        // bulkRelease<float>(
-        //     {{G, batch_size * num_heads * seq_len * seq_len * sizeof(float), "softmax_upstream.bin"}});
+        bulkRelease<float>(
+            {{G, batch_size * num_heads * seq_len * seq_len * sizeof(float), "softmax_upstream.bin"}});
 
-        // free(G);
+        free(G);
     }
 
     /**
@@ -263,46 +269,46 @@ public:
 
     void pyDebuggerReleaseStage7()
     {
-        // float *dQ_host = (float *)malloc(batch_size * seq_len * num_heads * head_dim * sizeof(float));
-        // float *dK_host = (float *)malloc(batch_size * seq_len * num_heads * head_dim * sizeof(float));
+        float *dQ_host = (float *)malloc(batch_size * seq_len * num_heads * head_dim * sizeof(float));
+        float *dK_host = (float *)malloc(batch_size * seq_len * num_heads * head_dim * sizeof(float));
 
-        // float *Q_host = (float *)malloc(batch_size * seq_len * num_heads * head_dim * sizeof(float));
-        // float *K_host = (float *)malloc(batch_size * seq_len * num_heads * head_dim * sizeof(float));
-        // float *d_score_t = (float *)malloc(batch_size * num_heads * seq_len * seq_len * sizeof(float));
+        float *Q_host = (float *)malloc(batch_size * seq_len * num_heads * head_dim * sizeof(float));
+        float *K_host = (float *)malloc(batch_size * seq_len * num_heads * head_dim * sizeof(float));
+        float *d_score_t = (float *)malloc(batch_size * num_heads * seq_len * seq_len * sizeof(float));
 
-        // float *mean_host = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
-        // float *std_dev_host = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
-        // float *gamma_host = (float *)malloc(d_model * sizeof(float));
+        float *mean_host = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
+        float *std_dev_host = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
+        float *gamma_host = (float *)malloc(d_model * sizeof(float));
 
-        // cudaMemcpy(dQ_host, model_paramaters.dQ, batch_size * seq_len * num_heads * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
-        // cudaMemcpy(dK_host, model_paramaters.dK, batch_size * seq_len * num_heads * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
-        // cudaMemcpy(Q_host, model_paramaters.attention_head.Q_cache, batch_size * seq_len * num_heads * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
-        // cudaMemcpy(K_host, model_paramaters.attention_head.K_cache, batch_size * seq_len * num_heads * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
-        // cudaMemcpy(d_score_t, model_paramaters.d_score_t, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(dQ_host, model_paramaters.dQ, batch_size * seq_len * num_heads * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(dK_host, model_paramaters.dK, batch_size * seq_len * num_heads * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(Q_host, model_paramaters.attention_head.Q_cache, batch_size * seq_len * num_heads * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(K_host, model_paramaters.attention_head.K_cache, batch_size * seq_len * num_heads * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(d_score_t, model_paramaters.d_score_t, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
 
-        // cudaMemcpy(mean_host, model_paramaters.attention_head.mean_cache, batch_size * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
-        // cudaMemcpy(std_dev_host, model_paramaters.attention_head.std_dev_cache, batch_size * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
-        // cudaMemcpy(gamma_host, model_paramaters.attention_head.gamma, d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(mean_host, model_paramaters.attention_head.mean_cache, batch_size * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(std_dev_host, model_paramaters.attention_head.std_dev_cache, batch_size * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(gamma_host, model_paramaters.attention_head.gamma, d_model * sizeof(float), cudaMemcpyDeviceToHost);
 
-        // bulkRelease<float>(
-        //     {{dQ_host, batch_size * seq_len * num_heads * head_dim, "dq.bin"},
-        //      {dK_host, batch_size * seq_len * num_heads * head_dim, "dk.bin"},
-        //      {Q_host, batch_size * seq_len * num_heads * head_dim, "q.bin"},
-        //      {K_host, batch_size * seq_len * num_heads * head_dim, "k.bin"},
-        //      {mean_host, batch_size * seq_len, "mean_cache.bin"},
-        //      {std_dev_host, batch_size * seq_len, "std_dev_cache.bin"},
-        //      {gamma_host, d_model * sizeof(float), "gamma_host.bin"},
-        //      {d_score_t, batch_size * num_heads * seq_len * seq_len, "d_score_t.bin"}});
+        bulkRelease<float>(
+            {{dQ_host, batch_size * seq_len * num_heads * head_dim, "dq.bin"},
+             {dK_host, batch_size * seq_len * num_heads * head_dim, "dk.bin"},
+             {Q_host, batch_size * seq_len * num_heads * head_dim, "q.bin"},
+             {K_host, batch_size * seq_len * num_heads * head_dim, "k.bin"},
+             {mean_host, batch_size * seq_len, "mean_cache.bin"},
+             {std_dev_host, batch_size * seq_len, "std_dev_cache.bin"},
+             {gamma_host, d_model * sizeof(float), "gamma_host.bin"},
+             {d_score_t, batch_size * num_heads * seq_len * seq_len, "d_score_t.bin"}});
 
-        // free(d_score_t);
-        // free(dQ_host);
-        // free(Q_host);
-        // free(K_host);
-        // free(dK_host);
+        free(d_score_t);
+        free(dQ_host);
+        free(Q_host);
+        free(K_host);
+        free(dK_host);
 
-        // free(mean_host);
-        // free(std_dev_host);
-        // free(gamma_host);
+        free(mean_host);
+        free(std_dev_host);
+        free(gamma_host);
     }
 
     /**
@@ -316,115 +322,115 @@ public:
     */
     void pyDebuggerReleaseStage8()
     {
-        // float *WQT = (float *)malloc(d_model * d_model * sizeof(float));
-        // float *WKT = (float *)malloc(d_model * d_model * sizeof(float));
-        // float *WVT = (float *)malloc(d_model * d_model * sizeof(float));
+        float *WQT = (float *)malloc(d_model * d_model * sizeof(float));
+        float *WKT = (float *)malloc(d_model * d_model * sizeof(float));
+        float *WVT = (float *)malloc(d_model * d_model * sizeof(float));
 
-        // float *upQ;
-        // float *upK;
-        // float *upV;
+        float *upQ;
+        float *upK;
+        float *upV;
 
-        // float *G_x_hat_host;
+        float *G_x_hat_host;
 
-        // float *layer_norm_x;
+        float *layer_norm_x;
 
-        // float *d_beta;
+        float *d_beta;
 
-        // upQ = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
-        // upK = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
-        // upV = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
+        upQ = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
+        upK = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
+        upV = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
 
-        // d_beta = (float *)malloc(d_model * sizeof(float));
+        d_beta = (float *)malloc(d_model * sizeof(float));
 
-        // G_x_hat_host = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
+        G_x_hat_host = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
 
-        // layer_norm_x = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
+        layer_norm_x = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
 
-        // float *d_delta_beta;
-        // float *d_delta_gamma;
+        float *d_delta_beta;
+        float *d_delta_gamma;
 
-        // d_delta_beta = (float *)malloc(d_model * sizeof(float));
-        // d_delta_gamma = (float *)malloc(d_model * sizeof(float));
+        d_delta_beta = (float *)malloc(d_model * sizeof(float));
+        d_delta_gamma = (float *)malloc(d_model * sizeof(float));
 
-        // cudaMemcpy(WQT, model_paramaters.WqT, d_model * d_model * sizeof(float), cudaMemcpyDeviceToHost);
-        // cudaMemcpy(WKT, model_paramaters.WkT, d_model * d_model * sizeof(float), cudaMemcpyDeviceToHost);
-        // cudaMemcpy(WVT, model_paramaters.WvT, d_model * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(WQT, model_paramaters.WqT, d_model * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(WKT, model_paramaters.WkT, d_model * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(WVT, model_paramaters.WvT, d_model * d_model * sizeof(float), cudaMemcpyDeviceToHost);
 
-        // cudaMemcpy(upQ, model_paramaters.qUp, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
-        // cudaMemcpy(upK, model_paramaters.kUp, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
-        // cudaMemcpy(upV, model_paramaters.vUp, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(upQ, model_paramaters.qUp, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(upK, model_paramaters.kUp, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(upV, model_paramaters.vUp, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
 
-        // cudaMemcpy(G_x_hat_host, model_paramaters.G_x_hat, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(G_x_hat_host, model_paramaters.G_x_hat, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
 
-        // cudaMemcpy(layer_norm_x, model_paramaters.dx, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
-        // cudaMemcpy(d_beta, model_paramaters.attention_head.beta, d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(layer_norm_x, model_paramaters.dx, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(d_beta, model_paramaters.attention_head.beta, d_model * sizeof(float), cudaMemcpyDeviceToHost);
 
-        // cudaMemcpy(d_delta_beta, model_paramaters.debeta, d_model * sizeof(float), cudaMemcpyDeviceToHost);
-        // cudaMemcpy(d_delta_gamma, model_paramaters.dgamma, d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(d_delta_beta, model_paramaters.debeta, d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(d_delta_gamma, model_paramaters.dgamma, d_model * sizeof(float), cudaMemcpyDeviceToHost);
 
-        // // // Also release the weight should be on host from Linear class, Later we will think of a way to
-        // // // reduce memory copy on PCIe BUS which is costly under each epoch.
+        // // Also release the weight should be on host from Linear class, Later we will think of a way to
+        // // reduce memory copy on PCIe BUS which is costly under each epoch.
 
-        // bulkRelease<float>(
-        //     {{WQT, d_model * d_model, "wqt.bin"},
-        //      {WKT, d_model * d_model, "wkt.bin"},
-        //      {WVT, d_model * d_model, "wvt.bin"},
-        //      //   {host_WQ, d_model * d_model, "wq.bin"},
-        //      //   {host_WK, d_model * d_model, "wk.bin"},
-        //      //   {host_WV, d_model * d_model, "wv.bin"},
-        //      {upQ, batch_size * seq_len * d_model, "upQ.bin"},
-        //      {upK, batch_size * seq_len * d_model, "upK.bin"},
-        //      {upV, batch_size * seq_len * d_model, "upV.bin"},
-        //      {G_x_hat_host, batch_size * seq_len * d_model, "G_x_hat.bin"},
-        //      {layer_norm_x, batch_size * seq_len * d_model, "layer_norm_x.bin"},
-        //      {d_delta_beta, d_model, "d_beta.bin"},
-        //      {d_delta_gamma, d_model, "d_gamma.bin"}});
+        bulkRelease<float>(
+            {{WQT, d_model * d_model, "wqt.bin"},
+             {WKT, d_model * d_model, "wkt.bin"},
+             {WVT, d_model * d_model, "wvt.bin"},
+             //   {host_WQ, d_model * d_model, "wq.bin"},
+             //   {host_WK, d_model * d_model, "wk.bin"},
+             //   {host_WV, d_model * d_model, "wv.bin"},
+             {upQ, batch_size * seq_len * d_model, "upQ.bin"},
+             {upK, batch_size * seq_len * d_model, "upK.bin"},
+             {upV, batch_size * seq_len * d_model, "upV.bin"},
+             {G_x_hat_host, batch_size * seq_len * d_model, "G_x_hat.bin"},
+             {layer_norm_x, batch_size * seq_len * d_model, "layer_norm_x.bin"},
+             {d_delta_beta, d_model, "d_beta.bin"},
+             {d_delta_gamma, d_model, "d_gamma.bin"}});
 
-        // free(WQT);
-        // free(WKT);
-        // free(WVT);
+        free(WQT);
+        free(WKT);
+        free(WVT);
 
-        // free(upQ);
-        // free(upK);
-        // free(upV);
+        free(upQ);
+        free(upK);
+        free(upV);
 
-        // free(G_x_hat_host);
-        // free(layer_norm_x);
-        // free(d_beta);
+        free(G_x_hat_host);
+        free(layer_norm_x);
+        free(d_beta);
 
-        // free(d_delta_beta);
-        // free(d_delta_gamma);
+        free(d_delta_beta);
+        free(d_delta_gamma);
 
-        // float *host_WQ = (float *)malloc(d_model * d_model * sizeof(float));
-        // float *host_WK = (float *)malloc(d_model * d_model * sizeof(float));
-        // float *host_WV = (float *)malloc(d_model * d_model * sizeof(float));
+        float *host_WQ = (float *)malloc(d_model * d_model * sizeof(float));
+        float *host_WK = (float *)malloc(d_model * d_model * sizeof(float));
+        float *host_WV = (float *)malloc(d_model * d_model * sizeof(float));
 
-        // // Funny that I tried to ducktape this heap corruption but the problem was wrong host allocation for dbias in the CPU
+        // Funny that I tried to ducktape this heap corruption but the problem was wrong host allocation for dbias in the CPU
 
-        // cudaMemcpy(host_WQ, model_paramaters.attention_head.device_WQ, d_model * d_model * sizeof(float), cudaMemcpyDeviceToHost);
-        // cudaError_t err1 = cudaGetLastError();
-        // if (err1 != cudaSuccess)
-        //     printf("After WQ copy: %s\n", cudaGetErrorString(err1));
+        cudaMemcpy(host_WQ, model_paramaters.attention_head.device_WQ, d_model * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaError_t err1 = cudaGetLastError();
+        if (err1 != cudaSuccess)
+            printf("After WQ copy: %s\n", cudaGetErrorString(err1));
 
-        // cudaMemcpy(host_WK, model_paramaters.attention_head.device_WK, d_model * d_model * sizeof(float), cudaMemcpyDeviceToHost);
-        // cudaError_t err2 = cudaGetLastError();
-        // if (err2 != cudaSuccess)
-        //     printf("After WK copy: %s\n", cudaGetErrorString(err2));
+        cudaMemcpy(host_WK, model_paramaters.attention_head.device_WK, d_model * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaError_t err2 = cudaGetLastError();
+        if (err2 != cudaSuccess)
+            printf("After WK copy: %s\n", cudaGetErrorString(err2));
 
-        // cudaMemcpy(host_WV, model_paramaters.attention_head.device_WV, d_model * d_model * sizeof(float), cudaMemcpyDeviceToHost);
-        // cudaError_t err3 = cudaGetLastError();
-        // if (err3 != cudaSuccess)
-        //     printf("After WV copy: %s\n", cudaGetErrorString(err3));
+        cudaMemcpy(host_WV, model_paramaters.attention_head.device_WV, d_model * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaError_t err3 = cudaGetLastError();
+        if (err3 != cudaSuccess)
+            printf("After WV copy: %s\n", cudaGetErrorString(err3));
 
-        // bulkRelease<float>({
-        //     {host_WQ, d_model * d_model, "wq.bin"},
-        //     {host_WK, d_model * d_model, "wk.bin"},
-        //     {host_WV, d_model * d_model, "wv.bin"},
-        // });
+        bulkRelease<float>({
+            {host_WQ, d_model * d_model, "wq.bin"},
+            {host_WK, d_model * d_model, "wk.bin"},
+            {host_WV, d_model * d_model, "wv.bin"},
+        });
 
-        // free(host_WQ);
-        // free(host_WK);
-        // free(host_WV);
+        free(host_WQ);
+        free(host_WK);
+        free(host_WV);
     }
 
     /**
@@ -436,145 +442,145 @@ public:
     */
     void pyDebuggerReleaseStage9()
     {
-        // // output projection wieght transpose check
-        // // release weight and then transpose of that weight
+        // output projection wieght transpose check
+        // release weight and then transpose of that weight
 
-        // float *weight = (float *)malloc(d_model * d_model * sizeof(float));
-        // float *weight_transpose = (float *)malloc(d_model * d_model * sizeof(float));
-        // float *dattention = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
-        // float *dcontact_bias = (float *)malloc(d_model * sizeof(float));
-        // float *dweight_projection = (float *)malloc(d_model * d_model * sizeof(float));
-        // float *output_porjection_x = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
-        // float *output_porjection_xt = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
+        float *weight = (float *)malloc(d_model * d_model * sizeof(float));
+        float *weight_transpose = (float *)malloc(d_model * d_model * sizeof(float));
+        float *dattention = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
+        float *dcontact_bias = (float *)malloc(d_model * sizeof(float));
+        float *dweight_projection = (float *)malloc(d_model * d_model * sizeof(float));
+        float *output_porjection_x = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
+        float *output_porjection_xt = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
 
-        // cudaMemcpy(dweight_projection, model_paramaters.d_weight_output_project, d_model * d_model * sizeof(float), cudaMemcpyDeviceToHost);
-        // cudaMemcpy(weight, model_paramaters.attention_head.wo, d_model * d_model * sizeof(float), cudaMemcpyDeviceToHost);
-        // cudaMemcpy(output_porjection_x, model_paramaters.attention_head.output_porjection_x, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
-        // cudaMemcpy(output_porjection_xt, model_paramaters.attention_head.output_project_xt, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(dweight_projection, model_paramaters.d_weight_output_project, d_model * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(weight, model_paramaters.attention_head.wo, d_model * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(output_porjection_x, model_paramaters.attention_head.output_porjection_x, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(output_porjection_xt, model_paramaters.attention_head.output_project_xt, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
 
-        // cudaError_t err1 = cudaGetLastError();
-        // if (err1 != cudaSuccess)
-        //     printf("After wo copy: %s\n", cudaGetErrorString(err1));
+        cudaError_t err1 = cudaGetLastError();
+        if (err1 != cudaSuccess)
+            printf("After wo copy: %s\n", cudaGetErrorString(err1));
 
-        // cudaMemcpy(weight_transpose, model_paramaters.WoT, d_model * d_model * sizeof(float), cudaMemcpyDeviceToHost);
-        // cudaError_t err2 = cudaGetLastError();
-        // if (err2 != cudaSuccess)
-        //     printf("After woT copy: %s\n", cudaGetErrorString(err2));
+        cudaMemcpy(weight_transpose, model_paramaters.WoT, d_model * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaError_t err2 = cudaGetLastError();
+        if (err2 != cudaSuccess)
+            printf("After woT copy: %s\n", cudaGetErrorString(err2));
 
-        // cudaMemcpy(dattention, model_paramaters.upstream_grad_output_proj, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
-        // cudaError_t err3 = cudaGetLastError();
-        // if (err3 != cudaSuccess)
-        //     printf("After dattn_out copy: %s\n", cudaGetErrorString(err3));
+        cudaMemcpy(dattention, model_paramaters.upstream_grad_output_proj, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaError_t err3 = cudaGetLastError();
+        if (err3 != cudaSuccess)
+            printf("After dattn_out copy: %s\n", cudaGetErrorString(err3));
 
-        // cudaMemcpy(dcontact_bias, model_paramaters.attention_head.doutput_bias, d_model * sizeof(float), cudaMemcpyDeviceToHost);
-        // cudaError_t err4 = cudaGetLastError();
-        // if (err4 != cudaSuccess)
-        //     printf("After wo_bias copy: %s\n", cudaGetErrorString(err4));
+        cudaMemcpy(dcontact_bias, model_paramaters.attention_head.doutput_bias, d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaError_t err4 = cudaGetLastError();
+        if (err4 != cudaSuccess)
+            printf("After wo_bias copy: %s\n", cudaGetErrorString(err4));
 
-        // bulkRelease<float>(
-        //     {{weight, d_model * d_model, "weight_contact.bin"},
-        //      {weight_transpose, d_model * d_model, "weight_contact_transpose.bin"},
-        //      {dattention, batch_size * seq_len * d_model, "dattention_contact.bin"},
-        //      {dcontact_bias, d_model, "dcontact_bias.bin"},
-        //      {dweight_projection, d_model * d_model, "dweight_output.bin"},
-        //      {output_porjection_x, batch_size * seq_len * d_model, "output_porjection_x.bin"},
-        //      {output_porjection_xt, batch_size * seq_len * d_model, "output_porjection_xt.bin"}});
+        bulkRelease<float>(
+            {{weight, d_model * d_model, "weight_contact.bin"},
+             {weight_transpose, d_model * d_model, "weight_contact_transpose.bin"},
+             {dattention, batch_size * seq_len * d_model, "dattention_contact.bin"},
+             {dcontact_bias, d_model, "dcontact_bias.bin"},
+             {dweight_projection, d_model * d_model, "dweight_output.bin"},
+             {output_porjection_x, batch_size * seq_len * d_model, "output_porjection_x.bin"},
+             {output_porjection_xt, batch_size * seq_len * d_model, "output_porjection_xt.bin"}});
 
-        // // cout << "Weight" << endl;
-        // // utils->printFlatArray2D(weight, d_model, d_model);
+        // cout << "Weight" << endl;
+        // utils->printFlatArray2D(weight, d_model, d_model);
 
-        // // cout << "Weight transposed" << endl;
-        // // utils->printFlatArray2D(weight_transpose, d_model, d_model);
+        // cout << "Weight transposed" << endl;
+        // utils->printFlatArray2D(weight_transpose, d_model, d_model);
 
-        // free(weight);
-        // free(weight_transpose);
-        // free(dattention);
-        // free(dcontact_bias);
-        // free(dweight_projection);
-        // free(output_porjection_x);
-        // free(output_porjection_xt);
+        free(weight);
+        free(weight_transpose);
+        free(dattention);
+        free(dcontact_bias);
+        free(dweight_projection);
+        free(output_porjection_x);
+        free(output_porjection_xt);
     }
 
     void pyDebuggerReleaseStage10()
     {
 
-        // float *grad_host = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
-        // float *d_embedding = (float *)malloc(vocab_size * d_model * sizeof(float));
-        // int *token_ids_host = (int *)malloc(batch_size * seq_len * sizeof(float));
+        float *grad_host = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
+        float *d_embedding = (float *)malloc(vocab_size * d_model * sizeof(float));
+        int *token_ids_host = (int *)malloc(batch_size * seq_len * sizeof(float));
 
-        // cudaMemcpy(d_embedding, model_paramaters.d_embedding, vocab_size * d_model * sizeof(float), cudaMemcpyHostToDevice);
-        // cudaMemcpy(grad_host, model_paramaters.d_add_residual_output, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
-        // cudaMemcpy(token_ids_host, model_paramaters.attention_head.token_id, batch_size * seq_len * sizeof(int), cudaMemcpyDeviceToHost);
+        cudaMemcpy(d_embedding, model_paramaters.d_embedding, vocab_size * d_model * sizeof(float), cudaMemcpyHostToDevice);
+        cudaMemcpy(grad_host, model_paramaters.d_add_residual_output, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(token_ids_host, model_paramaters.attention_head.token_id, batch_size * seq_len * sizeof(int), cudaMemcpyDeviceToHost);
 
-        // bulkRelease<float>(
-        //     {{grad_host, batch_size * seq_len * d_model, "net_gradient_final.bin"},
-        //      {d_embedding, vocab_size * d_model, "d_embedding.bin"}});
+        bulkRelease<float>(
+            {{grad_host, batch_size * seq_len * d_model, "net_gradient_final.bin"},
+             {d_embedding, vocab_size * d_model, "d_embedding.bin"}});
 
-        // bulkRelease<int>(
-        //     {{token_ids_host, batch_size * seq_len, "token_ids.bin"}});
+        bulkRelease<int>(
+            {{token_ids_host, batch_size * seq_len, "token_ids.bin"}});
 
-        // free(grad_host);
-        // free(token_ids_host);
-        // free(d_embedding);
+        free(grad_host);
+        free(token_ids_host);
+        free(d_embedding);
     }
 
     void pyDebuggerReleaseStage11()
     {
-        // float *d_weight_q = (float *)malloc(d_model * d_model * sizeof(float));
-        // float *d_weight_k = (float *)malloc(d_model * d_model * sizeof(float));
-        // float *d_weight_v = (float *)malloc(d_model * d_model * sizeof(float));
+        float *d_weight_q = (float *)malloc(d_model * d_model * sizeof(float));
+        float *d_weight_k = (float *)malloc(d_model * d_model * sizeof(float));
+        float *d_weight_v = (float *)malloc(d_model * d_model * sizeof(float));
 
-        // float *d_bias_q = (float *)malloc(d_model * sizeof(float));
-        // float *d_bias_k = (float *)malloc(d_model * sizeof(float));
-        // float *d_bias_v = (float *)malloc(d_model * sizeof(float));
+        float *d_bias_q = (float *)malloc(d_model * sizeof(float));
+        float *d_bias_k = (float *)malloc(d_model * sizeof(float));
+        float *d_bias_v = (float *)malloc(d_model * sizeof(float));
 
-        // float *bias_q = (float *)malloc(d_model * sizeof(float));
-        // float *bias_k = (float *)malloc(d_model * sizeof(float));
-        // float *bias_v = (float *)malloc(d_model * sizeof(float));
+        float *bias_q = (float *)malloc(d_model * sizeof(float));
+        float *bias_k = (float *)malloc(d_model * sizeof(float));
+        float *bias_v = (float *)malloc(d_model * sizeof(float));
 
-        // float *normalized_x = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
-        // float *normalized_xt = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
+        float *normalized_x = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
+        float *normalized_xt = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
 
-        // cudaMemcpy(normalized_x, model_paramaters.attention_head.normalized_x, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
-        // cudaMemcpy(normalized_xt, model_paramaters.attention_head.normalized_xt, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(normalized_x, model_paramaters.attention_head.normalized_x, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(normalized_xt, model_paramaters.attention_head.normalized_xt, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
 
-        // cudaMemcpy(d_weight_q, model_paramaters.d_weight_q, d_model * d_model * sizeof(float), cudaMemcpyDeviceToHost);
-        // cudaMemcpy(d_weight_k, model_paramaters.d_weight_k, d_model * d_model * sizeof(float), cudaMemcpyDeviceToHost);
-        // cudaMemcpy(d_weight_v, model_paramaters.d_weight_v, d_model * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(d_weight_q, model_paramaters.d_weight_q, d_model * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(d_weight_k, model_paramaters.d_weight_k, d_model * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(d_weight_v, model_paramaters.d_weight_v, d_model * d_model * sizeof(float), cudaMemcpyDeviceToHost);
 
-        // cudaMemcpy(d_bias_q, model_paramaters.d_bias_q, d_model * sizeof(float), cudaMemcpyDeviceToHost);
-        // cudaMemcpy(d_bias_k, model_paramaters.d_bias_k, d_model * sizeof(float), cudaMemcpyDeviceToHost);
-        // cudaMemcpy(d_bias_v, model_paramaters.d_bias_v, d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(d_bias_q, model_paramaters.d_bias_q, d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(d_bias_k, model_paramaters.d_bias_k, d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(d_bias_v, model_paramaters.d_bias_v, d_model * sizeof(float), cudaMemcpyDeviceToHost);
 
-        // cudaMemcpy(bias_q, model_paramaters.attention_head.bias_q, d_model * sizeof(float), cudaMemcpyDeviceToHost);
-        // cudaMemcpy(bias_k, model_paramaters.attention_head.bias_k, d_model * sizeof(float), cudaMemcpyDeviceToHost);
-        // cudaMemcpy(bias_v, model_paramaters.attention_head.bias_v, d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(bias_q, model_paramaters.attention_head.bias_q, d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(bias_k, model_paramaters.attention_head.bias_k, d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(bias_v, model_paramaters.attention_head.bias_v, d_model * sizeof(float), cudaMemcpyDeviceToHost);
 
-        // bulkRelease<float>({{d_weight_q, d_model * d_model, "d_weight_q.bin"},
-        //                     {d_weight_k, d_model * d_model, "d_weight_k.bin"},
-        //                     {d_weight_v, d_model * d_model, "d_weight_v.bin"},
-        //                     {normalized_x, batch_size * seq_len * d_model, "normalized_x.bin"},
-        //                     {normalized_xt, batch_size * seq_len * d_model, "normalized_xt.bin"},
-        //                     {d_bias_q, d_model, "d_bias_q.bin"},
-        //                     {d_bias_k, d_model, "d_bias_k.bin"},
-        //                     {d_bias_v, d_model, "d_bias_v.bin"},
-        //                     {bias_q, d_model, "bias_q.bin"},
-        //                     {bias_k, d_model, "bias_k.bin"},
-        //                     {bias_v, d_model, "bias_v.bin"}});
+        bulkRelease<float>({{d_weight_q, d_model * d_model, "d_weight_q.bin"},
+                            {d_weight_k, d_model * d_model, "d_weight_k.bin"},
+                            {d_weight_v, d_model * d_model, "d_weight_v.bin"},
+                            {normalized_x, batch_size * seq_len * d_model, "normalized_x.bin"},
+                            {normalized_xt, batch_size * seq_len * d_model, "normalized_xt.bin"},
+                            {d_bias_q, d_model, "d_bias_q.bin"},
+                            {d_bias_k, d_model, "d_bias_k.bin"},
+                            {d_bias_v, d_model, "d_bias_v.bin"},
+                            {bias_q, d_model, "bias_q.bin"},
+                            {bias_k, d_model, "bias_k.bin"},
+                            {bias_v, d_model, "bias_v.bin"}});
 
-        // free(normalized_x);
-        // free(normalized_xt);
+        free(normalized_x);
+        free(normalized_xt);
 
-        // free(d_weight_q);
-        // free(d_weight_k);
-        // free(d_weight_v);
+        free(d_weight_q);
+        free(d_weight_k);
+        free(d_weight_v);
 
-        // free(d_bias_q);
-        // free(d_bias_k);
-        // free(d_bias_v);
+        free(d_bias_q);
+        free(d_bias_k);
+        free(d_bias_v);
 
-        // free(bias_q);
-        // free(bias_k);
-        // free(bias_v);
+        free(bias_q);
+        free(bias_k);
+        free(bias_v);
     }
 };

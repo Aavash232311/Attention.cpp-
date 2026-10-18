@@ -267,14 +267,27 @@ private:
             head_dim);
     }
 
-    void releaseBin(float *key, std::string name, int n)
+public:
+    // This method divides by sqrt of d_model so that atlast forward lgoic in this program looks readable to a normal human being.
+    void scalerDvisionAcrossMat(float *QKt)
     {
-        float *h_key = (float *)malloc(n * sizeof(float));
+        ScalerDvisionElem(
+            QKt,
+            batch_size,
+            num_heads,
+            seq_len,
+            head_dim);
+    }
 
-        cudaMemcpy(h_key, key, n * sizeof(float), cudaMemcpyDeviceToHost);
+    template <typename T>
+    void releaseBin(T *key, std::string name, int n)
+    {
+        T *h_key = (T *)malloc(n * sizeof(T));
 
-        bulkRelease<float>(
-            {{h_key, n * sizeof(float), name}});
+        cudaMemcpy(h_key, key, n * sizeof(T), cudaMemcpyDeviceToHost);
+
+        bulkRelease<T>(
+            {{h_key, n * sizeof(T), name}});
 
         free(h_key);
     }
@@ -291,18 +304,6 @@ private:
         releaseBin(Q, "q_reshaped.bin", batch_size * seq_len * num_heads * head_dim);
         releaseBin(K, "k_reshaped.bin", batch_size * seq_len * num_heads * head_dim);
         releaseBin(V, "v_reshaped.bin", batch_size * seq_len * num_heads * head_dim);
-    }
-
-public:
-    // This method divides by sqrt of d_model so that atlast forward lgoic in this program looks readable to a normal human being.
-    void scalerDvisionAcrossMat(float *QKt)
-    {
-        ScalerDvisionElem(
-            QKt,
-            batch_size,
-            num_heads,
-            seq_len,
-            head_dim);
     }
 
     void masking(float *arr, float val)
@@ -327,7 +328,13 @@ public:
 
     float *forward(Batch currentBatch)
     {
+        if (debug)
+            releaseBin(currentBatch.x, "batch.bin", batch_size * seq_len);
+
         float *x = embeddings->forward(currentBatch);
+
+        if (debug)
+            releaseBin(x, "embedding.bin", batch_size * seq_len * d_model);
 
         cudaMemcpy(tempX, x, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToDevice);
 
@@ -430,12 +437,13 @@ public:
 
         float *projectedBTC = outputProj->forward(reformed_tensor);
 
+        if (debug)
+            releaseBin(projectedBTC, "out_put_proj.bin", batch_size * seq_len * d_model);
+
         float *residual_out = addResidual(projectedBTC, tempX);
 
         if (debug)
             releaseBin(residual_out, "final_attn_out.bin", batch_size * seq_len * d_model);
-        if (debug)
-            releaseBin(projectedBTC, "out_put_proj.bin", batch_size * seq_len * d_model);
 
         debug = false;
 
