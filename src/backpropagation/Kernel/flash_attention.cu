@@ -62,6 +62,7 @@ __global__ void matmulLastTwo4DKernel(
     int out_idx = c_a * (b * c * e) + c_b * (c * e) + rows * e + cols;
     C[out_idx] = sum * scaling;
 }
+// 
 
 /*
 
