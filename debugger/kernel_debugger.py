@@ -39,32 +39,32 @@ print("Forward pass ")
 print('*' * 60)
 quick_attention_check()
 
-# # Read release hyperparameters, compiles the C++ and releases the hyperparamaters.
-# d_model, vocab_size, batch_size, seq_len, num_heads = read_hyperparamaters()
-#
-# print("\n")
-# print('*' * 60)
-#
-# # token_emb = release_token_embeddings(d_model=d_model, seq_len=seq_len, vocab_size=vocab_size, batch_size=batch_size)
-# #
-# #
-# # # check if embedding component of the transformer is okay.
-# # verify_embeddings(d_model=d_model, seq_len=seq_len, batch_size=batch_size, vocab_size=vocab_size, num_heads=num_heads, token_embeddings=token_emb)
-#
-# torch.set_printoptions(precision=4)
-#
-# input_ids = torch.randint(0, vocab_size, (seq_len, batch_size))
-# input_ids.to(torch.int32).numpy().tofile("./src/cache/pytorch_out/input_ids.bin")
+# Read release hyperparameters, compiles the C++ and releases the hyperparamaters.
+d_model, vocab_size, batch_size, seq_len, num_heads = read_hyperparamaters()
+
+print("\n")
+print('*' * 60)
+
+# token_emb = release_token_embeddings(d_model=d_model, seq_len=seq_len, vocab_size=vocab_size, batch_size=batch_size)
 #
 #
-# G = debug_autograd(d_model=d_model, seq_len=seq_len, batch_size=batch_size, vocab_size=vocab_size, num_heads=num_heads)
-#
-#
-# flash_attention_debugger = DebugFlashAttention(d_model=d_model, seq_len=seq_len, batch_size=batch_size, vocab_size=vocab_size, num_heads=num_heads, head_dim=d_model // num_heads, dl_dw=G)
-# flash_attention_debugger.victor_tango()
-#
-# # why would you do this in weird way? well this is a scratch work.
-# # if you pay me to write code it won't be this messy
-# optimizer_debugger = DebugOptimizer(d_model=d_model, seq_len=seq_len, batch_size=batch_size, vocab_size=vocab_size, num_heads=num_heads, head_dim=d_model // num_heads, dl_dw=G)
-# optimizer_debugger.optimizer_health()
-#
+# # check if embedding component of the transformer is okay.
+# verify_embeddings(d_model=d_model, seq_len=seq_len, batch_size=batch_size, vocab_size=vocab_size, num_heads=num_heads, token_embeddings=token_emb)
+
+torch.set_printoptions(precision=4)
+
+input_ids = torch.randint(0, vocab_size, (seq_len, batch_size))
+input_ids.to(torch.int32).numpy().tofile("./src/cache/pytorch_out/input_ids.bin")
+
+
+G = debug_autograd(d_model=d_model, seq_len=seq_len, batch_size=batch_size, vocab_size=vocab_size, num_heads=num_heads)
+
+
+flash_attention_debugger = DebugFlashAttention(d_model=d_model, seq_len=seq_len, batch_size=batch_size, vocab_size=vocab_size, num_heads=num_heads, head_dim=d_model // num_heads, dl_dw=G)
+flash_attention_debugger.victor_tango()
+
+# why would you do this in weird way? well this is a scratch work.
+# if you pay me to write code it won't be this messy
+optimizer_debugger = DebugOptimizer(d_model=d_model, seq_len=seq_len, batch_size=batch_size, vocab_size=vocab_size, num_heads=num_heads, head_dim=d_model // num_heads, dl_dw=G)
+optimizer_debugger.optimizer_health()
+

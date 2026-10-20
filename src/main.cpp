@@ -42,7 +42,7 @@ int main()
     cudaDeviceSynchronize();
     auto start = std::chrono::high_resolution_clock::now();
 
-    bool debug = true;
+    bool debug = false;
 #ifdef DEBUG
     debug = true;
 #endif
@@ -86,7 +86,7 @@ int main()
         num_heads); // write the hyperparamaters down
 
     // we just need a simple shample.
-    // epoch = debug == true ? 1 : epoch;
+    epoch = debug == true ? 1 : epoch;
 
     const std::vector<int> &encodedData = helper->getEncodedList();
 

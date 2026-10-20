@@ -499,6 +499,11 @@ public:
         }
     }
 
+    void forward(std::string input)
+    {
+        
+    }
+
     void train(int epoch)
     {
         Batch batch;
