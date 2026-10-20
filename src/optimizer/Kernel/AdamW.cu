@@ -37,6 +37,8 @@ __global__ void adamw_step(
 
         // update
          theta[i] -= lr * (m_hat / (sqrtf(v_hat) + eps) + weight_decay * theta[i]);
+
+        // theta[i] -= lr * grad[i];
     }
 }
 

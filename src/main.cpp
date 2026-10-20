@@ -57,10 +57,10 @@ int main()
 
     int d_model = 32;
     int vocab_size; // that depends upon the data that you are passing.
-    int num_heads = 4;
-    int batch_size = 8;
+    int num_heads = 16;
+    int batch_size = 12;
     int seq_len = 4;
-    int epoch = 20;
+    int epoch = 2500;
     bool drop_last = true; // for training set this to false, if someone is serious about this email me. the cost of implementing this feature will affect everything in depth many tradeoffs
 
     bool hyperParamaterRelease = false;
@@ -101,6 +101,7 @@ int main()
         engine_run);
 
     model->train(epoch);
+
 
     auto end = std::chrono::high_resolution_clock::now();
     cudaDeviceSynchronize(); // CPU is waiting for the GPU to finish

@@ -173,7 +173,7 @@ def quick_attention_check():
     lm_head_out = load_tensor("./src/cache/cpp_out/lm_head_out.bin",
                               shape=(batch_size, seq_len, vocab_size),
                               dtype=np.float32).to(device)
-    print(final_out_attn)
+    print(lm_head_out)
 
 if __name__ == "__main__":
     quick_attention_check()

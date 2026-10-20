@@ -452,11 +452,6 @@ public:
         */
 
         if (debug)
-        {
-            utils->printFlatArray3D(probality, batch_size, seq_len, vocab_size, "device");
-        }
-
-        if (debug)
             attention->releaseBin(probality, "lm_head_out.bin", batch_size * seq_len * vocab_size);
 
         softmax2D(
@@ -507,7 +502,7 @@ public:
     void train(int epoch)
     {
         Batch batch;
-
+        int count_500 = 0;
         float loss = 0.0f;
         for (int i = 0; i < epoch; ++i)
         {
@@ -522,21 +517,12 @@ public:
                 // And there is an illegal memory access somewhere here.
                 float *x = attention->forward(batch);
 
-                cudaMemcpy(attn_head_out, x, batch_size * seq_len * sizeof(float), cudaMemcpyDeviceToDevice);
+                cudaMemcpy(attn_head_out, x, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToDevice);
 
                 float *prob = lm_head->forward(x); // Shape (B, T, vocab_size) x is not changed here.
 
                 modelParamaters.weight_lm_head = lm_head->getWeightDevice();
 
-                // if (debug)
-                // {
-                //     float *w_host = (float *)malloc(d_model * vocab_size * sizeof(float));
-                //     cudaMemcpy(w_host, lm_head->getWeightDevice(), vocab_size * d_model * sizeof(float), cudaMemcpyDeviceToHost);
-
-                //     utils->printFlatArray2D(w_host, d_model, vocab_size);
-
-                //     free(w_host);
-                // }
                 modelParamaters.bias_lm_head = lm_head->getBaiasDevice();
 
                 // std::cout << " LM head " << std::endl;
@@ -664,7 +650,7 @@ public:
                 //     free(dh);
                 // }
 
-                // debug = false;
+                debug = false;
 
                 batch_count++;
             }
@@ -673,7 +659,7 @@ public:
 
             dataLoader->resetIterator(); // just the weird logic that I wrote.
 
-            // std::cout << "Epoch: " << (i + 1) << " Loss: " << loss_per_batch << std::endl;
+            std::cout << "Epoch: " << i << " Loss: " << loss_per_batch << std::endl;
 
             loss += loss_per_batch;
         }
