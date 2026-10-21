@@ -323,6 +323,18 @@ public:
         return vec2d;
     }
 
+    template <typename T>
+    T *vectorToFlatStrip(std::vector<T> arr)
+    {
+        T *newArr = (T *)malloc(arr.size() * sizeof(T));
+        // row = 1 and col = n
+        for (int col = 0; col < arr.size(); ++col)
+        {
+            newArr[col] = arr[col];
+        }
+        return newArr;
+    }
+
     /**
      * @class TwoDVectorToFlatMem
      * @brief converts vector data structures to a flat memory strip
@@ -578,7 +590,7 @@ public:
     }
 
     template <typename T>
-    void printLastOneOf3D(const T *arr, int D0, int D1, int D2,  std::string pointer_type = "host")
+    void printLastOneOf3D(const T *arr, int D0, int D1, int D2, std::string pointer_type = "host")
     {
         int i = D0 - 1; // last batch
         int j = D1 - 1; // last row
@@ -633,8 +645,18 @@ public:
     // THIS IS FOR PRINTING FLAT ARRAY OUTPUT
     // If type is device we allocate temp memory to print
     template <typename T>
-    void printFlatArray1D(const T *arr, int N)
+    void printFlatArray1D(const T *arr, int N, std::string pointer_type = "host")
     {
+
+        T *d_arr = nullptr;
+
+        if (pointer_type == "device")
+        {
+            d_arr = (T *)malloc(N * sizeof(T));
+            cudaMemcpy(d_arr, arr, N * sizeof(T), cudaMemcpyDeviceToHost);
+            arr = d_arr;
+        }
+
         int max_print = N;
         std::cout << "tensor([";
         for (int i = 0; i < N; ++i)
@@ -650,6 +672,11 @@ public:
                 std::cout << ", ";
         }
         std::cout << "], shape=[" << N << "])\n";
+
+        if (pointer_type == "device")
+        {
+            free(d_arr);
+        }
     }
 
     template <typename T>

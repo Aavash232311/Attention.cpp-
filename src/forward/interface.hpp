@@ -49,6 +49,8 @@ class AttentionInterface
     std::unique_ptr<Utility> utils;
     std::unique_ptr<OptimizerDebugger> optimizer;
     std::unique_ptr<AdamWMemConfig> adamMemConfig;
+    std::unique_ptr<Helper> helper;
+    std::unique_ptr<Embeddings> embeddings;
 
     // turn those result into proballity score
     std::unique_ptr<Linear> lm_head;
@@ -501,7 +503,32 @@ public:
 
     void forward(std::string input)
     {
-        
+        // std::vector<char> char_vec(input.begin(), input.end());
+        // helper = std::make_unique<Helper>(char_vec);
+
+        // const std::vector<int> &encodedData = helper->getEncodedList();
+        // int *tokens = utils->vectorToFlatStrip(encodedData);
+
+        // int current_seq_len = encodedData.size();
+        // int *token_gpu;
+
+        // cudaMalloc((void **)&token_gpu, current_seq_len * sizeof(int));
+        // cudaMemcpy(token_gpu, tokens, current_seq_len * sizeof(int), cudaMemcpyHostToDevice);
+
+        // embeddings = std::make_unique<Embeddings>(
+        //     d_model,
+        //     vocab_size,
+        //     current_seq_len,
+        //     1,
+        //     debug
+        // );
+
+        // utils->printFlatArray1D(token_gpu, current_seq_len, "device");
+
+
+
+        // free(tokens);
+        // cudaFree(token_gpu);
     }
 
     void train(int epoch)
@@ -664,7 +691,11 @@ public:
 
             dataLoader->resetIterator(); // just the weird logic that I wrote.
 
-            std::cout << "Epoch: " << i << " Loss: " << loss_per_batch << std::endl;
+            if (i % 250 == 0)
+            {
+
+                std::cout << "Epoch: " << i << " Loss: " << loss_per_batch << std::endl;
+            }
 
             loss += loss_per_batch;
         }

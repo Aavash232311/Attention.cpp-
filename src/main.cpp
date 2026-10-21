@@ -53,8 +53,6 @@ int main()
     engine_run = true;
 #endif
 
-    
-
     int d_model = 32;
     int vocab_size; // that depends upon the data that you are passing.
     int num_heads = 16;
@@ -100,7 +98,8 @@ int main()
         debug,
         engine_run);
 
-    model->train(epoch);
+    // model->train(epoch);
+    model->forward("cat saw the sun, and the dog saw the sun.");
 
 
     auto end = std::chrono::high_resolution_clock::now();

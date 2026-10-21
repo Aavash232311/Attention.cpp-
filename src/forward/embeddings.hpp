@@ -125,6 +125,12 @@ public:
         return deviceFinalEmbeddings;
     }
 
+    // // // directly forward tokens
+    void forward(int* tokens)
+    {
+
+    }
+
     float *getFinalEmbeddingDevice()
     {
         return this->deviceFinalEmbeddings;
