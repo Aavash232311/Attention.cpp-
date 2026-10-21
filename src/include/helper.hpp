@@ -11,9 +11,8 @@
 #include <iostream>
 #include <unordered_map>
 
-// I will be really honest it takes time for me to think deeply, but I will figure it out
-// till this day AI hallucination is common on task that requires deep thinking.
-// whatever even if this market is brutal I am investing my effort into thinking.
+using namespace std;
+
 class Helper
 {
 private:
@@ -113,8 +112,14 @@ public:
         return decoded;
     }
 
-    std::string decoder(std::vector<std::unordered_map<char, int>> &encoded_pairs, int N)
+    void inspect()
     {
-        return "";
+        for (int i = 0; i < encodingKeyPairs.size(); ++i)
+        {
+            for (const auto &[key, value] : encodingKeyPairs[i])
+            {
+                std::cout << key << ": " << value << "\n";
+            }
+        }
     }
 };
