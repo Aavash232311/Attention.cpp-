@@ -58,7 +58,8 @@ int main()
     int num_heads = 16;
     int batch_size = 12;
     int seq_len = 4;
-    int epoch = 2500;
+    // int epoch = 2500;
+    int epoch = 2;
     bool drop_last = true; // for training set this to false, if someone is serious about this email me. the cost of implementing this feature will affect everything in depth many tradeoffs
 
     bool hyperParamaterRelease = false;

@@ -267,6 +267,8 @@ private:
             head_dim);
     }
 
+    
+
 public:
     // This method divides by sqrt of d_model so that atlast forward lgoic in this program looks readable to a normal human being.
     void scalerDvisionAcrossMat(float *QKt)

@@ -507,14 +507,10 @@ public:
 
         // encode input
         auto encodedInput = helper->encoder(input);
- 
+
         int *tokens = utils->vectorToFlatStrip(encodedInput);
 
         int current_seq_len = encodedInput.size();
-        int *token_gpu;
-
-        cudaMalloc((void **)&token_gpu, current_seq_len * sizeof(int));
-        cudaMemcpy(token_gpu, tokens, current_seq_len * sizeof(int), cudaMemcpyHostToDevice);
 
         embeddings = std::make_unique<Embeddings>(
             d_model,
@@ -523,11 +519,10 @@ public:
             1,
             debug);
 
-        utils->printFlatArray1D(tokens, current_seq_len);
+        float *emb = embeddings->forward(tokens);
 
-     
+        
         free(tokens);
-        cudaFree(token_gpu);
     }
 
     void train(int epoch)
