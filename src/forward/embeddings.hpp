@@ -119,9 +119,22 @@ public:
         addEmbeddings(lookupDeviceOut, devicePositionalEncoding, deviceFinalEmbeddings, d_model, seq_len, actual_batch);
 
         // std::cout << " Added embeddings from embedding method " << std::endl;
-        // this->utils->printFlatArray3D(addedEmbeddingsOut, actual_batch, seq_len, d_model);
+        // if (debug){
+        // this->utils->printFlatArray3D(addedEmbeddingsOut, actual_batch, seq_len, d_model, "device");
+        // }
 
         debug = false;
+        return deviceFinalEmbeddings;
+    }
+
+    float *forward(int *prompt)
+    {
+        int actual_batch = batch_size;
+        
+        cudaMemcpy(deviceX, prompt, seq_len * actual_batch * sizeof(int), cudaMemcpyHostToDevice);
+        lookup(deviceX, deviceEmbeddings, lookupDeviceOut, d_model, seq_len, actual_batch, vocab_size);
+        addEmbeddings(lookupDeviceOut, devicePositionalEncoding, deviceFinalEmbeddings, d_model, seq_len, actual_batch);
+        
         return deviceFinalEmbeddings;
     }
 
