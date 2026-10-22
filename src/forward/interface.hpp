@@ -501,34 +501,33 @@ public:
         }
     }
 
-    void forward(std::string input)
+    void forward(std::string input, std::vector<char> &charPool)
     {
-        // std::vector<char> char_vec(input.begin(), input.end());
-        // helper = std::make_unique<Helper>(char_vec);
+        helper = std::make_unique<Helper>(charPool);
 
-        // const std::vector<int> &encodedData = helper->getEncodedList();
-        // int *tokens = utils->vectorToFlatStrip(encodedData);
+        // encode input
+        auto encodedInput = helper->encoder(input);
+ 
+        int *tokens = utils->vectorToFlatStrip(encodedInput);
 
-        // int current_seq_len = encodedData.size();
-        // int *token_gpu;
+        int current_seq_len = encodedInput.size();
+        int *token_gpu;
 
-        // cudaMalloc((void **)&token_gpu, current_seq_len * sizeof(int));
-        // cudaMemcpy(token_gpu, tokens, current_seq_len * sizeof(int), cudaMemcpyHostToDevice);
+        cudaMalloc((void **)&token_gpu, current_seq_len * sizeof(int));
+        cudaMemcpy(token_gpu, tokens, current_seq_len * sizeof(int), cudaMemcpyHostToDevice);
 
-        // embeddings = std::make_unique<Embeddings>(
-        //     d_model,
-        //     vocab_size,
-        //     current_seq_len,
-        //     1,
-        //     debug
-        // );
+        embeddings = std::make_unique<Embeddings>(
+            d_model,
+            vocab_size,
+            current_seq_len,
+            1,
+            debug);
 
-        // utils->printFlatArray1D(token_gpu, current_seq_len, "device");
+        utils->printFlatArray1D(tokens, current_seq_len);
 
-
-
-        // free(tokens);
-        // cudaFree(token_gpu);
+     
+        free(tokens);
+        cudaFree(token_gpu);
     }
 
     void train(int epoch)

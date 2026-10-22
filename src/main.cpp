@@ -71,7 +71,7 @@ int main()
 
     textEncoderFile->loadTextChunk(path); // load that into char arr
 
-    auto &charPool = textEncoderFile->getFileAsChar();
+    std::vector<char> charPool = textEncoderFile->getFileAsChar();
     auto helper = std::make_unique<Helper>(charPool);
 
     vocab_size = charPool.size();
@@ -99,7 +99,7 @@ int main()
         engine_run);
 
     // model->train(epoch);
-    model->forward("cat saw the sun, and the dog saw the sun.");
+    model->forward("cat saw the sun, and the dog saw the sun.", charPool);
 
 
     auto end = std::chrono::high_resolution_clock::now();

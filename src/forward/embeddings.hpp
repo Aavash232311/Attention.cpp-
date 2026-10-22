@@ -60,8 +60,8 @@ public:
         positionalEmbeddings(devicePositionalEncoding, seq_len, d_model); // Let positional embedding stay on the global memory
 
         this->tokenEmbeddings = initilizer->EmbeddingInit(this->vocab_size, this->d_model); // token embeddings, Shape(vocab_size, d_model)
-                                                                                     // initlize fixed memory here so that our program runs faster.
-        hostEmbeddings = utils->TwoDVectorToFlatMem(this->tokenEmbeddings);          // this is from I am learning so I was too scared to touch kernel
+                                                                                            // initlize fixed memory here so that our program runs faster.
+        hostEmbeddings = utils->TwoDVectorToFlatMem(this->tokenEmbeddings);                 // this is from I am learning so I was too scared to touch kernel
 
         int sizeFinalEmbeddings = seq_len * d_model * batch_size * sizeof(float);
         int sizeTokenEmbeddings = seq_len * batch_size * d_model * sizeof(float);
@@ -123,12 +123,6 @@ public:
 
         debug = false;
         return deviceFinalEmbeddings;
-    }
-
-    // // // directly forward tokens
-    void forward(int* tokens)
-    {
-
     }
 
     float *getFinalEmbeddingDevice()
