@@ -519,10 +519,39 @@ public:
             1,
             debug);
 
-        float *emb = embeddings->forward(tokens);
+        auto attn = std::make_unique<Attention>(
+            d_model,
+            vocab_size,
+            num_heads,
+            current_seq_len,
+            1,
+            debug);
 
-        
+        float *softmaxedProb; // Shape(B,T,vocab_size)
+        cudaMalloc((void **)&softmaxedProb, current_seq_len * vocab_size * sizeof(float));
+
+        float *emb = embeddings->forward(tokens);
+        float *attnScore = attn->attentionScore(emb);
+
+
+        std::unique_ptr<Linear> prompt_lm_head = std::make_unique<Linear>(d_model, vocab_size, current_seq_len, 1, num_heads, debug);
+        float *prob = prompt_lm_head->forward(attnScore);
+
+        // arg_max from the vocab dimension; we do need cross entropy
+
+        softmax2D(
+            prob,
+            softmaxedProb,
+            1,
+            current_seq_len,
+            vocab_size);
+
+        // I will try to avoid kernel launch here even though its efficient
+        // Now, we have the end result we need to fix the codebase.
+        utils->printFlatArray3D(softmaxedProb, 1, current_seq_len, vocab_size, false, "device");
+
         free(tokens);
+        cudaFree(softmaxedProb);
     }
 
     void train(int epoch)

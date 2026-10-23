@@ -223,7 +223,7 @@ public:
             arr = h_arr;
         }
 
-        const int M = 50;
+        const int M = 1024;
 
         printf("tensor([\n");
         for (int r = 0; r < seq_len; r++)
