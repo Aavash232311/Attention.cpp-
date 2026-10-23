@@ -267,8 +267,6 @@ private:
             head_dim);
     }
 
-    
-
 public:
     // This method divides by sqrt of d_model so that atlast forward lgoic in this program looks readable to a normal human being.
     void scalerDvisionAcrossMat(float *QKt)
@@ -328,13 +326,8 @@ public:
         return BTCdevice;
     }
 
-    float *forward(Batch currentBatch)
+    float *attentionScore(float *x)
     {
-        if (debug)
-            releaseBin(currentBatch.x, "batch.bin", batch_size * seq_len);
-
-        float *x = embeddings->forward(currentBatch);
-
         if (debug)
             releaseBin(x, "embedding.bin", batch_size * seq_len * d_model);
 
@@ -447,9 +440,20 @@ public:
         if (debug)
             releaseBin(residual_out, "final_attn_out.bin", batch_size * seq_len * d_model);
 
+        return residual_out;
+    }
+
+    float *forward(Batch currentBatch)
+    {
+        if (debug)
+            releaseBin(currentBatch.x, "batch.bin", batch_size * seq_len);
+
+        float *x = embeddings->forward(currentBatch);
+        float *attention_score = attentionScore(x);
+
         debug = false;
 
-        return residual_out;
+        return attention_score;
     };
 
     float *addResidual(float *input, float *temp)

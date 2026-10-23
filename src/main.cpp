@@ -58,8 +58,8 @@ int main()
     int num_heads = 16;
     int batch_size = 12;
     int seq_len = 4;
-    // int epoch = 2500;
-    int epoch = 2;
+    int epoch = 2500;
+    // int epoch = 20;
     bool drop_last = true; // for training set this to false, if someone is serious about this email me. the cost of implementing this feature will affect everything in depth many tradeoffs
 
     bool hyperParamaterRelease = false;
@@ -85,7 +85,7 @@ int main()
         num_heads); // write the hyperparamaters down
 
     // we just need a simple shample.
-    epoch = debug == true ? 1 : epoch;
+    // epoch = debug == true ? 1 : epoch;
 
     const std::vector<int> &encodedData = helper->getEncodedList();
 
