@@ -90,6 +90,10 @@ public:
         cudaFree(device_bias);
         cudaFree(d_state_weight);
         cudaFree(d_state_bias);
+
+        (weightedSumP != nullptr ? cudaFree(weightedSumP) : cudaSuccess);
+        (multiHeadedP != nullptr ? cudaFree(multiHeadedP) : cudaSuccess);
+        (transposedP != nullptr ? cudaFree(transposedP) : cudaSuccess);
     }
 
     // this is the exntension of the constructor dont know why this way but
@@ -134,7 +138,6 @@ public:
         return this->mhead_out_device;
     }
 
-
     /**
      *
      * @class forward()
@@ -147,6 +150,32 @@ public:
     {
         WeightedSum(val, device_weight, device_bias, weighted_sum_device, batch_size * seq_len, f_in, f_out);
         return weighted_sum_device;
+    }
+
+    float *weightedSumP = nullptr;
+    float *multiHeadedP = nullptr;
+    float *transposedP = nullptr;
+    /**
+     *
+     * @class forward()
+     * @brief Expects a BTC tensor for the linear transformation.
+     * Applies the linear transformation using the existing weights and biases
+     * while supporting different batch sizes.
+     *
+     * If this were a high-performance API, this approach would be inefficient.
+     * However, it is sufficient for our current use case.
+     *
+     * @param val (B, T, C) tensor
+     * @warning  Expects a device pointer
+     * @return (Linear transformed tensor)
+     */
+    float *forward(float *val, int b, int t)
+    {
+        cudaMalloc((void **)&weightedSumP, b * t * f_out * sizeof(float));
+
+        WeightedSum(val, device_weight, device_bias, weightedSumP, b * t, f_in, f_out);
+
+        return weightedSumP;
     }
 
     /**
@@ -162,8 +191,26 @@ public:
         return mhead_out_device;
     }
 
+    /**
+     * @brief turns (B,T,C) tensor into (batch_size, seq_len, num_head, head_dim)
+     *
+     * @param B batch size
+     * @param T seq_len
+     * @warning Returns device pointer
+     * @return (batch_size, seq_len, num_head, head_dim) tensor in device
+     */
+    float *reshapeHead(int B, int T)
+    {
+        cudaMalloc(&multiHeadedP, B * T * head_dim * n_head * sizeof(float));
+
+        multiHeadedAttention(weightedSumP, multiHeadedP, n_head, head_dim, B, f_out, T);
+
+        return multiHeadedP;
+    }
+
     float *transposeMiddle4DTensor()
     {
+
         TranposeMiddleTensor4(
             mhead_out_device,
             deviceArrInTranspose,
@@ -173,6 +220,34 @@ public:
             head_dim);
 
         return deviceArrInTranspose; // (batch_size, num_head, seq_len, head_dim) changed shape
+    }
+
+    float *transposeMiddle4DTensor(float *x, int B, int T)
+    {
+        cudaMalloc(&transposedP, B * T * head_dim * n_head * sizeof(float));
+        TranposeMiddleTensor4(
+            x,
+            transposedP,
+            B,
+            T,
+            n_head,
+            head_dim);
+        // unknown reasons :)
+        // utils->printFlarArray4D(x, B, T, n_head, head_dim, "device");
+
+        return transposedP; // (batch_size, num_head, seq_len, head_dim) changed shape
+    }
+
+    void teansposeKeyForAttnScore(float *buffer_out_d, int b, int t)
+    {
+        TransposeKey(
+            transposedP,
+            buffer_out_d,
+            n_head,
+            head_dim,
+            b,
+            t,
+            false);
     }
 
     /**

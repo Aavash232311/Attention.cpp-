@@ -105,7 +105,27 @@ public:
     float *normalized_x;
 
     float *layer_norm_x;
+    float *keyTransposedPrompt = nullptr;
+    float *qktPrompt = nullptr;
+    float *softmaxedPormpt = nullptr;
+    float *attnScorePrompt = nullptr;
+    float *promptX = nullptr;
+    float *promptResidualOut = nullptr;
+    float *reformedShapePrompt = nullptr;
 
+    /**
+     *
+     *  @class Attention
+     *  @brief Attention constructor. The weights and biases are initialized here
+     *  because we avoid using cudaMalloc() and cudaMemcpy() during each epoch,
+     *  as doing so could significantly degrade performance.
+     *
+     * @note This is good as we do not allocate or copy memory when training.
+     * But this lacks the flexiblity to just pass in a tensor of a given shape and
+     * pass through the attention head.
+     *
+     * @return None
+     */
     Attention(
         int d_model,
         int vocab_size,
@@ -222,6 +242,16 @@ public:
         (BTC_MULTI_HEAD_BUFFER_HOST != nullptr ? free(BTC_MULTI_HEAD_BUFFER_HOST) : void());
 
         (BTCHost != nullptr ? free(BTCHost) : void());
+
+        // for prompt
+
+        (keyTransposedPrompt != nullptr ? cudaFree(keyTransposedPrompt) : cudaSuccess);
+        (qktPrompt != nullptr ? cudaFree(qktPrompt) : cudaSuccess);
+        (softmaxedPormpt != nullptr ? cudaFree(softmaxedPormpt) : cudaSuccess);
+        (attnScorePrompt != nullptr ? cudaFree(attnScorePrompt) : cudaSuccess);
+        (promptX != nullptr ? cudaFree(promptX) : cudaSuccess);
+        (promptResidualOut != nullptr ? cudaFree(promptResidualOut) : cudaSuccess);
+        (reformedShapePrompt != nullptr ? cudaFree(reformedShapePrompt) : cudaSuccess);
 
         cudaFree(tempX);
 
@@ -443,6 +473,17 @@ public:
         return residual_out;
     }
 
+    /**
+     *
+     * @class Attention
+     * @attention forward()
+     * @brief Forwrd pass to train
+     *
+     * @warning Used to train as this uses buffers initllized from the consturcotr.
+     *
+     * @param`currentBatch, object Batch from data loader.
+     * @return final (B,T,C) tensor
+     */
     float *forward(Batch currentBatch)
     {
         if (debug)
@@ -456,12 +497,95 @@ public:
         return attention_score;
     };
 
+    /**
+     *
+     * @class Attention
+     * @attention forward()
+     * @brief Forwrd pass to prompt
+     *
+     * @note I am too lazy to write the entire forward pass mechanism again.
+     * Learned parameters do not depend on the batch.
+     * The above architectural decision is justified because we want to avoid
+     * allocating, copying, or manipulating memory during training, as these
+     * operations could significantly degrade performance.
+     *
+     * @note This is a temporary solution. Once we desigh a mechanism to save and load
+     * trained weight and bias to existing attention clas instance we will replace that with this.
+     * For now just to get the end result I will overload many methods here.
+     *
+     * @param x (B, T, C) tensor any batch
+     * @param T we can say this as block size. Length of token.
+     * @param B = 1 if we pass in the prompt to the transformer.
+     * @return final (B,T,C) tensor
+     */
+    float *forward(float *prompt, int B, int T)
+    {
+
+        cudaMalloc(&promptX, B * T * d_model * sizeof(float));
+        cudaMalloc(&promptResidualOut, B * T * d_model * sizeof(float));
+        cudaMalloc(&reformedShapePrompt, B * T * d_model * sizeof(float));
+
+        cudaMemcpy(promptX, prompt, B * T * d_model * sizeof(float), cudaMemcpyDeviceToDevice);
+
+        // batch_size = 1, token_length = seq_len
+        float *Q = query->forward(promptX, B, T);
+        float *K = key->forward(promptX, B, T);
+        float *V = value->forward(promptX, B, T);
+
+        // multi headed attention
+        Q = query->reshapeHead(B, T);
+        K = query->reshapeHead(B, T);
+        V = query->reshapeHead(B, T);
+
+        Q = query->transposeMiddle4DTensor(Q, B, T); // (batch_size, num_head, seq_len, head_dim)
+        K = key->transposeMiddle4DTensor(K, B, T);   // (batch_size, num_head, seq_len, head_dim)
+        V = value->transposeMiddle4DTensor(V, B, T); // (batch_size, num_head, seq_len, head_dim)
+
+        // This is completely okay for now.
+        // Not a method that high performing API would invoke.
+        cudaMalloc((void **)&keyTransposedPrompt, B * T * num_heads * head_dim * sizeof(float));
+        cudaMalloc((void **)&qktPrompt, B * num_heads * T * T * sizeof(float));
+        cudaMalloc((void **)&softmaxedPormpt, B * num_heads * T * T * sizeof(float));
+        cudaMalloc((void **)&attnScorePrompt, B * num_heads * T * head_dim * sizeof(float));
+
+        key->teansposeKeyForAttnScore(keyTransposedPrompt, B, T);
+
+        QKmatmul(Q, keyTransposedPrompt, qktPrompt, T, head_dim, B, num_heads);
+        masking(qktPrompt, -INFINITY);
+        softmax(qktPrompt, softmaxedPormpt, B * num_heads * T * T, T, num_heads, B);
+
+        QKVMatmulFinal(softmaxedPormpt, V, attnScorePrompt, T, head_dim, num_heads, B);
+
+        float *reformShape = ReformShape(attnScorePrompt);
+
+        ReformShapeWapper(
+            attnScorePrompt,
+            reformedShapePrompt,
+            B,
+            T,
+            d_model,
+            num_heads,
+            head_dim);
+
+        float *contact = outputProj->forward(reformedShapePrompt, B, T);
+        float *add = addResidual(contact, promptX, B, T);
+
+        return prompt;
+    }
+
     float *addResidual(float *input, float *temp)
     {
 
         vectorKernel(input, temp, resedualOutDevice, batch_size * seq_len * d_model);
 
         return resedualOutDevice;
+    }
+
+    float *addResidual(float *input, float *temp, int B, int T)
+    {
+        vectorKernel(input, temp, promptResidualOut, B * T * d_model);
+
+        return promptResidualOut;
     }
 
     AttentionParamaters attentionParamaters; // just the reference so stack allocation is fine

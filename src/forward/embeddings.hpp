@@ -84,6 +84,11 @@ public:
     {
         (lookedUpEmbeddings != nullptr ? free(lookedUpEmbeddings) : void());
 
+        (deviceXPrompt != nullptr ? cudaFree(deviceXPrompt) : cudaSuccess);
+        (lookupDeviceOutPrompt != nullptr ? cudaFree(lookupDeviceOutPrompt) : cudaSuccess);
+        (deviceEmbeddingsFinalPrompt != nullptr ? cudaFree(deviceEmbeddingsFinalPrompt) : cudaSuccess);
+        (promptPE != nullptr ? cudaFree(promptPE) : cudaSuccess);
+
         delete[] hostEmbeddings;
 
         cudaFree(deviceX);
@@ -127,15 +132,27 @@ public:
         return deviceFinalEmbeddings;
     }
 
-    float *forward(int *prompt)
+    int *deviceXPrompt = nullptr;
+    float *lookupDeviceOutPrompt = nullptr;
+    float *deviceEmbeddingsFinalPrompt = nullptr;
+    float *promptPE = nullptr; // something that is not learned we can always re-generate it
+
+    float *forward(int *prompt, int B, int T)
     {
-        int actual_batch = batch_size;
-        
-        cudaMemcpy(deviceX, prompt, seq_len * actual_batch * sizeof(int), cudaMemcpyHostToDevice);
-        lookup(deviceX, deviceEmbeddings, lookupDeviceOut, d_model, seq_len, actual_batch, vocab_size);
-        addEmbeddings(lookupDeviceOut, devicePositionalEncoding, deviceFinalEmbeddings, d_model, seq_len, actual_batch);
-        
-        return deviceFinalEmbeddings;
+
+        cudaMalloc(&deviceXPrompt, B * T * sizeof(int));
+        cudaMalloc(&lookupDeviceOutPrompt, B * T * d_model * sizeof(float));
+        cudaMalloc(&deviceEmbeddingsFinalPrompt, B * T * d_model * sizeof(float));
+        cudaMalloc(&promptPE, T * d_model * sizeof(float));
+
+        cudaMemcpy(deviceXPrompt, prompt, B * T * sizeof(int), cudaMemcpyHostToDevice);
+
+        positionalEmbeddings(promptPE, T, d_model);
+
+        lookup(deviceXPrompt, deviceEmbeddings, lookupDeviceOutPrompt, d_model, T, B, vocab_size);
+        addEmbeddings(lookupDeviceOutPrompt, promptPE, deviceEmbeddingsFinalPrompt, d_model, T, B);
+
+        return deviceEmbeddingsFinalPrompt;
     }
 
     float *getFinalEmbeddingDevice()

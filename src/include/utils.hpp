@@ -11,6 +11,8 @@
 #include <iostream>
 #include <unordered_map>
 
+using namespace std;
+
 struct Tensor4
 {
     int x;
@@ -195,6 +197,34 @@ public:
         {
             free(h_arr);
         }
+    }
+
+    // Lets take out the vector list of the last dimension here.
+
+    vector<vector<float>> lastDimHostToVector(
+        const float *tensor, int A, int B, int C)
+    {
+        vector<vector<float>> vectorList;
+        vectorList.reserve(A * B); // this is a 2d shape, row = list of vocab
+
+        for (int row = 0; row < A; ++row)
+        {
+            for (int col = 0; col < B; ++col)
+            {
+                vector<float> vec;
+                vec.reserve(C);
+
+                for (int elem = 0; elem < C; ++elem)
+                {
+                    int idx = row * B * C + col * C + elem;
+                    vec.push_back(tensor[idx]);
+                }
+
+                vectorList.push_back(vec);
+            }
+        }
+
+        return vectorList;
     }
 
     /**
