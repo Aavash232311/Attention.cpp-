@@ -5,6 +5,7 @@
 #include <iostream>
 #include <memory>
 #include <cstdio>
+#include <algorithm>
 #include <chrono>
 
 #include "../include/utils.hpp"
@@ -501,57 +502,70 @@ public:
         }
     }
 
-    void forward(std::string input, std::vector<char> &charPool)
+    void forward(std::string input, std::vector<char> &charPool, int gen = 15)
     {
         helper = std::make_unique<Helper>(charPool);
 
         // encode input
-        auto encodedInput = helper->encoder(input);
+        vector<int> encodedInput = helper->encoder(input);
 
-        int *tokens = utils->vectorToFlatStrip(encodedInput);
-
-        int current_seq_len = encodedInput.size();
-
-        embeddings = std::make_unique<Embeddings>(
-            d_model,
-            vocab_size,
-            current_seq_len,
-            1,
-            debug);
-
-        auto attn = std::make_unique<Attention>(
-            d_model,
-            vocab_size,
-            num_heads,
-            current_seq_len,
-            1,
-            debug);
-
-        float *softmaxedProb; // Shape(B,T,vocab_size)
-        cudaMalloc((void **)&softmaxedProb, current_seq_len * vocab_size * sizeof(float));
-
-        float *emb = embeddings->forward(tokens);
-        float *attnScore = attn->attentionScore(emb);
+        for (int i = 0; i < gen; ++i)
+        {
+            int trained_seq_len = 4;
+            int T = min((int)encodedInput.size(), trained_seq_len);
+            vector<int> window(encodedInput.end() - T, encodedInput.end());
+            int current_seq_len = T;
 
 
-        std::unique_ptr<Linear> prompt_lm_head = std::make_unique<Linear>(d_model, vocab_size, current_seq_len, 1, num_heads, debug);
-        float *prob = prompt_lm_head->forward(attnScore);
 
-        // arg_max from the vocab dimension; we do need cross entropy
+            float *softmaxedProb; // Shape(B,T,vocab_size)
+            cudaMalloc((void **)&softmaxedProb, current_seq_len * vocab_size * sizeof(float));
+            float *softmaxedProbHost = (float *)malloc(current_seq_len * vocab_size * sizeof(float));
 
-        softmax2D(
-            prob,
-            softmaxedProb,
-            1,
-            current_seq_len,
-            vocab_size);
+            int *tokens = utils->vectorToFlatStrip(window);
+            float *emb = embeddings->forward(tokens, 1, current_seq_len);
+            float *attnScore = attention->forward(emb, 1, current_seq_len);
 
-        // I will try to avoid kernel launch here even though its efficient
-        // Now, we have the end result we need to fix the codebase.
-        utils->printFlatArray3D(softmaxedProb, 1, current_seq_len, vocab_size, false, "device");
+            std::unique_ptr<Linear> prompt_lm_head = std::make_unique<Linear>(d_model, vocab_size, current_seq_len, 1, num_heads, debug);
+            float *prob = prompt_lm_head->forward(attnScore);
 
-        free(tokens);
-        cudaFree(softmaxedProb);
+            // arg_max from the vocab dimension; we do need cross entropy
+
+            softmax2D(
+                prob,
+                softmaxedProb,
+                1,
+                current_seq_len,
+                vocab_size);
+
+            // Note: The current approach is very slow, but it's fine for testing.
+            // I'll try to avoid a kernel launch here, even though it would be more efficient.
+            // Now that we have the desired end result, we need to fix the codebase.
+            // Seperate header and logic and compile using CMake.
+            cudaMemcpy(softmaxedProbHost, softmaxedProb, current_seq_len * vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
+
+            // utils->printFlatArray3D(softmaxedProbHost, 1, current_seq_len, vocab_size, true);
+
+            vector<vector<float>> token_list = utils->lastDimHostToVector(softmaxedProbHost, 1, current_seq_len, vocab_size);
+
+            vector<float> current_token = token_list[current_seq_len - 1];
+            auto it = max_element(current_token.begin(), current_token.end());
+            int index = distance(current_token.begin(), it); // argmax()
+
+            encodedInput.push_back(index);
+
+            free(tokens);
+            free(softmaxedProbHost);
+            cudaFree(softmaxedProb);
+        }
+
+        auto decode = helper->decoder(encodedInput);
+
+        for (int i = 0; i < decode.size(); ++i)
+        {
+            cout << decode[i];
+        }
+        cout << "\n";
     }
 
     void train(int epoch)
