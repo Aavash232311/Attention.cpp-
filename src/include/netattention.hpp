@@ -25,7 +25,6 @@ struct NetAttentionParamaters
      */
     float *upsteram_out_softmax_ce;
 
-
     float *weight_lm_head;
 
     /**
@@ -36,7 +35,6 @@ struct NetAttentionParamaters
      * @warning location is at the HOST
      */
     float *dweight_lm_head;
-
 
     /**
      * x = attention(x)
@@ -207,4 +205,13 @@ struct FlashAttentionPointers : NetAttentionParamaters
     float *d_weight_v;
 
     float *d_weight_output_project;
+
+    /**
+     * Token_id of shape (batch_size, seq_len)
+     * It's basically the chunk of certian element of the whole vocab.
+     * Represented by integers in our case, in this particualr model eneoded text as integers.
+     *
+     * @param token_id location device
+     */
+    int *token_id;
 };

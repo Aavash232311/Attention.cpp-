@@ -58,7 +58,7 @@ int main()
     int num_heads = 16;
     int batch_size = 12;
     int seq_len = 4;
-    int epoch = 1000;
+    int epoch = 1250;
     // int epoch = 20;
     bool drop_last = true; // for training set this to false, if someone is serious about this email me. the cost of implementing this feature will affect everything in depth many tradeoffs
 
@@ -99,8 +99,8 @@ int main()
         debug,
         engine_run);
 
-     model->train(epoch);
-    model->forward("cat saw the sun, and the dog saw the sun.", charPool);
+    model->train(epoch);
+   // model->forward("the hill, and the cat", charPool);
 
     auto end = std::chrono::high_resolution_clock::now();
     cudaDeviceSynchronize(); // CPU is waiting for the GPU to finish

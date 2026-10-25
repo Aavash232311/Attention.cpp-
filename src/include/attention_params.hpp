@@ -132,15 +132,6 @@ struct AttentionParamaters
     float *doutput_bias;
 
     /**
-     * Token_id of shape (batch_size, seq_len)
-     * It's basically the chunk of certian element of the whole vocab.
-     * Represented by integers in our case, in this particualr model eneoded text as integers.
-     *
-     * @param token_id location device
-     */
-    int *token_id;
-
-    /**
      * Bias of the query from attention head.
      *
      * @param bias_q location device

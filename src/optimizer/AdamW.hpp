@@ -288,6 +288,12 @@ public:
             config.t,
             config.d_model);
 
+        this->utils->printFlatArray1D(
+            modelParamaters.debeta,
+            config.d_model,
+            "device"
+        );
+
         // now "one" of the embedding only "one" we are using the traditional transformer
 
         AdamWSTEP(
@@ -302,6 +308,7 @@ public:
             weight_decay,
             config.t,
             config.vocab_size * config.d_model);
+
 
         cudaDeviceSynchronize();
 

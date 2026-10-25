@@ -8,7 +8,6 @@
 #include <cstdio>
 #include <chrono>
 
-
 using namespace std;
 
 extern "C" void layerNormalization(float *x, float *gamma, float *beta, float *std_dev_cache, float *mean_cache, int batch_size, int seq_len, int d_model);
@@ -21,7 +20,6 @@ class LayerNorm
 
     float *d_gamma;
     float *d_beta;
-
 
     int batch_size;
     int seq_len;
@@ -87,9 +85,8 @@ public:
         // second standard deviation
         // then normalize gama and beta are the learnable paramaters.
 
-
         layerNormalization(x, d_gamma, d_beta, std_dev_cache, mean_cache, batch_size, seq_len, d_model);
- 
+
         // if (debug)
         // {
         //     float *mean_host = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
@@ -97,7 +94,7 @@ public:
 
         //     cudaMemcpy(mean_host, mean_cache, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
         //     cudaMemcpy(std_dev_host, std_dev_cache, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
-            
+
         //     utils->printFlatArray2D(mean_host, batch_size * seq_len, d_model);
         //     utils->printFlatArray2D(std_dev_host, batch_size * seq_len, d_model);
 
@@ -106,6 +103,11 @@ public:
         // }
 
         debug = false;
+    }
+
+    void forward(float *x, int B)
+    {
+        layerNormalization(x, d_gamma, d_beta, std_dev_cache, mean_cache, B, seq_len, d_model);
     }
 
     float *getGammaDevice() // for the most part we only care about whats insdie of the GPU
@@ -127,5 +129,4 @@ public:
     {
         return this->d_beta;
     }
-
 };

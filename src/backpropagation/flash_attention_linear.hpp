@@ -167,6 +167,8 @@ private:
             seq_len,
             d_model);
 
+        //  utils->printFlatArray3D(model_paramaters.attention_head.x, batch_size, seq_len, d_model, false, "device");
+
         if (debug)
             pyDebuggerReleaseStage8();
 
@@ -179,15 +181,30 @@ private:
             seq_len,
             d_model);
 
+//        utils->printFlatArray3D(model_paramaters.d_add_residual_output, batch_size, seq_len, d_model, false, "device");
+
         // update the embedding gradient
         updateTokenEmbedding(
             model_paramaters.d_add_residual_output,
             model_paramaters.d_embedding,
-            model_paramaters.attention_head.token_id,
+            model_paramaters.token_id,
             batch_size,
             seq_len,
             d_model,
             vocab_size);
+
+        // utils->printFlatArray2D(
+        //     model_paramaters.d_add_residual_output,
+        //     vocab_size,
+        //     d_model,
+        //     "device"
+        // );
+
+        // std::cout << "Getter address (autograd head): "
+        //           << static_cast<void *>(model_paramaters.token_id) << '\n';
+
+        // std::cout << "Token id " << std::endl;
+        // utils->printFlatArray2D(model_paramaters.token_id, batch_size, seq_len, "device");
 
         // updated embedding
         // cout << "Embedding gradient runs" << endl;
