@@ -51,7 +51,6 @@ class AttentionInterface
     std::unique_ptr<OptimizerDebugger> optimizer;
     std::unique_ptr<AdamWMemConfig> adamMemConfig;
     std::unique_ptr<Helper> helper;
-    std::unique_ptr<Embeddings> embeddings;
 
     // turn those result into proballity score
     std::unique_ptr<Linear> lm_head;
@@ -502,62 +501,74 @@ public:
         }
     }
 
-    void forward(std::string input, std::vector<char> &charPool, int gen = 15)
+    void forward(std::string input, std::vector<char> &charPool, int gen = 1)
     {
         helper = std::make_unique<Helper>(charPool);
 
         // encode input
         vector<int> encodedInput = helper->encoder(input);
 
+        float *softmaxedProb; // Shape(B,T,vocab_size)
+        cudaMalloc((void **)&softmaxedProb, seq_len * vocab_size * sizeof(float));
+        float *softmaxedProbHost = (float *)malloc(seq_len * vocab_size * sizeof(float));
+
         for (int i = 0; i < gen; ++i)
         {
-            int trained_seq_len = 4;
-            int T = min((int)encodedInput.size(), trained_seq_len);
-            vector<int> window(encodedInput.end() - T, encodedInput.end());
-            int current_seq_len = T;
-
-
-
-            float *softmaxedProb; // Shape(B,T,vocab_size)
-            cudaMalloc((void **)&softmaxedProb, current_seq_len * vocab_size * sizeof(float));
-            float *softmaxedProbHost = (float *)malloc(current_seq_len * vocab_size * sizeof(float));
+            // basically last 4, we are taking in the fixed seq_len
+            vector<int> window(encodedInput.end() - seq_len, encodedInput.end());
 
             int *tokens = utils->vectorToFlatStrip(window);
-            float *emb = embeddings->forward(tokens, 1, current_seq_len);
-            float *attnScore = attention->forward(emb, 1, current_seq_len);
+            float *emb = attention->embeddings->forward(tokens, 1);
 
-            std::unique_ptr<Linear> prompt_lm_head = std::make_unique<Linear>(d_model, vocab_size, current_seq_len, 1, num_heads, debug);
-            float *prob = prompt_lm_head->forward(attnScore);
+            // std::cout << "Embedding " << std::endl;
+            // utils->printFlatArray3D(emb, 1, seq_len, d_model, false, "device");
+            // std::cout << "From outside " << std::endl;
+            //  utils->printFlatArray2D(attention->embeddings->deviceEmbeddings, vocab_size, d_model, "device");
 
+            float *attnScore = attention->forward(emb, 1);
+
+            //   std::cout << "attn " << std::endl;
+            // utils->printFlatArray3D(attnScore, 1, seq_len, d_model, false, "device");
+
+            float *prob = lm_head->forward(attnScore, 1);
             // arg_max from the vocab dimension; we do need cross entropy
 
             softmax2D(
                 prob,
-                softmaxedProb,
+                softmaxedProb, // (B, T, vocab_size) (1 x seq_len) after extraction
                 1,
-                current_seq_len,
+                seq_len,
                 vocab_size);
 
             // Note: The current approach is very slow, but it's fine for testing.
             // I'll try to avoid a kernel launch here, even though it would be more efficient.
             // Now that we have the desired end result, we need to fix the codebase.
             // Seperate header and logic and compile using CMake.
-            cudaMemcpy(softmaxedProbHost, softmaxedProb, current_seq_len * vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
+            cudaMemcpy(softmaxedProbHost, softmaxedProb, seq_len * vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
 
             // utils->printFlatArray3D(softmaxedProbHost, 1, current_seq_len, vocab_size, true);
 
-            vector<vector<float>> token_list = utils->lastDimHostToVector(softmaxedProbHost, 1, current_seq_len, vocab_size);
+            vector<vector<float>> token_list = utils->lastDimHostToVector(softmaxedProbHost, 1, seq_len, vocab_size);
 
-            vector<float> current_token = token_list[current_seq_len - 1];
+            vector<float> current_token = token_list[seq_len - 1];
             auto it = max_element(current_token.begin(), current_token.end());
             int index = distance(current_token.begin(), it); // argmax()
 
             encodedInput.push_back(index);
 
             free(tokens);
-            free(softmaxedProbHost);
-            cudaFree(softmaxedProb);
         }
+
+        free(softmaxedProbHost);
+        cudaFree(softmaxedProb);
+
+        // auto decode = helper->decoder(encodedInput);
+
+        // for (int i = 0; i < decode.size(); ++i)
+        // {
+        //     cout << decode[i];
+        // }
+        // cout << "\n";
 
         auto decode = helper->decoder(encodedInput);
 
@@ -608,6 +619,16 @@ public:
                 //     this->utils->printLastOneOf3D(prob, batch_size, seq_len, vocab_size);
                 // }
 
+                modelParamaters.token_id = attention->embeddings->getDeviceX();
+
+                // int *a = attention->embeddings->getDeviceX();
+                // int *b = modelParamaters.token_id;
+
+                // std::cout << "getter: " << static_cast<void *>(a) << '\n';
+                // std::cout << "token_id: " << static_cast<void *>(b) << '\n';
+
+                // utils->printFlatArray2D(a, batch_size, seq_len, "device");
+                // utils->printFlatArray2D(b, batch_size, seq_len, "device");
                 // ----------- Lets gather overall paramaters here ---------- //
                 modelParamaters.attention_head = attention->getParamaters();
                 modelParamaters.lm_head = LinearParams{lm_head->getWeightDevice(), lm_head->getBaiasDevice()};

@@ -41,7 +41,7 @@ public:
 
     float *hostEmbeddings;
 
-    int *deviceX;
+    int *deviceX = nullptr;
     float *deviceEmbeddings;
     float *deviceFinalEmbeddings;
     float *lookupDeviceOut;
@@ -77,7 +77,7 @@ public:
         // allocate memory for output after lookup Shape(seq_len, batch_size, d_model)
         cudaMalloc((void **)&lookupDeviceOut, seq_len * batch_size * d_model * sizeof(float));
 
-        cudaMalloc((void **)&deviceX, seq_len * batch_size * sizeof(int));
+        cudaMalloc(&deviceX, seq_len * batch_size * sizeof(int));
     };
 
     ~Embeddings()
@@ -87,11 +87,10 @@ public:
         (deviceXPrompt != nullptr ? cudaFree(deviceXPrompt) : cudaSuccess);
         (lookupDeviceOutPrompt != nullptr ? cudaFree(lookupDeviceOutPrompt) : cudaSuccess);
         (deviceEmbeddingsFinalPrompt != nullptr ? cudaFree(deviceEmbeddingsFinalPrompt) : cudaSuccess);
-        (promptPE != nullptr ? cudaFree(promptPE) : cudaSuccess);
 
         delete[] hostEmbeddings;
 
-        cudaFree(deviceX);
+        (deviceX != nullptr ? cudaFree(deviceX): cudaSuccess);
         cudaFree(deviceEmbeddings);
         cudaFree(deviceFinalEmbeddings);
 
@@ -119,6 +118,10 @@ public:
         int *hostX = currentBatch.x;
         // copy this to GPU
         cudaMemcpy(deviceX, hostX, seq_len * actual_batch * sizeof(int), cudaMemcpyHostToDevice);
+
+        // std::cout << "from the class " << std::endl;
+        // utils->printFlatArray2D(deviceX, batch_size, seq_len, "device");
+
         lookup(deviceX, deviceEmbeddings, lookupDeviceOut, d_model, seq_len, actual_batch, vocab_size); // actual batch because the batch size may vary here
         // Now this result gets added
         addEmbeddings(lookupDeviceOut, devicePositionalEncoding, deviceFinalEmbeddings, d_model, seq_len, actual_batch);
@@ -135,24 +138,36 @@ public:
     int *deviceXPrompt = nullptr;
     float *lookupDeviceOutPrompt = nullptr;
     float *deviceEmbeddingsFinalPrompt = nullptr;
-    float *promptPE = nullptr; // something that is not learned we can always re-generate it
 
-    float *forward(int *prompt, int B, int T)
+    void freePromptBuffers()
     {
+        cudaFree(deviceXPrompt);
+        deviceXPrompt = nullptr;
+        cudaFree(lookupDeviceOutPrompt);
+        lookupDeviceOutPrompt = nullptr;
+        cudaFree(deviceEmbeddingsFinalPrompt);
+        deviceEmbeddingsFinalPrompt = nullptr;
+    }
 
-        cudaMalloc(&deviceXPrompt, B * T * sizeof(int));
-        cudaMalloc(&lookupDeviceOutPrompt, B * T * d_model * sizeof(float));
-        cudaMalloc(&deviceEmbeddingsFinalPrompt, B * T * d_model * sizeof(float));
-        cudaMalloc(&promptPE, T * d_model * sizeof(float));
+    float *forward(int *prompt, int B)
+    {
+        freePromptBuffers();
+        // utils->printFlatArray2D(deviceEmbeddings, vocab_size, d_model, "device");
+        cudaMalloc(&deviceXPrompt, B * seq_len * sizeof(int));
+        cudaMalloc(&lookupDeviceOutPrompt, B * seq_len * d_model * sizeof(float));
+        cudaMalloc(&deviceEmbeddingsFinalPrompt, B * seq_len * d_model * sizeof(float));
 
-        cudaMemcpy(deviceXPrompt, prompt, B * T * sizeof(int), cudaMemcpyHostToDevice);
+        cudaMemcpy(deviceXPrompt, prompt, B * seq_len * sizeof(int), cudaMemcpyHostToDevice);
 
-        positionalEmbeddings(promptPE, T, d_model);
-
-        lookup(deviceXPrompt, deviceEmbeddings, lookupDeviceOutPrompt, d_model, T, B, vocab_size);
-        addEmbeddings(lookupDeviceOutPrompt, promptPE, deviceEmbeddingsFinalPrompt, d_model, T, B);
+        lookup(deviceXPrompt, deviceEmbeddings, lookupDeviceOutPrompt, d_model, seq_len, B, vocab_size);
+        addEmbeddings(lookupDeviceOutPrompt, devicePositionalEncoding, deviceEmbeddingsFinalPrompt, d_model, seq_len, B);
 
         return deviceEmbeddingsFinalPrompt;
+    }
+
+    int* getDeviceX()
+    {
+        return deviceX;
     }
 
     float *getFinalEmbeddingDevice()

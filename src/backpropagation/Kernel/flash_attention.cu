@@ -483,7 +483,7 @@ extern "C"
         int d_model,
         int vocab_size)
     {
-        cudaMemset(token_ids, 0, batch_size * seq_len * sizeof(int));
+        cudaMemset(d_embedding, 0, vocab_size * d_model * sizeof(float));
 
         dim3 blockDim(256, 1, 1);
         dim3 gridDim(seq_len, batch_size, 1);

@@ -113,6 +113,8 @@ public:
     float *promptResidualOut = nullptr;
     float *reformedShapePrompt = nullptr;
 
+    int *deviceX;
+
     /**
      *
      *  @class Attention
@@ -450,6 +452,9 @@ public:
             num_heads,
             batch_size);
 
+        // std::cout << "Token id " << std::endl;
+        // utils->printFlatArray2D(embeddings->getDeviceX(), batch_size, seq_len, "device");
+
         if (debug)
             releaseBin(softmaxed_qkv, "attn_score.bin", batch_size * num_heads * seq_len * head_dim);
 
@@ -470,6 +475,7 @@ public:
         if (debug)
             releaseBin(residual_out, "final_attn_out.bin", batch_size * seq_len * d_model);
 
+        //    utils->printFlatArray3D(residual_out, batch_size, seq_len, d_model, false, "device");
         return residual_out;
     }
 
@@ -490,12 +496,37 @@ public:
             releaseBin(currentBatch.x, "batch.bin", batch_size * seq_len);
 
         float *x = embeddings->forward(currentBatch);
+        deviceX = embeddings->getDeviceX();
+
+        // std::cout << "Getter address (attn head): "
+        //           << static_cast<void *>(deviceX) << '\n';
+
+        // utils->printFlatArray2D(deviceX, batch_size, seq_len, "device");
+
         float *attention_score = attentionScore(x);
 
         debug = false;
 
         return attention_score;
     };
+
+    void freePromptBuffers()
+    {
+        cudaFree(promptX);
+        promptX = nullptr;
+        cudaFree(promptResidualOut);
+        promptResidualOut = nullptr;
+        cudaFree(reformedShapePrompt);
+        reformedShapePrompt = nullptr;
+        cudaFree(keyTransposedPrompt);
+        keyTransposedPrompt = nullptr;
+        cudaFree(qktPrompt);
+        qktPrompt = nullptr;
+        cudaFree(softmaxedPormpt);
+        softmaxedPormpt = nullptr;
+        cudaFree(attnScorePrompt);
+        attnScorePrompt = nullptr;
+    }
 
     /**
      *
@@ -518,28 +549,31 @@ public:
      * @param B = 1 if we pass in the prompt to the transformer.
      * @return final (B,T,C) tensor
      */
-    float *forward(float *prompt, int B, int T)
+    float *forward(float *prompt, int B)
     {
+        int T = seq_len;
 
+        freePromptBuffers();
         cudaMalloc(&promptX, B * T * d_model * sizeof(float));
         cudaMalloc(&promptResidualOut, B * T * d_model * sizeof(float));
         cudaMalloc(&reformedShapePrompt, B * T * d_model * sizeof(float));
 
         cudaMemcpy(promptX, prompt, B * T * d_model * sizeof(float), cudaMemcpyDeviceToDevice);
 
+        layerNorm->forward(prompt, B);
         // batch_size = 1, token_length = seq_len
-        float *Q = query->forward(promptX, B, T);
-        float *K = key->forward(promptX, B, T);
-        float *V = value->forward(promptX, B, T);
+        float *Q = query->forward(prompt, B);
+        float *K = key->forward(prompt, B);
+        float *V = value->forward(prompt, B);
 
         // multi headed attention
-        Q = query->reshapeHead(B, T);
-        K = query->reshapeHead(B, T);
-        V = query->reshapeHead(B, T);
+        Q = query->reshapeHead(B);
+        K = key->reshapeHead(B);
+        V = value->reshapeHead(B);
 
-        Q = query->transposeMiddle4DTensor(Q, B, T); // (batch_size, num_head, seq_len, head_dim)
-        K = key->transposeMiddle4DTensor(K, B, T);   // (batch_size, num_head, seq_len, head_dim)
-        V = value->transposeMiddle4DTensor(V, B, T); // (batch_size, num_head, seq_len, head_dim)
+        Q = query->transposeMiddle4DTensor(B); // (batch_size, num_head, seq_len, head_dim)
+        K = key->transposeMiddle4DTensor(B);   // (batch_size, num_head, seq_len, head_dim)
+        V = value->transposeMiddle4DTensor(B); // (batch_size, num_head, seq_len, head_dim)
 
         // This is completely okay for now.
         // Not a method that high performing API would invoke.
@@ -548,15 +582,15 @@ public:
         cudaMalloc((void **)&softmaxedPormpt, B * num_heads * T * T * sizeof(float));
         cudaMalloc((void **)&attnScorePrompt, B * num_heads * T * head_dim * sizeof(float));
 
-        key->teansposeKeyForAttnScore(keyTransposedPrompt, B, T);
+        key->teansposeKeyForAttnScore(keyTransposedPrompt, B);
 
         QKmatmul(Q, keyTransposedPrompt, qktPrompt, T, head_dim, B, num_heads);
-        masking(qktPrompt, -INFINITY);
+        ScalerDvisionElem(qktPrompt, B, num_heads, seq_len, head_dim);
+        UpperTriangularMasking(qktPrompt, -INFINITY, B, num_heads, seq_len);
+
         softmax(qktPrompt, softmaxedPormpt, B * num_heads * T * T, T, num_heads, B);
 
         QKVMatmulFinal(softmaxedPormpt, V, attnScorePrompt, T, head_dim, num_heads, B);
-
-        float *reformShape = ReformShape(attnScorePrompt);
 
         ReformShapeWapper(
             attnScorePrompt,
@@ -567,10 +601,11 @@ public:
             num_heads,
             head_dim);
 
-        float *contact = outputProj->forward(reformedShapePrompt, B, T);
-        float *add = addResidual(contact, promptX, B, T);
+        float *contact = outputProj->forward(reformedShapePrompt, B);
+        float *add = addResidual(contact, promptX, B);
 
-        return prompt;
+        // utils->printFlatArray3D(add, B, T, d_model, false, "device");
+        return add;
     }
 
     float *addResidual(float *input, float *temp)
@@ -581,9 +616,9 @@ public:
         return resedualOutDevice;
     }
 
-    float *addResidual(float *input, float *temp, int B, int T)
+    float *addResidual(float *input, float *temp, int B)
     {
-        vectorKernel(input, temp, promptResidualOut, B * T * d_model);
+        vectorKernel(input, temp, promptResidualOut, B * seq_len * d_model);
 
         return promptResidualOut;
     }
@@ -622,7 +657,6 @@ public:
             outputProj->getBaiasDevice(),
 
             doutput_bias,
-            embeddings->deviceX,
 
             query->getBaiasDevice(),
             key->getBaiasDevice(),

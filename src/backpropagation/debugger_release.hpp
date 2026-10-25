@@ -510,7 +510,7 @@ public:
 
         cudaMemcpy(d_embedding, model_paramaters.d_embedding, vocab_size * d_model * sizeof(float), cudaMemcpyHostToDevice);
         cudaMemcpy(grad_host, model_paramaters.d_add_residual_output, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
-        cudaMemcpy(token_ids_host, model_paramaters.attention_head.token_id, batch_size * seq_len * sizeof(int), cudaMemcpyDeviceToHost);
+        cudaMemcpy(token_ids_host, model_paramaters.token_id, batch_size * seq_len * sizeof(int), cudaMemcpyDeviceToHost);
 
         bulkRelease<float>(
             {{grad_host, batch_size * seq_len * d_model, "net_gradient_final.bin"},
