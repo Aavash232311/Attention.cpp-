@@ -518,8 +518,8 @@ extern "C"
 
         cudaMemset(dgamma, 0, C * sizeof(float));
         cudaMemset(debta, 0, C * sizeof(float));
-      
 
+        // Here are some issues.
         LayerNormBackPropgationKernel<<<gridDim, blockDim>>>(
             x, dx, G, mc, sdc, gamma, dgamma, debta, B, T, C);
 
