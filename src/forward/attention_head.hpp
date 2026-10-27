@@ -385,6 +385,17 @@ public:
         float *K = key->forward(x);
         float *V = value->forward(x);
 
+   
+            // utils->printFlatArray3D(
+            //     Q,
+            //     batch_size,
+            //     seq_len,
+            //     d_model,
+            //     false,
+            //     "device"
+            // );
+        
+
         // (B, T, C) to (batch_size, seq_len, num_head, head_dim)
         Q = query->reshapeHead();
         K = key->reshapeHead();
@@ -496,6 +507,10 @@ public:
             releaseBin(currentBatch.x, "batch.bin", batch_size * seq_len);
 
         float *x = embeddings->forward(currentBatch);
+ //    utils->printFlatArray3D(x, batch_size, seq_len, d_model, false, "device");
+
+    //  utils->printFlatArray2D(currentBatch.x, batch_size, seq_len, "device");
+
         deviceX = embeddings->getDeviceX();
 
         // std::cout << "Getter address (attn head): "

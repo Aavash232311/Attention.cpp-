@@ -85,7 +85,7 @@ int main()
         num_heads); // write the hyperparamaters down
 
     // we just need a simple shample.
-    // epoch = debug == true ? 1 : epoch;
+    epoch = debug == true ? 1 : epoch;
 
     const std::vector<int> &encodedData = helper->getEncodedList();
 
@@ -100,16 +100,31 @@ int main()
         engine_run);
 
     model->train(epoch);
-   // model->forward("the hill, and the cat", charPool);
+
+    std::unique_ptr<DataLoader> dataLoader = std::make_unique<DataLoader>(batch_size, seq_len, encodedData);
+    dataLoader->to("gpu");
+
+    // model->forward("the hill, and the cat", charPool);
+    // Batch batch;
+
+    // while (!(batch = dataLoader->iter()).empty())
+    // {
+    //     utils->printFlatArray2D(batch.x, batch_size, seq_len, "device");
+    // }
+
+
 
     auto end = std::chrono::high_resolution_clock::now();
     cudaDeviceSynchronize(); // CPU is waiting for the GPU to finish
     std::chrono::duration<double, std::milli> duration = end - start;
 
+
     if (!(debug))
     {
         std::cout << "Total time C++ execution (with sync overhead): " << duration.count() << " ms\n";
     }
+
+
 
     return 0;
 }

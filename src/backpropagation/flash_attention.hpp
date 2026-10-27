@@ -374,6 +374,8 @@ public:
             seq_len,
             head_dim);
 
+        // beautiful not run to debug this but more hungry than ever now.
+
         // G^T here without wrapper method, just do it.
         TransposeKey(
             model_paramaters.d_softmax_upstream,

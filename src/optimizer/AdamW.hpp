@@ -288,11 +288,14 @@ public:
             config.t,
             config.d_model);
 
-        this->utils->printFlatArray1D(
-            modelParamaters.debeta,
-            config.d_model,
-            "device"
-        );
+        // this->utils->printFlatArray3D(
+        //     modelParamaters.attention_head.x,
+        //     config.batch_size,
+        //     config.seq_len,
+        //     config.d_model,
+        //     false,
+        //     "device"
+        // );
 
         // now "one" of the embedding only "one" we are using the traditional transformer
 

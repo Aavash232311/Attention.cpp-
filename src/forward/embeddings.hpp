@@ -90,7 +90,7 @@ public:
 
         delete[] hostEmbeddings;
 
-        (deviceX != nullptr ? cudaFree(deviceX): cudaSuccess);
+        (deviceX != nullptr ? cudaFree(deviceX) : cudaSuccess);
         cudaFree(deviceEmbeddings);
         cudaFree(deviceFinalEmbeddings);
 
@@ -123,6 +123,8 @@ public:
         // utils->printFlatArray2D(deviceX, batch_size, seq_len, "device");
 
         lookup(deviceX, deviceEmbeddings, lookupDeviceOut, d_model, seq_len, actual_batch, vocab_size); // actual batch because the batch size may vary here
+
+    
         // Now this result gets added
         addEmbeddings(lookupDeviceOut, devicePositionalEncoding, deviceFinalEmbeddings, d_model, seq_len, actual_batch);
 
@@ -130,6 +132,9 @@ public:
         // if (debug){
         // this->utils->printFlatArray3D(addedEmbeddingsOut, actual_batch, seq_len, d_model, "device");
         // }
+
+        //   utils->printFlatArray3D(deviceFinalEmbeddings, batch_size, seq_len, d_model, false, "device");
+
 
         debug = false;
         return deviceFinalEmbeddings;
@@ -165,7 +170,7 @@ public:
         return deviceEmbeddingsFinalPrompt;
     }
 
-    int* getDeviceX()
+    int *getDeviceX()
     {
         return deviceX;
     }
