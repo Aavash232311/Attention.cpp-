@@ -187,10 +187,7 @@ public:
             seq_len,
             vocab_size);
 
-        // if (debug) {
-        //     // before transpose the shape if (B, T, C)
-        //     utils->printFlatArray3D(paramaters.h, batch_size, seq_len, d_model);
-        // }
+
 
         if (debug)
             pyDebuggerReleaseStage1();

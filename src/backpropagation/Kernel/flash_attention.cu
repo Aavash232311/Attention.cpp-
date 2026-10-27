@@ -258,6 +258,8 @@ __global__ void LayerNormBackPropgationKernel(
         atomicAdd(&dgamma[i], G_row[i] * x_hat);
         atomicAdd(&dbeta[i], G_row[i]);
 
+    // printf("G: %f x_hat: %f \n", G_row[i], x_hat);
+
         sum_term_1 += G_row[i] * gamma[i];
         sum_term_2 += G_row[i] * gamma[i] * x_hat;
     }
