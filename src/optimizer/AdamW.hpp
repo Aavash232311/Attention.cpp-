@@ -298,21 +298,7 @@ public:
         // );
 
         // now "one" of the embedding only "one" we are using the traditional transformer
-
-        AdamWSTEP(
-            modelParamaters.attention_head.device_embedding_paramaters, // this is the gamma pointer I will change this conflicting name
-            modelParamaters.d_embedding,
-            config.d_token_embedding.m_d,
-            config.d_token_embedding.v_d,
-            lr,
-            beta_1,
-            beta_2,
-            epsilon,
-            weight_decay,
-            config.t,
-            config.vocab_size * config.d_model);
-
-
+ 
         cudaDeviceSynchronize();
 
         debug = false;

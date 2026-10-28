@@ -44,7 +44,7 @@ class AttentionInterface
     bool runDebugger = false;
     bool drop_last = true;
 
-    const std::vector<int> &data;
+    const std::vector<Batch> &data;
     std::unique_ptr<Attention> attention;
     std::unique_ptr<DataLoader> dataLoader;
     std::unique_ptr<Utility> utils;
@@ -67,8 +67,6 @@ class AttentionInterface
     float *outCrossEntropyDevice;
 
     float *outCrossEntropyHost;
-
-    int *deviceY;
 
     std::unique_ptr<AutogradEngineDebuggerRelease> autograd;
 
@@ -201,12 +199,13 @@ public:
         int batch_size,
         int seq_len,
         bool drop_last,
-        const std::vector<int> &data,
+        int vocab_size,
+        const std::vector<Batch> &data,
         bool debug,
         bool engine_run = false) : data(data)
     {
         this->d_model = d_model;
-        this->vocab_size = data.size();
+        this->vocab_size = vocab_size;
         this->batch_size = batch_size;
         this->seq_len = seq_len;
         this->drop_last = drop_last;
@@ -248,7 +247,7 @@ public:
         // BUFFER CPU/GPU allocation for the auto grad engine
         cudaMalloc((void **)&upstream_softmax_ce, batch_size * seq_len * vocab_size * sizeof(float));
 
-     //   dataLoader = std::make_unique<DataLoader>(batch_size, data, seq_len, drop_last);
+        //   dataLoader = std::make_unique<DataLoader>(batch_size, data, seq_len, drop_last);
 
         lm_head = std::make_unique<Linear>(d_model, vocab_size, seq_len, batch_size, num_heads, debug);
 
@@ -257,9 +256,6 @@ public:
 
         cudaMalloc((void **)&outCrossEntropyDevice, batch_size * seq_len * sizeof(float)); // (N) across all of the BT we will have the loss.
         cudaMemset(outCrossEntropyDevice, 0, batch_size * seq_len * sizeof(float));        // make it zero for the things that we are not touching.
-
-        // memory for device for y
-        cudaMalloc((void **)&deviceY, batch_size * seq_len * sizeof(int));
 
         // YOU DO NEED THIS PART BECAUSE ANOTHER KERNEL FOR THE CORSS ENTROPY LOSS WILL BE USING THIS.
         cudaMalloc((void **)&yHotEncodeDeviceOut, vocab_size * seq_len * batch_size * sizeof(float)); // (B, T)
@@ -355,8 +351,6 @@ public:
         cudaFree(yHotEncodeDeviceOut);
         cudaFree(outCrossEntropyDevice);
 
-        cudaFree(deviceY);
-
         free(outCrossEntropyHost);
 
         cudaFree(upstream_softmax_ce);
@@ -442,7 +436,6 @@ public:
 
     void softmaxAcrossProballityCrossEntropyLoss(float *probality, int *y)
     {
-        cudaMemcpy(deviceY, y, batch_size * seq_len * sizeof(int), cudaMemcpyHostToDevice);
 
         // this accounts for whatever we are doing softmax on being greater than 32 i.e warp size.
         // THIS IS SOFTMAX ACROSS the logits (B, T, vocab_size)
@@ -463,12 +456,14 @@ public:
             seq_len,
             vocab_size);
 
+        // utils->printFlatArray3D(DeviceSoftmaxBLout, batch_size, seq_len, vocab_size, false, "device");
+
         if (debug)
             attention->releaseBin(DeviceSoftmaxBLout, "ce_softmax_out.bin", batch_size * seq_len * vocab_size);
 
         CrossEntropy(
             DeviceSoftmaxBLout, // out from softmaxed
-            deviceY,
+            y,
             yHotEncodeDeviceOut,
             outCrossEntropyDevice,
             batch_size,
@@ -476,6 +471,8 @@ public:
             vocab_size);
 
         cudaMemcpy(outCrossEntropyHost, outCrossEntropyDevice, batch_size * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
+
+        // utils->printFlatArray2D(outCrossEntropyDevice, batch_size, seq_len, "device");
 
         if (debug)
         {
@@ -581,208 +578,185 @@ public:
 
     void train(int epoch)
     {
-        Batch batch;
         int count_500 = 0;
         float loss = 0.0f;
-        // for (int i = 0; i < epoch; ++i)
-        // {
-        //     float loss_per_batch = 0.0f;
-        //     int batch_count = 0;
-        //     while (!(batch = dataLoader->iter()).empty())
-        //     {
-        //         // std::cout << batch.width << std::endl;
-        //         // utils->printFlatArray2D(batch.x, seq_len, batch.width);
 
-        //         // Shape (B, T, C) only pointer dependent upon the channel dimension is here
-        //         // And there is an illegal memory access somewhere here.
-        //         float *x = attention->forward(batch);
+        for (int i = 0; i < epoch; ++i)
+        {
+            float loss_per_batch = 0.0f;
+            int batch_count = 0;
 
-        //         cudaMemcpy(attn_head_out, x, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToDevice);
+            for (int j = 0; j < data.size(); j++)
+            {
+                // std::cout << batch.width << std::endl;
+                // utils->printFlatArray2D(batch.x, seq_len, batch.width);
 
-        //         float *prob = lm_head->forward(x); // Shape (B, T, vocab_size) x is not changed here.
+                // Shape (B, T, C) only pointer dependent upon the channel dimension is here
+                // And there is an illegal memory access somewhere here.
 
-        //         modelParamaters.weight_lm_head = lm_head->getWeightDevice();
+                Batch batch = data[j]; // current batch maybe in GPU/CPU
 
-        //         modelParamaters.bias_lm_head = lm_head->getBaiasDevice();
+                float *x = attention->forward(batch);
 
-        //         // std::cout << " LM head " << std::endl;
-        //         // this->utils->printLastOneOf3D(prob, batch_size, seq_len, vocab_size, "device");
+                cudaMemcpy(attn_head_out, x, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToDevice);
 
-        //         softmaxAcrossProballityCrossEntropyLoss(prob, batch.y);
+                float *prob = lm_head->forward(x); // Shape (B, T, vocab_size) x is not changed here.
 
-        //         loss_per_batch += this->utils->averageFlatStrip2D(outCrossEntropyHost, batch_size * seq_len);
-        //         //  cout << "Loss per batch: " << this->utils->averageFlatStrip2D(outCrossEntropyHost, batch_size * seq_len) << endl;
+                modelParamaters.weight_lm_head = lm_head->getWeightDevice();
 
-        //         // if (debug)
-        //         // {
-        //         //     std::cout << " After sfotmax last two dimension " << std::endl;
-        //         //     this->utils->printLastOneOf3D(prob, batch_size, seq_len, vocab_size);
-        //         // }
+                modelParamaters.bias_lm_head = lm_head->getBaiasDevice();
 
-        //         modelParamaters.token_id = attention->embeddings->getDeviceX();
+                // std::cout << " LM head " << std::endl;
+                // this->utils->printFlatArray3D(prob, batch_size, seq_len, vocab_size, false, "device");
 
-        //         // int *a = attention->embeddings->getDeviceX();
-        //         // int *b = modelParamaters.token_id;
+                softmaxAcrossProballityCrossEntropyLoss(prob, batch.y);
 
-        //         // std::cout << "getter: " << static_cast<void *>(a) << '\n';
-        //         // std::cout << "token_id: " << static_cast<void *>(b) << '\n';
+                loss_per_batch += this->utils->averageFlatStrip2D(outCrossEntropyHost, batch_size * seq_len);
 
-        //         // utils->printFlatArray2D(a, batch_size, seq_len, "device");
-        //         // utils->printFlatArray2D(b, batch_size, seq_len, "device");
-        //         // ----------- Lets gather overall paramaters here ---------- //
-        //         modelParamaters.attention_head = attention->getParamaters();
-        //         modelParamaters.lm_head = LinearParams{lm_head->getWeightDevice(), lm_head->getBaiasDevice()};
-        //         modelParamaters.L = outCrossEntropyDevice;        // CE Out
-        //         modelParamaters.y_actual = yHotEncodeDeviceOut;   // (B, T, vocab_size) from actual
-        //         modelParamaters.y_predicted = DeviceSoftmaxBLout; // (B, T, vocab_size) to predicted proballity
+                //  cout << "Loss per batch: " << this->utils->averageFlatStrip2D(outCrossEntropyHost, batch_size * seq_len) << endl;
 
-        //         modelParamaters.upsteram_out_softmax_ce = upstream_softmax_ce;
+                // if (debug)
+                // {
+                //     std::cout << " After sfotmax last two dimension " << std::endl;
+                //     this->utils->printLastOneOf3D(prob, batch_size, seq_len, vocab_size);
+                // }
 
-        //         modelParamaters.final_attn_tensor = attn_head_out; // (B, T, d_model) on device
-        //         modelParamaters.xt_device = ht_device;
+                modelParamaters.token_id = batch.x;
 
-        //         modelParamaters.dbias_lm_head_pred = dbias_lm_head_pred;
+                // int *a = attention->embeddings->getDeviceX();
+                // int *b = modelParamaters.token_id;
 
-        //         // for dl_dw = delta h^T derived in flashback.md
+                // std::cout << "getter: " << static_cast<void *>(a) << '\n';
+                // std::cout << "token_id: " << static_cast<void *>(b) << '\n';
 
-        //         modelParamaters.dweight_lm_head = dl_dw_out_device;
+                // utils->printFlatArray2D(a, batch_size, seq_len, "device");
+                // utils->printFlatArray2D(b, batch_size, seq_len, "device");
+                // ----------- Lets gather overall paramaters here ---------- //
+                modelParamaters.attention_head = attention->getParamaters();
+                modelParamaters.lm_head = LinearParams{lm_head->getWeightDevice(), lm_head->getBaiasDevice()};
+                modelParamaters.L = outCrossEntropyDevice;        // CE Out
+                modelParamaters.y_actual = yHotEncodeDeviceOut;   // (B, T, vocab_size) from actual
+                modelParamaters.y_predicted = DeviceSoftmaxBLout; // (B, T, vocab_size) to predicted proballity
 
-        //         // these are just borrowed pointers
-        //         modelParamaters.wt_lm_head_deice = w_out_d;
+                modelParamaters.upsteram_out_softmax_ce = upstream_softmax_ce;
 
-        //         modelParamaters.P_T_device_out = P_T_device_out;
-        //         modelParamaters.V_T_device_out = V_T_device_out;
+                modelParamaters.final_attn_tensor = attn_head_out; // (B, T, d_model) on device
+                modelParamaters.xt_device = ht_device;
 
-        //         // GDDR RAM
-        //         modelParamaters.Uncontact_G_Upstream = Uncontact_G_Upstream;
-        //         modelParamaters.upstream_grad_output_proj = Contact_G_Upstream;
+                modelParamaters.dbias_lm_head_pred = dbias_lm_head_pred;
 
-        //         modelParamaters.dV = dV;
-        //         modelParamaters.dP = dP;
+                // for dl_dw = delta h^T derived in flashback.md
 
-        //         modelParamaters.ppt = ppt;
+                modelParamaters.dweight_lm_head = dl_dw_out_device;
 
-        //         modelParamaters.dQ = dQ;
-        //         modelParamaters.dK = dK;
+                // these are just borrowed pointers
+                modelParamaters.wt_lm_head_deice = w_out_d;
 
-        //         modelParamaters.d_score_t = d_score_t;
+                modelParamaters.P_T_device_out = P_T_device_out;
+                modelParamaters.V_T_device_out = V_T_device_out;
 
-        //         modelParamaters.WkT = WkT;
-        //         modelParamaters.WvT = WvT;
-        //         modelParamaters.WqT = WqT;
+                // GDDR RAM
+                modelParamaters.Uncontact_G_Upstream = Uncontact_G_Upstream;
+                modelParamaters.upstream_grad_output_proj = Contact_G_Upstream;
 
-        //         modelParamaters.Wk = Wk;
-        //         modelParamaters.WV = WV;
-        //         modelParamaters.WQ = WQ;
+                modelParamaters.dV = dV;
+                modelParamaters.dP = dP;
 
-        //         modelParamaters.qUp = qUp;
-        //         modelParamaters.kUp = kUp;
-        //         modelParamaters.vUp = vUp;
+                modelParamaters.ppt = ppt;
 
-        //         modelParamaters.d_weight_q = d_weight_q;
-        //         modelParamaters.d_weight_k = d_weight_k;
-        //         modelParamaters.d_weight_v = d_weight_v;
+                modelParamaters.dQ = dQ;
+                modelParamaters.dK = dK;
 
-        //         modelParamaters.d_bias_q = d_bias_q;
-        //         modelParamaters.d_bias_k = d_bias_k;
-        //         modelParamaters.d_bias_v = d_bias_v;
+                modelParamaters.d_score_t = d_score_t;
 
-        //         modelParamaters.dqWt = dqWt;
-        //         modelParamaters.dkWt = dkWt;
-        //         modelParamaters.dvWt = dvWt;
+                modelParamaters.WkT = WkT;
+                modelParamaters.WvT = WvT;
+                modelParamaters.WqT = WqT;
 
-        //         modelParamaters.G_x_hat = G_x_hat; // net G_hat from the derivation
+                modelParamaters.Wk = Wk;
+                modelParamaters.WV = WV;
+                modelParamaters.WQ = WQ;
 
-        //         modelParamaters.debeta = dbeta;
-        //         modelParamaters.dgamma = dgamma;
+                modelParamaters.qUp = qUp;
+                modelParamaters.kUp = kUp;
+                modelParamaters.vUp = vUp;
 
-        //         // Tranapose of weight of contact i.e output projection
-        //         modelParamaters.WoT = WoT;
-        //         modelParamaters.dl_dh_output = dl_dh_output;
-        //         modelParamaters.d_add_residual_output = d_add_residual_output;
+                modelParamaters.d_weight_q = d_weight_q;
+                modelParamaters.d_weight_k = d_weight_k;
+                modelParamaters.d_weight_v = d_weight_v;
 
-        //         modelParamaters.d_embedding = d_embedding;
+                modelParamaters.d_bias_q = d_bias_q;
+                modelParamaters.d_bias_k = d_bias_k;
+                modelParamaters.d_bias_v = d_bias_v;
 
-        //         modelParamaters.d_weight_output_project = d_weight_output_project;
-        //         modelParamaters.d_softmax_upstream = d_softmax_upstream;
+                modelParamaters.dqWt = dqWt;
+                modelParamaters.dkWt = dkWt;
+                modelParamaters.dvWt = dvWt;
 
-        //         modelParamaters.dx = dx;
+                modelParamaters.G_x_hat = G_x_hat; // net G_hat from the derivation
 
-        //         // because the backprops needs to be done for each epoch.
-        //         // we need to keep in mind that the things hurting performace like cuda malloc and everything declared
-        //         // inside of the constructor of autograd engine is costly.
-        //         // there is tradeoff between making things modular and fusing everything together.
-        //         // Lets create a buffer for CPU/GPU memory in this class so that we dont overload the system and free it when the object is destroyed.
+                modelParamaters.debeta = dbeta;
+                modelParamaters.dgamma = dgamma;
 
-        //         autograd->backprop(modelParamaters);
+                // Tranapose of weight of contact i.e output projection
+                modelParamaters.WoT = WoT;
+                modelParamaters.dl_dh_output = dl_dh_output;
+                modelParamaters.d_add_residual_output = d_add_residual_output;
 
-        //         // // if (debug)
-        //         // // {
-        //         // //     float *dh = (float *)malloc(d_model * d_model * sizeof(float));
-        //         // //     cudaMemcpy(dh, modelParamaters.d_weight_q, d_model * d_model * sizeof(float), cudaMemcpyDeviceToHost);
-        //         // //     cout << "Unupdated gradeint w" << endl;
-        //         // //     utils->printFlatArray2D(dh, d_model, d_model);
+                modelParamaters.d_embedding = d_embedding;
 
-        //         // //     free(dh);
-        //         // // }
+                modelParamaters.d_weight_output_project = d_weight_output_project;
+                modelParamaters.d_softmax_upstream = d_softmax_upstream;
 
-        //         optimizer->invoke(modelParamaters, *adamMemConfig, epoch);
+                modelParamaters.dx = dx;
 
-        //         // check if something is off with AadamW on sufrace
+                // because the backprops needs to be done for each epoch.
+                // we need to keep in mind that the things hurting performace like cuda malloc and everything declared
+                // inside of the constructor of autograd engine is costly.
+                // there is tradeoff between making things modular and fusing everything together.
+                // Lets create a buffer for CPU/GPU memory in this class so that we dont overload the system and free it when the object is destroyed.
 
-        //         // if (debug)
-        //         // {
-        //         //     float *dh = (float *)malloc(d_model * d_model * sizeof(float));
-        //         //     cudaMemcpy(dh, modelParamaters.d_weight_q, d_model * d_model * sizeof(float), cudaMemcpyDeviceToHost);
-        //         //     cout << "udpated gradeint w" << endl;
-        //         //     utils->printFlatArray2D(dh, d_model, d_model);
+                autograd->backprop(modelParamaters);
 
-        //         //     free(dh);
-        //         // }
+                // if (debug)
+                // {
+                //     float *dh = (float *)malloc(d_model * d_model * sizeof(float));
+                //     cudaMemcpy(dh, modelParamaters.d_weight_q, d_model * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+                //     cout << "Unupdated gradeint w" << endl;
+                //     utils->printFlatArray2D(dh, d_model, d_model);
 
-        //         debug = false;
+                //     free(dh);
+                // }
 
-        //         batch_count++;
-        //     }
+                //     optimizer->invoke(modelParamaters, *adamMemConfig, epoch);
 
-        //     loss_per_batch /= batch_count;
+                // check if something is off with AadamW on sufrace
 
-        //     dataLoader->resetIterator(); // just the weird logic that I wrote.
+                // if (debug)
+                // {
+                //     float *dh = (float *)malloc(d_model * d_model * sizeof(float));
+                //     cudaMemcpy(dh, modelParamaters.d_weight_q, d_model * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+                //     cout << "udpated gradeint w" << endl;
+                //     utils->printFlatArray2D(dh, d_model, d_model);
 
-        //     if (i % 250 == 0)
-        //     {
+                //     free(dh);
+                // }
 
-        //         std::cout << "Epoch: " << i << " Loss: " << loss_per_batch << std::endl;
-        //     }
+                debug = false;
 
-        //     loss += loss_per_batch;
-        // }
+                batch_count++;
+            }
 
-        loss /= epoch;
+            if (i % 250 == 0)
+            {
 
-        // release hyperparameters
-        // optimizer->releaseOptimizerHyperparameters(adamMemConfig->t - 1);
-        // optimizer->releaseGrad(
-        //         modelParamaters,
-        //         *adamMemConfig);
+                float epoch_loss = batch_count > 0 ? loss_per_batch / batch_count : 0.0f;
 
-        /*
-            Note:- the sequence does not matter here we go from back to first for all the learnable paramaters, we update them.
-        */
+                std::cout << "Epoch: " << i
+                          << " Loss: " << epoch_loss << std::endl;
+            }
 
-        // if (debug)
-        // {
-        //     // check
-        //     cout << "Updated weights " << endl;
-        //     float* host_W = (float *)malloc(d_model * d_model * sizeof(float));
-        //     cudaMemcpy(host_W, modelParamaters.attention_head.device_WQ, d_model * d_model * sizeof(float), cudaMemcpyDeviceToHost);
-
-        //     utils->printFlatArray2D(
-        //         host_W,
-        //         d_model,
-        //         d_model);
-
-        //     free(host_W);
-        // }
+            loss += loss_per_batch;
+        }
     }
 };

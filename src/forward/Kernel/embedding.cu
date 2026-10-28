@@ -26,8 +26,9 @@ __global__ void LookUpKernel(
 
     if (rows >= seq_len || cols >= batch_size)
         return;
+    int index = cols * seq_len + rows; 
 
-    int index = (rows * batch_size) + cols;
+    // int index = (rows * batch_size) + cols;
     // for each entry of x, you grab matching row,
     int valX = x[index]; // now this value will be used to search on lookup table.
 
@@ -109,7 +110,7 @@ extern "C"
     }
 
     void lookup(
-        int *x,            // something like seq x batch_size
+        int *x,            // something like batch * seq
         float *embeddings, // te (vocab_size * d_model)
         float *C,
         int d_model,

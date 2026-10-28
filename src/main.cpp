@@ -58,7 +58,7 @@ int main()
     int num_heads = 16;
     int batch_size = 12;
     int seq_len = 4;
-    int epoch = 1250;
+    int epoch = 750;
     // int epoch = 20;
     bool drop_last = true; // for training set this to false, if someone is serious about this email me. the cost of implementing this feature will affect everything in depth many tradeoffs
 
@@ -75,7 +75,7 @@ int main()
     std::vector<char> charPool = textEncoderFile->getFileAsChar();
     auto helper = std::make_unique<Helper>(charPool);
 
-    vocab_size = charPool.size();
+    vocab_size = helper->vocab_size();
 
     releaseHyperParamaters(
         d_model,
@@ -89,43 +89,44 @@ int main()
 
     const std::vector<int> &encodedData = helper->getEncodedList();
 
+    std::unique_ptr<DataLoader> dataLoader = std::make_unique<DataLoader>(batch_size, seq_len, encodedData);
+    // dataLoader->inspectData();
+
     std::unique_ptr<AttentionInterface> model = std::make_unique<AttentionInterface>(
         d_model,
         num_heads,
         batch_size,
         seq_len,
         drop_last,
-        encodedData,
+        vocab_size,
+        dataLoader->getBatches(),
         debug,
         engine_run);
 
     model->train(epoch);
-
-    std::unique_ptr<DataLoader> dataLoader = std::make_unique<DataLoader>(batch_size, seq_len, encodedData);
-    dataLoader->to("gpu");
-
-    // model->forward("the hill, and the cat", charPool);
-    // Batch batch;
-
-    // while (!(batch = dataLoader->iter()).empty())
-    // {
-    //     utils->printFlatArray2D(batch.x, batch_size, seq_len, "device");
-    // }
-
-
+  //  model->forward("the hill, and the cat", charPool);
 
     auto end = std::chrono::high_resolution_clock::now();
     cudaDeviceSynchronize(); // CPU is waiting for the GPU to finish
     std::chrono::duration<double, std::milli> duration = end - start;
-
 
     if (!(debug))
     {
         std::cout << "Total time C++ execution (with sync overhead): " << duration.count() << " ms\n";
     }
 
-
-
     return 0;
 }
 // I wont let this project die
+
+/*
+    Current probelm:
+    Dataloader logic was messed up and it altered the meaning of the dataset.
+    After commenting the embedding the loss is smooth and it works.
+    But without embedding attention will not make sense.
+    So after the data loader is altered embedding is a lookup and it rilies on
+    "token_id". After fixcing this we will see next what happens :).
+
+    -Avash Lamichhane
+
+*/
