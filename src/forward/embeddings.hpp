@@ -41,7 +41,7 @@ public:
 
     float *hostEmbeddings;
 
-    int *deviceX = nullptr;
+
     float *deviceEmbeddings;
     float *deviceFinalEmbeddings;
     float *lookupDeviceOut;
@@ -76,8 +76,6 @@ public:
         cudaMalloc((void **)&deviceFinalEmbeddings, seq_len * d_model * batch_size * sizeof(float));
         // allocate memory for output after lookup Shape(seq_len, batch_size, d_model)
         cudaMalloc((void **)&lookupDeviceOut, seq_len * batch_size * d_model * sizeof(float));
-
-        cudaMalloc(&deviceX, seq_len * batch_size * sizeof(int));
     };
 
     ~Embeddings()
@@ -90,7 +88,7 @@ public:
 
         delete[] hostEmbeddings;
 
-        (deviceX != nullptr ? cudaFree(deviceX) : cudaSuccess);
+
         cudaFree(deviceEmbeddings);
         cudaFree(deviceFinalEmbeddings);
 
@@ -104,6 +102,7 @@ public:
      *
      *
      * @param currentBatch batch (B, T) from the host.
+     * @warning expects the batch in GPU
      *
      * @warning  returns BTC tensor from the device
      * @returns returns BTC tensor from the device
@@ -112,19 +111,22 @@ public:
      */
     float *forward(Batch currentBatch)
     {
-        // THIS SIZE MIGHT CHANGE ACCORDING TO THE DROP LAST PARAMATER AND WE NEED TO KEEP TRACK OF THIS.
-        int actual_batch = currentBatch.width;
-        // that x is deleted when the dataloader is destroyed.
-        int *hostX = currentBatch.x;
-        // copy this to GPU
-        cudaMemcpy(deviceX, hostX, seq_len * actual_batch * sizeof(int), cudaMemcpyHostToDevice);
+
+        int actual_batch = batch_size;
+
+
 
         // std::cout << "from the class " << std::endl;
         // utils->printFlatArray2D(deviceX, batch_size, seq_len, "device");
 
-        lookup(deviceX, deviceEmbeddings, lookupDeviceOut, d_model, seq_len, actual_batch, vocab_size); // actual batch because the batch size may vary here
+        lookup(currentBatch.x, deviceEmbeddings, lookupDeviceOut, d_model, seq_len, actual_batch, vocab_size); // actual batch because the batch size may vary here
 
-    
+    //    utils->printFlatArray3D(lookupDeviceOut, batch_size, seq_len, d_model, false, "device");
+
+     //   cout << " Batch size: " << batch_size << " Seq_len: " << seq_len << " Actual batch: " << actual_batch << endl;
+
+        // utils->printFlatArray2D(currentBatch.x, batch_size, seq_len, "device");
+
         // Now this result gets added
         addEmbeddings(lookupDeviceOut, devicePositionalEncoding, deviceFinalEmbeddings, d_model, seq_len, actual_batch);
 
@@ -134,7 +136,6 @@ public:
         // }
 
         //   utils->printFlatArray3D(deviceFinalEmbeddings, batch_size, seq_len, d_model, false, "device");
-
 
         debug = false;
         return deviceFinalEmbeddings;
@@ -170,10 +171,6 @@ public:
         return deviceEmbeddingsFinalPrompt;
     }
 
-    int *getDeviceX()
-    {
-        return deviceX;
-    }
 
     float *getFinalEmbeddingDevice()
     {

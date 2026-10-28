@@ -47,6 +47,12 @@ public:
     }
 };
 
+enum Device
+{
+    GPU,
+    CPU,
+};
+
 struct Batch
 {
     int *x; // shape (seq_len, batch_size)  pointers into flat memory
@@ -56,12 +62,6 @@ struct Batch
     int width;
 
     bool empty() const { return x == nullptr && y == nullptr; }
-};
-
-enum Device
-{
-    GPU,
-    CPU,
 };
 
 // For this transformer our goal is to learn things so we will create a simple data loader, and feed it with toy data.
@@ -75,18 +75,25 @@ private:
     int seq_len;
 
     const vector<int> &data;
-    Device device = GPU;
+    Device device = CPU;
+    vector<Batch> batches;
 
     void loadBatches()
     {
+
         int total_samples = static_cast<int>(data.size()) - seq_len;
-        int totalIterations = total_samples / batch_size;
+        int totalIterations = total_samples / (batch_size * seq_len);
 
         int iterator = 0;
 
+        batches.reserve(totalIterations);
+
         for (int i = 0; i < totalIterations; ++i)
         {
-            std::cout << "\nBatch " << i << '\n';
+            // shape (batch_size, seq_len)
+
+            vector<int> id_x(batch_size * seq_len);
+            vector<int> id_y(batch_size * seq_len);
 
             for (int j = 0; j < batch_size; ++j)
             { // no drop last here, I will take care of that one later.
@@ -98,33 +105,72 @@ private:
                     data.begin() + iterator + 1,
                     data.begin() + iterator + seq_len + 1);
 
-                    
+                for (int k = 0; k < current_x.size(); ++k)
+                {
+                    int idx = (seq_len * j) + k;
 
-                iterator++;
+                    id_x[idx] = current_x[k];
+                    id_y[idx] = current_y[k];
+                }
+
+                iterator += seq_len; // prevents overlap
             }
+
+            int *strip_x = utils->vectorToFlatStrip(id_x, "gpu");
+            int *strip_y = utils->vectorToFlatStrip(id_y, "gpu");
+
+            int *b_x;
+            int *b_y;
+
+            cudaMalloc((void **)&b_x, batch_size * seq_len * sizeof(int));
+            cudaMalloc((void **)&b_y, batch_size * seq_len * sizeof(int));
+
+            cudaMemcpy(b_x, strip_x, batch_size * seq_len * sizeof(int), cudaMemcpyDeviceToDevice);
+            cudaMemcpy(b_y, strip_y, batch_size * seq_len * sizeof(int), cudaMemcpyDeviceToDevice);
+
+            batches.push_back(Batch{b_x, b_y, batch_size, seq_len});
+
+            cudaFree(strip_x);
+            cudaFree(strip_y);
         }
     }
 
 public:
-    DataLoader(int batch_size, int seq_len, const std::vector<int> &data)
-        : batch_size(batch_size), seq_len(seq_len), data(data)
+    DataLoader(int batch_size, int seq_len, const std::vector<int> &data, Device device = GPU)
+        : batch_size(batch_size), seq_len(seq_len), data(data), device(device)
     {
+
         loadBatches();
     }
 
-    void to(string device)
+    vector<Batch> &getBatches()
     {
-        if (device == "cpu")
+        return batches;
+    }
+
+    void inspectData()
+    {
+        int total_samples = static_cast<int>(data.size()) - seq_len;
+        int totalIterations = total_samples / (batch_size * seq_len);
+
+        for (int i = 0; i < totalIterations; ++i)
         {
-            this->device = CPU;
+            utils->printFlatArray2D(batches[i].x, batch_size, seq_len, "device");
         }
-        else if (device == "gpu")
+    }
+
+    ~DataLoader()
+    {
+        int total_samples = static_cast<int>(data.size()) - seq_len;
+        int totalIterations = total_samples / (batch_size * seq_len);
+
+        for (int i = 0; i < totalIterations; ++i)
         {
-            this->device = GPU;
-        }
-        else
-        {
-            std::runtime_error("Load on either GPU/CPU");
+            int *x = batches[i].x;
+            int *y = batches[i].y;
+
+            cudaFree(x);
+            cudaFree(y);
         }
     }
 };

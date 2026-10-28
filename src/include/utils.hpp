@@ -354,14 +354,29 @@ public:
     }
 
     template <typename T>
-    T *vectorToFlatStrip(std::vector<T> arr)
+    T *vectorToFlatStrip(std::vector<T> arr, std::string type = "cpu")
     {
         T *newArr = (T *)malloc(arr.size() * sizeof(T));
+
         // row = 1 and col = n
         for (int col = 0; col < arr.size(); ++col)
         {
             newArr[col] = arr[col];
         }
+
+        if (type == "gpu")
+        {
+            T* deviceArr;
+            cudaMalloc((void **)&deviceArr, arr.size() * sizeof(T));
+            cudaMemcpy(deviceArr, newArr, arr.size() * sizeof(T), cudaMemcpyHostToDevice);
+
+
+            free(newArr);
+
+            // we will free the cudaMem instead of host memroy
+            return deviceArr;
+        }
+
         return newArr;
     }
 
@@ -675,11 +690,10 @@ public:
     // THIS IS FOR PRINTING FLAT ARRAY OUTPUT
     // If type is device we allocate temp memory to print
     template <typename T>
-    void printFlatArray1D(const T *arr, int N, std::string pointer_type = "host")
+    void printFlatArray1D(const T *arr, int N, string label = "", std::string pointer_type = "host")
     {
 
         T *d_arr = nullptr;
-
         if (pointer_type == "device")
         {
             d_arr = (T *)malloc(N * sizeof(T));
@@ -688,7 +702,7 @@ public:
         }
 
         int max_print = N;
-        std::cout << "tensor([";
+        std::cout << label << " tensor([";
         for (int i = 0; i < N; ++i)
         {
             if (N > max_print && i == max_print / 2)

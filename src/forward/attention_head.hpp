@@ -385,16 +385,14 @@ public:
         float *K = key->forward(x);
         float *V = value->forward(x);
 
-   
-            // utils->printFlatArray3D(
-            //     Q,
-            //     batch_size,
-            //     seq_len,
-            //     d_model,
-            //     false,
-            //     "device"
-            // );
-        
+        // utils->printFlatArray3D(
+        //     Q,
+        //     batch_size,
+        //     seq_len,
+        //     d_model,
+        //     false,
+        //     "device"
+        // );
 
         // (B, T, C) to (batch_size, seq_len, num_head, head_dim)
         Q = query->reshapeHead();
@@ -486,7 +484,7 @@ public:
         if (debug)
             releaseBin(residual_out, "final_attn_out.bin", batch_size * seq_len * d_model);
 
-        //    utils->printFlatArray3D(residual_out, batch_size, seq_len, d_model, false, "device");
+           // utils->printFlatArray3D(residual_out, batch_size, seq_len, d_model, false, "device");
         return residual_out;
     }
 
@@ -507,11 +505,9 @@ public:
             releaseBin(currentBatch.x, "batch.bin", batch_size * seq_len);
 
         float *x = embeddings->forward(currentBatch);
- //    utils->printFlatArray3D(x, batch_size, seq_len, d_model, false, "device");
+       // utils->printFlatArray3D(x, batch_size, seq_len, d_model, false, "device");
 
-    //  utils->printFlatArray2D(currentBatch.x, batch_size, seq_len, "device");
-
-        deviceX = embeddings->getDeviceX();
+        //  utils->printFlatArray2D(currentBatch.x, batch_size, seq_len, "device");
 
         // std::cout << "Getter address (attn head): "
         //           << static_cast<void *>(deviceX) << '\n';
@@ -519,6 +515,8 @@ public:
         // utils->printFlatArray2D(deviceX, batch_size, seq_len, "device");
 
         float *attention_score = attentionScore(x);
+
+    //    utils->printFlatArray3D(attention_score, batch_size, seq_len, d_model, false, "device");
 
         debug = false;
 
@@ -619,7 +617,7 @@ public:
         float *contact = outputProj->forward(reformedShapePrompt, B);
         float *add = addResidual(contact, promptX, B);
 
-        // utils->printFlatArray3D(add, B, T, d_model, false, "device");
+
         return add;
     }
 

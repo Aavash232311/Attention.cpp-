@@ -18,15 +18,60 @@ class Helper
 private:
     std::vector<std::unordered_map<char, int>> encodingKeyPairs;
 
+    std::vector<char> vocab;
+
+    bool searchVocab(char c)
+    {
+        bool found = false;
+        for (int i = 0; i < vocab.size(); ++i)
+        {
+            if (vocab[i] == c)
+            {
+                found = true;
+                break;
+            }
+        }
+
+        return found;
+    }
+
+    void populateVocab(std::vector<char> &encodingPool)
+    {
+        for (int i = 0; i < encodingPool.size(); ++i)
+        {
+            bool check = searchVocab(encodingPool[i]);
+
+            if (!(check))
+            {
+                vocab.push_back(encodingPool[i]);
+            }
+        }
+    }
+
+    int characterKeyLookup(char c)
+    {
+        for (int i = 0; i < vocab.size(); ++i)
+        {
+            if (vocab[i] == c)
+            {
+                return i;
+            }
+        }
+        return -1; // not found
+    }
+
 public:
     Helper(std::vector<char> encodingPool)
     {
+        populateVocab(encodingPool);
         // okay so we have this array of characters based on their poistion first let's encode them.
         encodingKeyPairs.resize(encodingPool.size()); // resize
 
         for (size_t i = 0; i < encodingPool.size(); i++)
         {
-            encodingKeyPairs[i][encodingPool[i]] = i;
+            int key = characterKeyLookup(encodingPool[i]);
+            // key value
+            encodingKeyPairs[i][encodingPool[i]] = key;
         }
     }
     // getter to get the encoding pool of everything that we plan to encode on.
@@ -121,5 +166,10 @@ public:
                 std::cout << key << ": " << value << "\n";
             }
         }
+    }
+
+    int vocab_size()
+    {
+        return vocab.size();
     }
 };
