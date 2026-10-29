@@ -172,23 +172,23 @@ private:
             pyDebuggerReleaseStage8();
 
         // my anxiety and lack of sleep has caused be to do many simple mistakes recently :)
-        // addTwoTensor(
-        //     model_paramaters.dl_dh_output,
-        //     model_paramaters.dx,
-        //     model_paramaters.d_add_residual_output,
-        //     batch_size,
-        //     seq_len,
-        //     d_model);
+        addTwoTensor(
+            model_paramaters.dl_dh_output,
+            model_paramaters.dx,
+            model_paramaters.d_add_residual_output,
+            batch_size,
+            seq_len,
+            d_model);
 
         // update the embedding gradient
-        // updateTokenEmbedding(
-        //     model_paramaters.d_add_residual_output,
-        //     model_paramaters.d_embedding,
-        //     model_paramaters.token_id,
-        //     batch_size,
-        //     seq_len,
-        //     d_model,
-        //     vocab_size);
+        updateTokenEmbedding(
+            model_paramaters.d_add_residual_output,
+            model_paramaters.d_embedding,
+            model_paramaters.token_id,
+            batch_size,
+            seq_len,
+            d_model,
+            vocab_size);
 
   
             // utils->printFlatArray2D(
