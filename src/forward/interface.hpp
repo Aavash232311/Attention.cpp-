@@ -498,7 +498,7 @@ public:
         }
     }
 
-    void forward(std::string input, std::vector<char> &charPool, int gen = 1)
+    void forward(std::string input, std::vector<char> &charPool, int gen = 20)
     {
         helper = std::make_unique<Helper>(charPool);
 
@@ -514,7 +514,10 @@ public:
             // basically last 4, we are taking in the fixed seq_len
             vector<int> window(encodedInput.end() - seq_len, encodedInput.end());
 
-            int *tokens = utils->vectorToFlatStrip(window);
+            // note here the batch is same but the sequence is changing based on the interation
+            // of the generate length
+
+            int *tokens = utils->vectorToFlatStrip(window, "gpu");
             float *emb = attention->embeddings->forward(tokens, 1);
 
             // std::cout << "Embedding " << std::endl;
@@ -528,7 +531,7 @@ public:
             // utils->printFlatArray3D(attnScore, 1, seq_len, d_model, false, "device");
 
             float *prob = lm_head->forward(attnScore, 1);
-            // arg_max from the vocab dimension; we do need cross entropy
+            // // arg_max from the vocab dimension; we do need cross entropy
 
             softmax2D(
                 prob,
@@ -537,13 +540,13 @@ public:
                 seq_len,
                 vocab_size);
 
-            // Note: The current approach is very slow, but it's fine for testing.
-            // I'll try to avoid a kernel launch here, even though it would be more efficient.
-            // Now that we have the desired end result, we need to fix the codebase.
-            // Seperate header and logic and compile using CMake.
+            // // Note: The current approach is very slow, but it's fine for testing.
+            // // I'll try to avoid a kernel launch here, even though it would be more efficient.
+            // // Now that we have the desired end result, we need to fix the codebase.
+            // // Seperate header and logic and compile using CMake.
             cudaMemcpy(softmaxedProbHost, softmaxedProb, seq_len * vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
 
-            // utils->printFlatArray3D(softmaxedProbHost, 1, current_seq_len, vocab_size, true);
+            // // utils->printFlatArray3D(softmaxedProbHost, 1, current_seq_len, vocab_size, true);
 
             vector<vector<float>> token_list = utils->lastDimHostToVector(softmaxedProbHost, 1, seq_len, vocab_size);
 
@@ -551,13 +554,10 @@ public:
             auto it = max_element(current_token.begin(), current_token.end());
             int index = distance(current_token.begin(), it); // argmax()
 
-            encodedInput.push_back(index);
-
-            free(tokens);
+            // encodedInput.push_back(index);
+          
+            cudaFree(tokens);
         }
-
-        free(softmaxedProbHost);
-        cudaFree(softmaxedProb);
 
         // auto decode = helper->decoder(encodedInput);
 
@@ -574,6 +574,9 @@ public:
             cout << decode[i];
         }
         cout << "\n";
+
+        free(softmaxedProbHost);
+        cudaFree(softmaxedProb);
     }
 
     void train(int epoch)
@@ -728,7 +731,12 @@ public:
                 //     free(dh);
                 // }
 
-                //     optimizer->invoke(modelParamaters, *adamMemConfig, epoch);
+                // if (i == 2000)
+                // {
+                //     utils->printFlatArray3D(x, batch_size, seq_len, d_model, false, "device");
+                // }
+
+                optimizer->invoke(modelParamaters, *adamMemConfig, epoch);
 
                 // check if something is off with AadamW on sufrace
 

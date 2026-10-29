@@ -9,6 +9,25 @@
 #include <cuda_runtime.h>
 #include <curand_kernel.h>
 
+#define CHECK_KERNEL(name)                                 \
+    do                                                     \
+    {                                                      \
+        cudaError_t err = cudaGetLastError();              \
+        if (err != cudaSuccess)                            \
+        {                                                  \
+            fprintf(stderr, "[%s] Launch failed: %s\n",    \
+                    name, cudaGetErrorString(err));        \
+            abort();                                       \
+        }                                                  \
+        err = cudaDeviceSynchronize();                     \
+        if (err != cudaSuccess)                            \
+        {                                                  \
+            fprintf(stderr, "[%s] Execution failed: %s\n", \
+                    name, cudaGetErrorString(err));        \
+            abort();                                       \
+        }                                                  \
+    } while (0)
+
 __global__ void addVec(const float *a, const float *b, float *c, int N)
 {
     int i = blockDim.x * blockIdx.x + threadIdx.x;
@@ -154,7 +173,7 @@ extern "C"
             num_head,
             head_dim);
 
-        cudaDeviceSynchronize();
+        CHECK_KERNEL("TRANSPOSE MIDDLE KERNEL");
     }
 
     // We are re-using this kernel so that last dimension can be anything
@@ -174,7 +193,7 @@ extern "C"
 
         TransposeKeyKernel<<<grid, block>>>(num_heads, head_dim, arr, out, batch_size, seq_len, reverse);
 
-        cudaDeviceSynchronize();
+        CHECK_KERNEL("TRANSPOSE KEY KERNEL");
     }
 
     // I hate myself for this weird method signatures
@@ -192,6 +211,6 @@ extern "C"
 
         multiHeadedAttentionKernel<<<grid, block>>>(ws, out, batch_size, seq_len, d_model, num_head, head_dimension);
 
-        cudaDeviceSynchronize();
+        CHECK_KERNEL("MULTI HEAD KERNEL");
     }
 }

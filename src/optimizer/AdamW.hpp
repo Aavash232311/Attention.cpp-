@@ -112,7 +112,6 @@ public:
         //     std::cout << "wd" << std::endl;
         //     std::cout << weight_decay << std::endl;
 
-                    
         //     std::cout << "beta 1: " << beta_1 << " beta_2: " << beta_2 << std::endl;
 
         //     std::cout << "learning rate" << std::endl;
@@ -297,8 +296,21 @@ public:
         //     "device"
         // );
 
+        AdamWSTEP(
+            modelParamaters.attention_head.device_embedding_paramaters,
+            modelParamaters.d_embedding,
+            config.d_token_embedding.m_d,
+            config.d_token_embedding.v_d,
+            lr,
+            beta_1,
+            beta_2,
+            epsilon,
+            weight_decay,
+            config.t,
+            config.vocab_size * config.d_model);
+
         // now "one" of the embedding only "one" we are using the traditional transformer
- 
+
         cudaDeviceSynchronize();
 
         debug = false;

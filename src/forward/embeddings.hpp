@@ -131,11 +131,10 @@ public:
         addEmbeddings(lookupDeviceOut, devicePositionalEncoding, deviceFinalEmbeddings, d_model, seq_len, actual_batch);
 
         // std::cout << " Added embeddings from embedding method " << std::endl;
-        // if (debug){
-        // this->utils->printFlatArray3D(addedEmbeddingsOut, actual_batch, seq_len, d_model, "device");
-        // }
 
         //   utils->printFlatArray3D(deviceFinalEmbeddings, batch_size, seq_len, d_model, false, "device");
+
+     //   utils->printFlatArray2D(deviceEmbeddings, vocab_size, d_model, "device");
 
         debug = false;
         return deviceFinalEmbeddings;
