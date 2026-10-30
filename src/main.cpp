@@ -57,7 +57,7 @@ int main()
     int vocab_size; // that depends upon the data that you are passing.
     int num_heads = 16;
     int batch_size = 12;
-    int seq_len = 16;
+    int seq_len = 6;
     int epoch = 2250;
     // int epoch = 20;
     bool drop_last = true; // for training set this to false, if someone is serious about this email me. the cost of implementing this feature will affect everything in depth many tradeoffs
@@ -90,7 +90,7 @@ int main()
     const std::vector<int> &encodedData = helper->getEncodedList();
 
     std::unique_ptr<DataLoader> dataLoader = std::make_unique<DataLoader>(batch_size, seq_len, encodedData);
-    dataLoader->inspectData();
+    // dataLoader->inspectData();
 
     std::unique_ptr<AttentionInterface> model = std::make_unique<AttentionInterface>(
         d_model,
@@ -106,7 +106,7 @@ int main()
     model->train(epoch);
     model->forward("the cat", charPool);
 
-
+    // helper->inspect();
 
     auto end = std::chrono::high_resolution_clock::now();
     cudaDeviceSynchronize(); // CPU is waiting for the GPU to finish

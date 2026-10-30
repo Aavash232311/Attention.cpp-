@@ -514,6 +514,8 @@ public:
             // basically last 4, we are taking in the fixed seq_len
             vector<int> window(encodedInput.end() - seq_len, encodedInput.end());
 
+            utils->print_vector(window);
+
             // note here the batch is same but the sequence is changing based on the interation
             // of the generate length
 
@@ -554,10 +556,15 @@ public:
             auto it = max_element(current_token.begin(), current_token.end());
             int index = distance(current_token.begin(), it); // argmax()
 
-            // encodedInput.push_back(index);
+            // index: [.... position within the vocab.......]
+
+            // std::cout << helper->decodePosition(index);
+
+            encodedInput.push_back(index);
           
             cudaFree(tokens);
         }
+        std::cout << "\n";
 
         // auto decode = helper->decoder(encodedInput);
 
@@ -567,16 +574,9 @@ public:
         // }
         // cout << "\n";
 
-        auto decode = helper->decoder(encodedInput);
-
-        for (int i = 0; i < decode.size(); ++i)
-        {
-            cout << decode[i];
-        }
-        cout << "\n";
-
         free(softmaxedProbHost);
         cudaFree(softmaxedProb);
+
     }
 
     void train(int epoch)
