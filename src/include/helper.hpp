@@ -167,6 +167,16 @@ public:
             }
         }
     }
+    
+    char decodePosition(int index)
+    {
+        if (index < 0 || index >= vocab.size())
+        {
+            throw std::out_of_range("Invalid vocabulary index");
+        }
+
+        return vocab[index];
+    }
 
     int vocab_size()
     {
