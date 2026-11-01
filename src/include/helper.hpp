@@ -121,7 +121,7 @@ public:
 
         return indices;
     };
-
+    // this works fine.
     std::vector<char> decoder(std::vector<int> &indices)
     {
         std::vector<char> decoded;
