@@ -105,7 +105,6 @@ int main()
 
     model->train(epoch);
     model->forward("the cat", charPool);
-
     // helper->inspect();
 
     auto end = std::chrono::high_resolution_clock::now();
@@ -122,13 +121,6 @@ int main()
 // I wont let this project die
 
 /*
-    Current probelm:
-    Dataloader logic was messed up and it altered the meaning of the dataset.
-    After commenting the embedding the loss is smooth and it works.
-    But without embedding attention will not make sense.
-    So after the data loader is altered embedding is a lookup and it rilies on
-    "token_id". After fixcing this we will see next what happens :).
-
-    -Avash Lamichhane
-
+    Current probelm: I doubt the forward pass logic.
+    Loss is low but the behaviour is weird. I will have to inspect everything.
 */
