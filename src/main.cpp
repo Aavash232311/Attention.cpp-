@@ -84,7 +84,7 @@ int main()
         seq_len,
         num_heads); // write the hyperparamaters down
 
-    // we just need a simple shample.
+
     epoch = debug == true ? 1 : epoch;
 
     const std::vector<int> &encodedData = helper->getEncodedList();
@@ -118,9 +118,3 @@ int main()
 
     return 0;
 }
-// I wont let this project die
-
-/*
-    Current probelm: I doubt the forward pass logic.
-    Loss is low but the behaviour is weird. I will have to inspect everything.
-*/
