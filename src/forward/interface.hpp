@@ -514,7 +514,7 @@ public:
             // basically last 4, we are taking in the fixed seq_len
             vector<int> window(encodedInput.end() - seq_len, encodedInput.end());
 
-            utils->print_vector(window);
+            // utils->print_vector(window);
 
             // note here the batch is same but the sequence is changing based on the interation
             // of the generate length
