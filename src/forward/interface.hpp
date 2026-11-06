@@ -518,8 +518,10 @@ public:
 
             // note here the batch is same but the sequence is changing based on the interation
             // of the generate length
-
+            utils->print_vector(window);
+            break;
             int *tokens = utils->vectorToFlatStrip(window, "gpu");
+
             float *emb = attention->embeddings->forward(tokens, 1);
 
             // std::cout << "Embedding " << std::endl;
