@@ -498,63 +498,72 @@ public:
         }
     }
 
-    void forward(std::string input, std::vector<char> &charPool, int gen = 20)
+    // note lookup contains seq_len = 12 for example whatever its trained on
+    // and we are trying to retrive something different from forward pass so
+    // we have a different seq_len for this forward pass called "prompt_seq_len"
+    void forward(std::string input, std::vector<char> &charPool, int gen = 1)
     {
         helper = std::make_unique<Helper>(charPool);
-
+        int prompt_seq_len = 4;
         // encode input
         vector<int> encodedInput = helper->encoder(input);
 
         float *softmaxedProb; // Shape(B,T,vocab_size)
-        cudaMalloc((void **)&softmaxedProb, seq_len * vocab_size * sizeof(float));
-        float *softmaxedProbHost = (float *)malloc(seq_len * vocab_size * sizeof(float));
+        cudaMalloc((void **)&softmaxedProb, prompt_seq_len * vocab_size * sizeof(float));
+        float *softmaxedProbHost = (float *)malloc(prompt_seq_len * vocab_size * sizeof(float));
 
         for (int i = 0; i < gen; ++i)
         {
             // basically last 4, we are taking in the fixed seq_len
-            vector<int> window(encodedInput.end() - seq_len, encodedInput.end());
+            vector<int> window(encodedInput.end() - 4, encodedInput.end());
 
             // utils->print_vector(window);
 
             // note here the batch is same but the sequence is changing based on the interation
             // of the generate length
-            utils->print_vector(window);
-            break;
+            // std::cout << "Total Pool" << std::endl;
+            // utils->print_vector(encodedInput);
+
+            // std::cout << "Fixed entry" << std::endl;
+            // utils->print_vector(window);
+            // break;
+
+
             int *tokens = utils->vectorToFlatStrip(window, "gpu");
 
-            float *emb = attention->embeddings->forward(tokens, 1);
+            float *emb = attention->embeddings->forward(tokens, 1, prompt_seq_len);
 
             // std::cout << "Embedding " << std::endl;
             // utils->printFlatArray3D(emb, 1, seq_len, d_model, false, "device");
             // std::cout << "From outside " << std::endl;
             //  utils->printFlatArray2D(attention->embeddings->deviceEmbeddings, vocab_size, d_model, "device");
 
-            float *attnScore = attention->forward(emb, 1);
+            float *attnScore = attention->forward(emb, 1, prompt_seq_len);
 
             //   std::cout << "attn " << std::endl;
             // utils->printFlatArray3D(attnScore, 1, seq_len, d_model, false, "device");
 
-            float *prob = lm_head->forward(attnScore, 1);
+            float *prob = lm_head->forward(attnScore, 1, prompt_seq_len);
             // // arg_max from the vocab dimension; we do need cross entropy
 
             softmax2D(
                 prob,
                 softmaxedProb, // (B, T, vocab_size) (1 x seq_len) after extraction
                 1,
-                seq_len,
+                prompt_seq_len,
                 vocab_size);
 
             // // Note: The current approach is very slow, but it's fine for testing.
             // // I'll try to avoid a kernel launch here, even though it would be more efficient.
             // // Now that we have the desired end result, we need to fix the codebase.
             // // Seperate header and logic and compile using CMake.
-            cudaMemcpy(softmaxedProbHost, softmaxedProb, seq_len * vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
+            cudaMemcpy(softmaxedProbHost, softmaxedProb, prompt_seq_len * vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
 
             // // utils->printFlatArray3D(softmaxedProbHost, 1, current_seq_len, vocab_size, true);
 
-            vector<vector<float>> token_list = utils->lastDimHostToVector(softmaxedProbHost, 1, seq_len, vocab_size);
+            vector<vector<float>> token_list = utils->lastDimHostToVector(softmaxedProbHost, 1, prompt_seq_len, vocab_size);
 
-            vector<float> current_token = token_list[seq_len - 1];
+            vector<float> current_token = token_list[prompt_seq_len - 1];
             auto it = max_element(current_token.begin(), current_token.end());
             int index = distance(current_token.begin(), it); // argmax()
 
@@ -563,7 +572,7 @@ public:
             // std::cout << helper->decodePosition(index);
 
             encodedInput.push_back(index);
-          
+
             cudaFree(tokens);
         }
         std::cout << "\n";
@@ -578,7 +587,6 @@ public:
 
         free(softmaxedProbHost);
         cudaFree(softmaxedProb);
-
     }
 
     void train(int epoch)

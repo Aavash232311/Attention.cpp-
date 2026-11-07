@@ -154,18 +154,18 @@ public:
         deviceEmbeddingsFinalPrompt = nullptr;
     }
 
-    float *forward(int *prompt, int B)
+    float *forward(int *prompt, int B, int prompt_seq_len)
     {
         freePromptBuffers();
         // utils->printFlatArray2D(deviceEmbeddings, vocab_size, d_model, "device");
-        cudaMalloc(&deviceXPrompt, B * seq_len * sizeof(int));
-        cudaMalloc(&lookupDeviceOutPrompt, B * seq_len * d_model * sizeof(float));
-        cudaMalloc(&deviceEmbeddingsFinalPrompt, B * seq_len * d_model * sizeof(float));
+        cudaMalloc(&deviceXPrompt, B * prompt_seq_len * sizeof(int));
+        cudaMalloc(&lookupDeviceOutPrompt, B * prompt_seq_len * d_model * sizeof(float));
+        cudaMalloc(&deviceEmbeddingsFinalPrompt, B * prompt_seq_len * d_model * sizeof(float));
 
-        cudaMemcpy(deviceXPrompt, prompt, B * seq_len * sizeof(int), cudaMemcpyHostToDevice);
+        cudaMemcpy(deviceXPrompt, prompt, B * prompt_seq_len * sizeof(int), cudaMemcpyHostToDevice);
 
-        lookup(deviceXPrompt, deviceEmbeddings, lookupDeviceOutPrompt, d_model, seq_len, B, vocab_size);
-        addEmbeddings(lookupDeviceOutPrompt, devicePositionalEncoding, deviceEmbeddingsFinalPrompt, d_model, seq_len, B);
+        lookup(deviceXPrompt, deviceEmbeddings, lookupDeviceOutPrompt, d_model, prompt_seq_len, B, vocab_size);
+        addEmbeddings(lookupDeviceOutPrompt, devicePositionalEncoding, deviceEmbeddingsFinalPrompt, d_model, prompt_seq_len, B);
 
         return deviceEmbeddingsFinalPrompt;
     }

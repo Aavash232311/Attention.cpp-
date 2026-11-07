@@ -169,12 +169,12 @@ public:
      * @warning  Expects a device pointer
      * @return (Linear transformed tensor)
      */
-    float *forward(float *val, int b)
+    float *forward(float *val, int b, int prompt_seq_len)
     {
         cudaFree(weightedSumP);
         weightedSumP = nullptr;
         
-        int t = seq_len;
+        int t = prompt_seq_len;
         cudaMalloc((void **)&weightedSumP, b * t * f_out * sizeof(float));
 
         WeightedSum(val, device_weight, device_bias, weightedSumP, b * t, f_in, f_out);
@@ -203,11 +203,11 @@ public:
      * @warning Returns device pointer
      * @return (batch_size, seq_len, num_head, head_dim) tensor in device
      */
-    float *reshapeHead(int B)
+    float *reshapeHead(int B, int prompt_seq_len)
     {
         cudaFree(multiHeadedP);
         multiHeadedP = nullptr;
-        int T = seq_len;
+        int T = prompt_seq_len;
         cudaMalloc(&multiHeadedP, B * T * head_dim * n_head * sizeof(float));
 
         multiHeadedAttention(weightedSumP, multiHeadedP, n_head, head_dim, B, f_out, T);
@@ -229,9 +229,9 @@ public:
         return deviceArrInTranspose; // (batch_size, num_head, seq_len, head_dim) changed shape
     }
 
-    float *transposeMiddle4DTensor(int B)
+    float *transposeMiddle4DTensor(int B, int prompt_seq_len)
     {
-        int T = seq_len;
+        int T = prompt_seq_len;
         cudaFree(transposedP); transposedP = nullptr;
         cudaMalloc(&transposedP, B * T * head_dim * n_head * sizeof(float));
         TranposeMiddleTensor4(
@@ -247,7 +247,7 @@ public:
         return transposedP; // (batch_size, num_head, seq_len, head_dim) changed shape
     }
 
-    void teansposeKeyForAttnScore(float *buffer_out_d, int b)
+    void teansposeKeyForAttnScore(float *buffer_out_d, int b, int prompt_seq_len)
     {
         TransposeKey(
             transposedP,
@@ -255,7 +255,7 @@ public:
             n_head,
             head_dim,
             b,
-            seq_len,
+            prompt_seq_len,
             false);
     }
 
