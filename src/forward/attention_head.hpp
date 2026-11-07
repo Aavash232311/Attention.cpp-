@@ -484,7 +484,7 @@ public:
         if (debug)
             releaseBin(residual_out, "final_attn_out.bin", batch_size * seq_len * d_model);
 
-           // utils->printFlatArray3D(residual_out, batch_size, seq_len, d_model, false, "device");
+        // utils->printFlatArray3D(residual_out, batch_size, seq_len, d_model, false, "device");
         return residual_out;
     }
 
@@ -505,7 +505,7 @@ public:
             releaseBin(currentBatch.x, "batch.bin", batch_size * seq_len);
 
         float *x = embeddings->forward(currentBatch);
-       // utils->printFlatArray3D(x, batch_size, seq_len, d_model, false, "device");
+        // utils->printFlatArray3D(x, batch_size, seq_len, d_model, false, "device");
 
         //  utils->printFlatArray2D(currentBatch.x, batch_size, seq_len, "device");
 
@@ -516,7 +516,7 @@ public:
 
         float *attention_score = attentionScore(x);
 
-    //    utils->printFlatArray3D(attention_score, batch_size, seq_len, d_model, false, "device");
+        //    utils->printFlatArray3D(attention_score, batch_size, seq_len, d_model, false, "device");
 
         debug = false;
 
@@ -562,9 +562,9 @@ public:
      * @param B = 1 if we pass in the prompt to the transformer.
      * @return final (B,T,C) tensor
      */
-    float *forward(float *prompt, int B)
+    float *forward(float *prompt, int B, int prompt_seq_len)
     {
-        int T = seq_len;
+        int T = prompt_seq_len;
 
         freePromptBuffers();
         cudaMalloc(&promptX, B * T * d_model * sizeof(float));
@@ -575,18 +575,18 @@ public:
 
         layerNorm->forward(prompt, B);
         // batch_size = 1, token_length = seq_len
-        float *Q = query->forward(prompt, B);
-        float *K = key->forward(prompt, B);
-        float *V = value->forward(prompt, B);
+        float *Q = query->forward(prompt, B, prompt_seq_len);
+        float *K = key->forward(prompt, B, prompt_seq_len);
+        float *V = value->forward(prompt, B, prompt_seq_len);
 
         // multi headed attention
-        Q = query->reshapeHead(B);
-        K = key->reshapeHead(B);
-        V = value->reshapeHead(B);
+        Q = query->reshapeHead(B, prompt_seq_len);
+        K = key->reshapeHead(B, prompt_seq_len);
+        V = value->reshapeHead(B, prompt_seq_len);
 
-        Q = query->transposeMiddle4DTensor(B); // (batch_size, num_head, seq_len, head_dim)
-        K = key->transposeMiddle4DTensor(B);   // (batch_size, num_head, seq_len, head_dim)
-        V = value->transposeMiddle4DTensor(B); // (batch_size, num_head, seq_len, head_dim)
+        Q = query->transposeMiddle4DTensor(B, prompt_seq_len); // (batch_size, num_head, seq_len, head_dim)
+        K = key->transposeMiddle4DTensor(B, prompt_seq_len);   // (batch_size, num_head, seq_len, head_dim)
+        V = value->transposeMiddle4DTensor(B, prompt_seq_len); // (batch_size, num_head, seq_len, head_dim)
 
         // This is completely okay for now.
         // Not a method that high performing API would invoke.
@@ -595,11 +595,11 @@ public:
         cudaMalloc((void **)&softmaxedPormpt, B * num_heads * T * T * sizeof(float));
         cudaMalloc((void **)&attnScorePrompt, B * num_heads * T * head_dim * sizeof(float));
 
-        key->teansposeKeyForAttnScore(keyTransposedPrompt, B);
+        key->teansposeKeyForAttnScore(keyTransposedPrompt, B, prompt_seq_len);
 
         QKmatmul(Q, keyTransposedPrompt, qktPrompt, T, head_dim, B, num_heads);
-        ScalerDvisionElem(qktPrompt, B, num_heads, seq_len, head_dim);
-        UpperTriangularMasking(qktPrompt, -INFINITY, B, num_heads, seq_len);
+        ScalerDvisionElem(qktPrompt, B, num_heads, T, head_dim);
+        UpperTriangularMasking(qktPrompt, -INFINITY, B, num_heads, T);
 
         softmax(qktPrompt, softmaxedPormpt, B * num_heads * T * T, T, num_heads, B);
 
@@ -614,9 +614,8 @@ public:
             num_heads,
             head_dim);
 
-        float *contact = outputProj->forward(reformedShapePrompt, B);
+        float *contact = outputProj->forward(reformedShapePrompt, B, prompt_seq_len);
         float *add = addResidual(contact, promptX, B);
-
 
         return add;
     }
