@@ -166,9 +166,12 @@ def ReaderFlashAttention(
                               shape=(vocab_size, d_model),
                               dtype=np.float32).to(device)
 
-    token_ids = load_tensor("./src/cache/cpp_out/token_ids.bin",
-                            shape=(batch_size, seq_len),
-                            dtype=np.float32).to(device)
+    token_ids = load_tensor(
+        "./src/cache/cpp_out/token_ids.bin",
+        shape=(batch_size, seq_len),
+        dtype=np.int32
+    ).to(device=device, dtype=torch.long)
+
 
 
     d_weight_q = load_tensor("./src/cache/cpp_out/d_weight_q.bin",

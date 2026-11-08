@@ -573,20 +573,20 @@ public:
 
         cudaMemcpy(promptX, prompt, B * T * d_model * sizeof(float), cudaMemcpyDeviceToDevice);
 
-        layerNorm->forward(prompt, B);
+        layerNorm->forward(prompt, B, T);
         // batch_size = 1, token_length = seq_len
-        float *Q = query->forward(prompt, B, prompt_seq_len);
-        float *K = key->forward(prompt, B, prompt_seq_len);
-        float *V = value->forward(prompt, B, prompt_seq_len);
+        float *Q = query->forward(prompt, B, T);
+        float *K = key->forward(prompt, B, T);
+        float *V = value->forward(prompt, B, T);
 
         // multi headed attention
-        Q = query->reshapeHead(B, prompt_seq_len);
-        K = key->reshapeHead(B, prompt_seq_len);
-        V = value->reshapeHead(B, prompt_seq_len);
+        Q = query->reshapeHead(B, T);
+        K = key->reshapeHead(B, T);
+        V = value->reshapeHead(B, T);
 
-        Q = query->transposeMiddle4DTensor(B, prompt_seq_len); // (batch_size, num_head, seq_len, head_dim)
-        K = key->transposeMiddle4DTensor(B, prompt_seq_len);   // (batch_size, num_head, seq_len, head_dim)
-        V = value->transposeMiddle4DTensor(B, prompt_seq_len); // (batch_size, num_head, seq_len, head_dim)
+        Q = query->transposeMiddle4DTensor(B, T); // (batch_size, num_head, seq_len, head_dim)
+        K = key->transposeMiddle4DTensor(B, T);   // (batch_size, num_head, seq_len, head_dim)
+        V = value->transposeMiddle4DTensor(B, T); // (batch_size, num_head, seq_len, head_dim)
 
         // This is completely okay for now.
         // Not a method that high performing API would invoke.
@@ -595,7 +595,7 @@ public:
         cudaMalloc((void **)&softmaxedPormpt, B * num_heads * T * T * sizeof(float));
         cudaMalloc((void **)&attnScorePrompt, B * num_heads * T * head_dim * sizeof(float));
 
-        key->teansposeKeyForAttnScore(keyTransposedPrompt, B, prompt_seq_len);
+        key->teansposeKeyForAttnScore(keyTransposedPrompt, B, T);
 
         QKmatmul(Q, keyTransposedPrompt, qktPrompt, T, head_dim, B, num_heads);
         ScalerDvisionElem(qktPrompt, B, num_heads, T, head_dim);
@@ -614,8 +614,9 @@ public:
             num_heads,
             head_dim);
 
-        float *contact = outputProj->forward(reformedShapePrompt, B, prompt_seq_len);
-        float *add = addResidual(contact, promptX, B);
+        float *contact = outputProj->forward(reformedShapePrompt, B, T);
+        float *add = addResidual(contact, promptX, B, T);
+
 
         return add;
     }
@@ -628,9 +629,9 @@ public:
         return resedualOutDevice;
     }
 
-    float *addResidual(float *input, float *temp, int B)
+    float *addResidual(float *input, float *temp, int B, int T)
     {
-        vectorKernel(input, temp, promptResidualOut, B * seq_len * d_model);
+        vectorKernel(input, temp, promptResidualOut, B * T * d_model);
 
         return promptResidualOut;
     }

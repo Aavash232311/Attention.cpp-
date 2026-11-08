@@ -309,6 +309,7 @@ public:
             config.t,
             config.vocab_size * config.d_model);
 
+        
         // now "one" of the embedding only "one" we are using the traditional transformer
 
         cudaDeviceSynchronize();

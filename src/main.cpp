@@ -32,7 +32,7 @@
 // nvcc src/main.cpp src/kernel/utils.cu src/forward/Kernel/layer_norm.cu src/forward/Kernel/embedding.cu src/forward/Kernel/linear.cu src/forward/Kernel/attention_head.cu src/forward/Kernel/interface.cu src/backpropagation/Kernel/interface_back.cu -o src/bin/attention
 // ./src/bin/attention
 
-// backprop https://arxiv.org/pdf/2307.08691
+// backprop https://arxiv.org/p  model->train(epoch);df/2307.08691
 
 // purely for learning, not even expecting to job related to this in the future, I might not be smart enough to crack these C++ interviews not even close.
 // find . -name "*.cpp" -o -name "*.hpp" | xargs wc -l
@@ -53,9 +53,9 @@ int main()
     engine_run = true;
 #endif
 
-    int d_model = 32;
+    int d_model = 16;
     int vocab_size; // that depends upon the data that you are passing.
-    int num_heads = 16;
+    int num_heads = 8;
     int batch_size = 12;
     int seq_len = 12;
     int epoch = 2250;
@@ -84,7 +84,6 @@ int main()
         seq_len,
         num_heads); // write the hyperparamaters down
 
-
     epoch = debug == true ? 1 : epoch;
 
     const std::vector<int> &encodedData = helper->getEncodedList();
@@ -103,9 +102,12 @@ int main()
         debug,
         engine_run);
 
-    model->train(epoch);
-    model->forward("the cat", charPool);
-    helper->inspect();
+     model->train(epoch);
+     // For this 12-character prompt, the position-wise next-character target is
+     // "he cat sat o"; the final-position next character is 'o'.
+     const std::string prompt = "the cat sat ";
+     model->forward(prompt, charPool);
+    // helper->inspect();
 
     auto end = std::chrono::high_resolution_clock::now();
     cudaDeviceSynchronize(); // CPU is waiting for the GPU to finish

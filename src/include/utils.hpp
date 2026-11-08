@@ -366,10 +366,9 @@ public:
 
         if (type == "gpu")
         {
-            T* deviceArr;
+            T *deviceArr;
             cudaMalloc((void **)&deviceArr, arr.size() * sizeof(T));
             cudaMemcpy(deviceArr, newArr, arr.size() * sizeof(T), cudaMemcpyHostToDevice);
-
 
             free(newArr);
 
@@ -760,6 +759,41 @@ public:
         if (nans > 0 || infs > 0)
         {
             printf("%-22s nan=%zu inf=%zu max|x|=%g\n", name, nans, infs, mx);
+        }
+    }
+    template <typename T>
+    void tensor_min_max(T *tensor, int N, std::string type)
+    {
+        // we could write entire parallel reduction logic here
+        // create beautiful data data structures intregate things seamless
+        // I see lot of exciting potential but first lets get the end-result right
+        T *t = nullptr;
+        if (type == "device")
+        {
+            t = (T *)malloc(N * sizeof(T));
+            cudaMemcpy(t, tensor, N * sizeof(T), cudaMemcpyDeviceToHost);
+        }
+        else
+        {
+            t = tensor;
+        }
+
+        T min = t[0];
+        T max = t[0];
+
+        for (int i = 0; i < N; ++i)
+        {
+            T curr = t[i];
+            if (curr > max)
+                max = curr;
+            if (curr < min)
+                min = curr;
+        }
+
+        std::cout << "Min: " << min << " Max: " << max << std::endl;
+        if (type == "device")
+        {
+            free(t);
         }
     }
 };

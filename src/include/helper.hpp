@@ -10,6 +10,7 @@
 #include <cstring>
 #include <iostream>
 #include <unordered_map>
+#include <stdexcept>
 
 using namespace std;
 
@@ -116,6 +117,10 @@ public:
                 }
                 if (found)
                     break;
+            }
+            if (!found)
+            {
+                throw std::invalid_argument(std::string("Character is not in the training vocabulary: '") + key + "'");
             }
         }
 
