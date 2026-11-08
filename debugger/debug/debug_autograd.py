@@ -30,9 +30,9 @@ def debug_autograd(
 
 
     if check_ht_transpose:
-        print(f"h^t transpose kernel: {GREEN} {check_ht_transpose} {RESET}")
+        print(f"final attention transpose kernel: {GREEN} {check_ht_transpose} {RESET}")
     else:
-        print(f"h^t transpose kernel: {RED} {check_ht_transpose} {RESET}")
+        print(f"final attention transpose kernel: {RED} {check_ht_transpose} {RESET}")
 
 
     # broadcasting for last-dimension

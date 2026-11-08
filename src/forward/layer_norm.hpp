@@ -105,9 +105,9 @@ public:
         debug = false;
     }
 
-    void forward(float *x, int B)
+    void forward(float *x, int B, int T)
     {
-        layerNormalization(x, d_gamma, d_beta, std_dev_cache, mean_cache, B, seq_len, d_model);
+        layerNormalization(x, d_gamma, d_beta, std_dev_cache, mean_cache, B, T, d_model);
     }
 
     float *getGammaDevice() // for the most part we only care about whats insdie of the GPU

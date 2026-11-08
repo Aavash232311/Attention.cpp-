@@ -225,7 +225,7 @@ public:
             batch_size,
             debug);
 
-        optimizer = std::make_unique<OptimizerDebugger>(0.01, 0.0f, 0.9f, 0.999f, 1e-8f, debug);
+        optimizer = std::make_unique<OptimizerDebugger>(1e-3f, 0.0f, 0.9f, 0.98f, 1e-8f, debug);
 
         // pass in the derived class for proper inheritance
         autograd = std::make_unique<AutogradEngineDebuggerRelease>(
@@ -263,7 +263,7 @@ public:
 
         outCrossEntropyHost = (float *)malloc(batch_size * seq_len * vocab_size * sizeof(float));
 
-        cudaMalloc((void **)&ht_device, batch_size * seq_len * vocab_size * sizeof(float));
+        cudaMalloc((void **)&ht_device, batch_size * seq_len * d_model * sizeof(float));
 
         cudaMalloc((void **)&dl_dw_out_device, d_model * vocab_size * sizeof(float));
 
@@ -501,89 +501,88 @@ public:
     // note lookup contains seq_len = 12 for example whatever its trained on
     // and we are trying to retrive something different from forward pass so
     // we have a different seq_len for this forward pass called "prompt_seq_len"
-    void forward(std::string input, std::vector<char> &charPool, int gen = 1)
+
+    void forward(std::string input, std::vector<char> &charPool, int gen = 15)
     {
         helper = std::make_unique<Helper>(charPool);
-        int prompt_seq_len = 4;
-        // encode input
-        vector<int> encodedInput = helper->encoder(input);
 
-        float *softmaxedProb; // Shape(B,T,vocab_size)
-        cudaMalloc((void **)&softmaxedProb, prompt_seq_len * vocab_size * sizeof(float));
-        float *softmaxedProbHost = (float *)malloc(prompt_seq_len * vocab_size * sizeof(float));
+        const int prompt_seq_len = 12;
+
+        // Encode prompt
+        vector<int> encodedInput = helper->encoder(input);
+        if (encodedInput.size() < static_cast<size_t>(prompt_seq_len))
+        {
+            throw std::invalid_argument("Generation prompt must encode to at least " + std::to_string(prompt_seq_len) + " known characters.");
+        }
+
+        float *softmaxedProb;
+        cudaMalloc(
+            (void **)&softmaxedProb,
+            prompt_seq_len * vocab_size * sizeof(float));
+
+        float *softmaxedProbHost = (float *)malloc(
+            prompt_seq_len * vocab_size * sizeof(float));
 
         for (int i = 0; i < gen; ++i)
         {
-            // basically last 4, we are taking in the fixed seq_len
-            vector<int> window(encodedInput.end() - 4, encodedInput.end());
+            vector<int> window(
+                encodedInput.end() - prompt_seq_len,
+                encodedInput.end());
 
-            // utils->print_vector(window);
-
-            // note here the batch is same but the sequence is changing based on the interation
-            // of the generate length
-            // std::cout << "Total Pool" << std::endl;
-            // utils->print_vector(encodedInput);
-
-            // std::cout << "Fixed entry" << std::endl;
-            // utils->print_vector(window);
-            // break;
-
-
+     
             int *tokens = utils->vectorToFlatStrip(window, "gpu");
 
-            float *emb = attention->embeddings->forward(tokens, 1, prompt_seq_len);
+            float *emb = attention->embeddings->forward(
+                tokens, 1, prompt_seq_len);
 
-            // std::cout << "Embedding " << std::endl;
-            // utils->printFlatArray3D(emb, 1, seq_len, d_model, false, "device");
-            // std::cout << "From outside " << std::endl;
-            //  utils->printFlatArray2D(attention->embeddings->deviceEmbeddings, vocab_size, d_model, "device");
+            float *attnScore = attention->forward(
+                emb, 1, prompt_seq_len);
 
-            float *attnScore = attention->forward(emb, 1, prompt_seq_len);
+            float *logits = lm_head->forward(
+                attnScore, 1, prompt_seq_len);
 
-            //   std::cout << "attn " << std::endl;
-            // utils->printFlatArray3D(attnScore, 1, seq_len, d_model, false, "device");
-
-            float *prob = lm_head->forward(attnScore, 1, prompt_seq_len);
-            // // arg_max from the vocab dimension; we do need cross entropy
 
             softmax2D(
-                prob,
-                softmaxedProb, // (B, T, vocab_size) (1 x seq_len) after extraction
+                logits,
+                softmaxedProb,
                 1,
                 prompt_seq_len,
                 vocab_size);
 
-            // // Note: The current approach is very slow, but it's fine for testing.
-            // // I'll try to avoid a kernel launch here, even though it would be more efficient.
-            // // Now that we have the desired end result, we need to fix the codebase.
-            // // Seperate header and logic and compile using CMake.
-            cudaMemcpy(softmaxedProbHost, softmaxedProb, prompt_seq_len * vocab_size * sizeof(float), cudaMemcpyDeviceToHost);
+            cudaMemcpy(
+                softmaxedProbHost,
+                softmaxedProb,
+                prompt_seq_len * vocab_size * sizeof(float),
+                cudaMemcpyDeviceToHost);
 
-            // // utils->printFlatArray3D(softmaxedProbHost, 1, current_seq_len, vocab_size, true);
+            int offset = (prompt_seq_len - 1) * vocab_size;
 
-            vector<vector<float>> token_list = utils->lastDimHostToVector(softmaxedProbHost, 1, prompt_seq_len, vocab_size);
+            int index = 0;
+            float maxProb = softmaxedProbHost[offset];
 
-            vector<float> current_token = token_list[prompt_seq_len - 1];
-            auto it = max_element(current_token.begin(), current_token.end());
-            int index = distance(current_token.begin(), it); // argmax()
+            for (int j = 1; j < vocab_size; ++j)
+            {
+                float currentProb = softmaxedProbHost[offset + j];
 
-            // index: [.... position within the vocab.......]
-
-            // std::cout << helper->decodePosition(index);
-
+                if (currentProb > maxProb)
+                {
+                    maxProb = currentProb;
+                    index = j;
+                }
+            }
             encodedInput.push_back(index);
 
             cudaFree(tokens);
         }
-        std::cout << "\n";
 
-        // auto decode = helper->decoder(encodedInput);
+        auto decode = helper->decoder(encodedInput);
 
-        // for (int i = 0; i < decode.size(); ++i)
-        // {
-        //     cout << decode[i];
-        // }
-        // cout << "\n";
+        for (int i = 0; i < decode.size(); ++i)
+        {
+            cout << decode[i];
+        }
+
+        cout << "\n";
 
         free(softmaxedProbHost);
         cudaFree(softmaxedProb);
@@ -614,6 +613,18 @@ public:
                 cudaMemcpy(attn_head_out, x, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToDevice);
 
                 float *prob = lm_head->forward(x); // Shape (B, T, vocab_size) x is not changed here.
+
+                // utils->printFlatArray2D(attention->key->getMultiHeadedDeivce(), d_model, d_model, "device");
+                // utils->tensor_min_max(attention->key->getWeightDevice(), d_model * d_model, "device");
+
+                // printf("Epoch: %d \n", i);
+                // utils->tensor_min_max(prob, batch_size * seq_len * vocab_size, "device");
+
+                // if (i == 2000)
+                // {
+                //     // utils->printFlatArray2D(modelParamaters.dweight_lm_head, vocab_size, d_model, "device");
+                //     utils->printFlatArray2D(attention->embeddings->deviceEmbeddings, vocab_size, d_model, "device");
+                // }
 
                 modelParamaters.weight_lm_head = lm_head->getWeightDevice();
 
@@ -741,11 +752,6 @@ public:
                 //     free(dh);
                 // }
 
-                // if (i == 2000)
-                // {
-                //     utils->printFlatArray3D(x, batch_size, seq_len, d_model, false, "device");
-                // }
-
                 optimizer->invoke(modelParamaters, *adamMemConfig, epoch);
 
                 // check if something is off with AadamW on sufrace
@@ -764,7 +770,6 @@ public:
 
                 batch_count++;
             }
-
             if (i % 250 == 0)
             {
 

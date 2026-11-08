@@ -162,7 +162,8 @@ public:
         cudaMalloc(&lookupDeviceOutPrompt, B * prompt_seq_len * d_model * sizeof(float));
         cudaMalloc(&deviceEmbeddingsFinalPrompt, B * prompt_seq_len * d_model * sizeof(float));
 
-        cudaMemcpy(deviceXPrompt, prompt, B * prompt_seq_len * sizeof(int), cudaMemcpyHostToDevice);
+        // Inference callers pass the GPU buffer returned by vectorToFlatStrip(..., "gpu").
+        cudaMemcpy(deviceXPrompt, prompt, B * prompt_seq_len * sizeof(int), cudaMemcpyDeviceToDevice);
 
         lookup(deviceXPrompt, deviceEmbeddings, lookupDeviceOutPrompt, d_model, prompt_seq_len, B, vocab_size);
         addEmbeddings(lookupDeviceOutPrompt, devicePositionalEncoding, deviceEmbeddingsFinalPrompt, d_model, prompt_seq_len, B);
