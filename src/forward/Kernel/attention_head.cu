@@ -172,10 +172,6 @@ __global__ void SoftmaxKernel2D(
     int batch_idx = blockIdx.y;
     int row_idx = blockIdx.x;
 
-    int col = threadIdx.x;
-    if (col >= vocab_size)
-        return;
-
     const float *row = arr + batch_idx * (seq_len * vocab_size) + row_idx * vocab_size;
     float *out_row = out + batch_idx * (seq_len * vocab_size) + row_idx * vocab_size;
 
@@ -303,12 +299,10 @@ __global__ void softmaxKrenel4D(
     int seq_len_idx1 = blockIdx.x;  // row
     int seq_len_idx2 = threadIdx.x; // cols 0-31 thread in a wrap
 
-    if (seq_len_idx2 >= seq_len)
-        return;
-
     int idx = batch_idx * (n_head * seq_len * seq_len) + nhead_idx * (seq_len * seq_len) + seq_len_idx1 * seq_len + seq_len_idx2;
 
-    float val = (idx < N) ? arr[idx] : -FLT_MAX;
+    bool valid = seq_len_idx2 < seq_len && idx < N;
+    float val = valid ? arr[idx] : -FLT_MAX;
 
     // wrap level reduction, because shared memory is little costly here.
     for (int offset = 16; offset > 0; offset /= 2)                 // half half half and max is carried along I said in myyy wayyy
@@ -316,7 +310,7 @@ __global__ void softmaxKrenel4D(
     float max_val = __shfl_sync(0xffffffff, val, 0);               // max in warp, its not an array to be mistaken each thread has its own register to store the value.
 
     // exp in register
-    float exp_val = (idx < N) ? expf(arr[idx] - max_val) : 0.0f;
+    float exp_val = valid ? expf(arr[idx] - max_val) : 0.0f;
 
     // wrap level sum exp
     for (int offset = 16; offset > 0; offset /= 2)
@@ -324,7 +318,7 @@ __global__ void softmaxKrenel4D(
     float sum_val = __shfl_sync(0xffffffff, exp_val, 0); // sum in warp
 
     // final formula
-    if (idx < N)
+    if (valid)
         out[idx] = expf(arr[idx] - max_val) / sum_val;
 }
 
@@ -532,7 +526,8 @@ extern "C"
         }
         else
         {
-            dim3 grid(seq_len, n_head, N);
+            // The z dimension indexes batch items; N is the total element count.
+            dim3 grid(seq_len, n_head, batch_size);
             dim3 block(min(((seq_len + 31) / 32) * 32, 1024));
             softmaxKrenel4D<<<grid, block>>>(arr, out, N, seq_len, n_head);
         }

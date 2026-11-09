@@ -1,4 +1,5 @@
 #pragma once
+#include <algorithm>
 #include <math.h>
 #include <iostream>
 #include <vector>
@@ -81,8 +82,8 @@ private:
     void loadBatches()
     {
 
-        int total_samples = static_cast<int>(data.size()) - seq_len;
-        int totalIterations = total_samples / (batch_size * seq_len);
+        int total_samples = std::max(0, static_cast<int>(data.size()) - seq_len);
+        int totalIterations = total_samples / batch_size;
 
         int iterator = 0;
 
@@ -113,7 +114,9 @@ private:
                     id_y[idx] = current_y[k];
                 }
 
-                iterator += seq_len; // prevents overlap
+                // Generation slides its context by one token. Train on those
+                // same offsets instead of only every seq_len-th window.
+                ++iterator;
             }
 
             int *strip_x = utils->vectorToFlatStrip(id_x, "gpu");
@@ -150,10 +153,7 @@ public:
 
     void inspectData()
     {
-        int total_samples = static_cast<int>(data.size()) - seq_len;
-        int totalIterations = total_samples / (batch_size * seq_len);
-
-        for (int i = 0; i < totalIterations; ++i)
+        for (size_t i = 0; i < batches.size(); ++i)
         {
             utils->printFlatArray2D(batches[i].x, batch_size, seq_len, "device");
         }
@@ -161,10 +161,7 @@ public:
 
     ~DataLoader()
     {
-        int total_samples = static_cast<int>(data.size()) - seq_len;
-        int totalIterations = total_samples / (batch_size * seq_len);
-
-        for (int i = 0; i < totalIterations; ++i)
+        for (size_t i = 0; i < batches.size(); ++i)
         {
             int *x = batches[i].x;
             int *y = batches[i].y;

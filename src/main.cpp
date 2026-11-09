@@ -105,7 +105,7 @@ int main()
      model->train(epoch);
      // For this 12-character prompt, the position-wise next-character target is
      // "he cat sat o"; the final-position next character is 'o'.
-     const std::string prompt = "the cat sat ";
+     const std::string prompt = "on the mat. the ";
      model->forward(prompt, charPool);
     // helper->inspect();
 

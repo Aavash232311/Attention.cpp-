@@ -447,11 +447,12 @@ public:
         softmax(DeviceQKT, deviceSoftmaxOut, batch_size * num_heads * seq_len * seq_len, seq_len, num_heads, batch_size);
 
         // cache P = softmax(x)
-        //     cudaMemcpy(P, deviceSoftmaxOut, batch_size * seq_len * num_heads * seq_len * sizeof(float), cudaMemcpyDeviceToDevice);
+        cudaMemcpy(P, deviceSoftmaxOut, batch_size * seq_len * num_heads * seq_len * sizeof(float), cudaMemcpyDeviceToDevice);
 
         if (debug)
             releaseBin(deviceSoftmaxOut, "softmaxed_attn.bin", batch_size * seq_len * num_heads * seq_len);
 
+   
         QKVMatmulFinal(
             deviceSoftmaxOut, // (batch_size, num_head, seq_len, seq_len)
             V,                // (batch_size, num_head, seq_len, head_dim)
@@ -461,6 +462,7 @@ public:
             num_heads,
             batch_size);
 
+     //   utils->tensor_min_max(softmaxed_qkv, batch_size * num_heads * seq_len * head_dim, "device");
         // std::cout << "Token id " << std::endl;
         // utils->printFlatArray2D(embeddings->getDeviceX(), batch_size, seq_len, "device");
 
@@ -469,10 +471,11 @@ public:
 
         float *reformed_tensor = ReformShape(softmaxed_qkv);
 
+    
         if (debug)
             releaseBin(reformed_tensor, "re_shaped_multi_head.bin", batch_size * seq_len * d_model);
 
-        //    cudaMemcpy(output_porjection_x, reformed_tensor, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToDevice);
+        cudaMemcpy(output_porjection_x, reformed_tensor, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToDevice);
 
         float *projectedBTC = outputProj->forward(reformed_tensor);
 

@@ -201,7 +201,7 @@ public:
      * @param B batch size
      * @param T seq_len
      * @warning Returns device pointer
-     * @return (batch_size, seq_len, num_head, head_dim) tensor in device
+     * @return (batch_size, seq_len, num_head, head_dim) tensor in device (BTHD)
      */
     float *reshapeHead(int B, int prompt_seq_len)
     {
@@ -217,9 +217,10 @@ public:
 
     float *transposeMiddle4DTensor()
     {
-
+        // The linear output is B,T,H,D. reshapeHead() already produces
+        // B,H,T,D, so transposing its output again would scramble tokens.
         TranposeMiddleTensor4(
-            mhead_out_device,
+            weighted_sum_device,
             deviceArrInTranspose,
             batch_size,
             seq_len,
@@ -235,7 +236,7 @@ public:
         cudaFree(transposedP); transposedP = nullptr;
         cudaMalloc(&transposedP, B * T * head_dim * n_head * sizeof(float));
         TranposeMiddleTensor4(
-            multiHeadedP,
+            weightedSumP,
             transposedP,
             B,
             T,
