@@ -39,3 +39,8 @@ cmake -S . -B build -DATTENTION_DEBUG_DUMPS=OFF
 
 `ATTENTION_DEBUG_DUMPS` defines `DEBUG`, which also changes the existing main
 program to run only one epoch. `ATTENTION_ENGINE_RUN=ON` defines `ENGINE_RUN`.
+
+GitHub Actions builds this same CMake target using Ninja and parallel jobs,
+with debug dumps enabled to match the previous CI compile. It caches compiler
+outputs using ccache across runs. The first run populates the cache; later runs
+can reuse unchanged compilations. CI compiles only and does not run GPU training.

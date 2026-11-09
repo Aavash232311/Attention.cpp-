@@ -10,6 +10,11 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
+      CCACHE_BASEDIR: ${{ github.workspace }}
+      CCACHE_COMPILERCHECK: content
+      CCACHE_MAXSIZE: 500M
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -22,13 +27,30 @@ jobs:
           use-github-cache: true
 
       - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y nlohmann-json3-dev
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build ccache nlohmann-json3-dev
 
       - name: Verify nvcc
         run: nvcc -V
 
-      - name: Create output directory
-        run: mkdir -p src/bin
+      - name: Restore compiler cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ${{ runner.os }}-cuda-12.4-ccache-v1-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-cuda-12.4-ccache-v1-
+
+      - name: Configure CMake
+        run: >-
+          cmake -S . -B build -G Ninja
+          -DCMAKE_BUILD_TYPE=Release
+          -DATTENTION_DEBUG_DUMPS=ON
+          -DCMAKE_CUDA_COMPILER_LAUNCHER=ccache
+          -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
       - name: Build
-        run: nvcc --time=build_time.log -DDEBUG -DDRUN -I. src/main.cpp src/kernel/utils.cu src/forward/Kernel/layer_norm.cu src/forward/Kernel/embedding.cu src/forward/Kernel/linear.cu src/forward/Kernel/attention_head.cu src/forward/Kernel/interface.cu src/backpropagation/Kernel/interface_back.cu src/backpropagation/Kernel/flash_attention.cu src/optimizer/Kernel/AdamW.cu -o src/bin/attention
+        run: cmake --build build --parallel "$(nproc)"
+
+      - name: Show compiler cache statistics
+        if: always()
+        run: ccache --show-stats
