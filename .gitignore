@@ -9,6 +9,8 @@ pg
 venv/
 .venv/
 
+tests
+
 # LaTeX build artifacts
 flashback.aux
 flashback.fdb_latexmk
@@ -29,3 +31,7 @@ __pycache__/
 *.pyo
 *.pyd
 *.log
+
+# CMake build trees
+/build/
+/build-*/

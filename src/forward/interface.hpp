@@ -506,7 +506,7 @@ public:
     {
         helper = std::make_unique<Helper>(charPool);
 
-        const int prompt_seq_len = 12;
+        const int prompt_seq_len = seq_len;
 
         // Encode prompt
         vector<int> encodedInput = helper->encoder(input);
@@ -611,6 +611,8 @@ public:
                 float *x = attention->forward(batch);
 
                 cudaMemcpy(attn_head_out, x, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToDevice);
+
+                
 
                 float *prob = lm_head->forward(x); // Shape (B, T, vocab_size) x is not changed here.
 

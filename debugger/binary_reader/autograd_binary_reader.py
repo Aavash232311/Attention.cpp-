@@ -269,6 +269,7 @@ def Reader(
                                  dtype=np.float32).to(device)
 
 
+
     return (delta, y_predicted,
             y_actual, h, dl_dw_kernel,
             h_t, wt, w, dl_dh, d_bias_lm_head)
