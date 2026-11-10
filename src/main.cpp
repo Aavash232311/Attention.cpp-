@@ -62,7 +62,6 @@ int main()
     // int epoch = 20;
     bool drop_last = true; // for training set this to false, if someone is serious about this email me. the cost of implementing this feature will affect everything in depth many tradeoffs
 
-    bool hyperParamaterRelease = false;
 
     std::string path = "./src/data/chunk.txt";
 

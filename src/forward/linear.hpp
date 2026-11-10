@@ -183,10 +183,10 @@ public:
     }
 
     /**
-     * @brief turns (B,T,C) tensor into (batch_size, seq_len, num_head, head_dim)
+     * @brief splits channels and reorders (B,T,C) into (B,H,T,D)
      *
      * @warning Returns device pointer
-     * @return (batch_size, seq_len, num_head, head_dim) tensor in device
+     * @return (batch_size, num_head, seq_len, head_dim) tensor in device
      */
     float *reshapeHead()
     {
@@ -196,12 +196,12 @@ public:
     }
 
     /**
-     * @brief turns (B,T,C) tensor into (batch_size, seq_len, num_head, head_dim)
+     * @brief splits channels and reorders (B,T,C) into (B,H,T,D)
      *
      * @param B batch size
      * @param T seq_len
      * @warning Returns device pointer
-     * @return (batch_size, seq_len, num_head, head_dim) tensor in device (BTHD)
+     * @return (batch_size, num_head, seq_len, head_dim) tensor in device
      */
     float *reshapeHead(int B, int prompt_seq_len)
     {
@@ -215,12 +215,11 @@ public:
         return multiHeadedP;
     }
 
+
     float *transposeMiddle4DTensor()
     {
-        // The linear output is B,T,H,D. reshapeHead() already produces
-        // B,H,T,D, so transposing its output again would scramble tokens.
         TranposeMiddleTensor4(
-            weighted_sum_device,
+            mhead_out_device,
             deviceArrInTranspose,
             batch_size,
             seq_len,
@@ -236,7 +235,7 @@ public:
         cudaFree(transposedP); transposedP = nullptr;
         cudaMalloc(&transposedP, B * T * head_dim * n_head * sizeof(float));
         TranposeMiddleTensor4(
-            weightedSumP,
+            multiHeadedP,
             transposedP,
             B,
             T,
@@ -251,7 +250,7 @@ public:
     void teansposeKeyForAttnScore(float *buffer_out_d, int b, int prompt_seq_len)
     {
         TransposeKey(
-            transposedP,
+            multiHeadedP,
             buffer_out_d,
             n_head,
             head_dim,
@@ -264,14 +263,13 @@ public:
      * @class teansposeKeyForAttnScore
      * @brief transforms (batch_size, num_head, seq_len, head_dim) to (batch_size, num_head, head_dim, seq_len)
      *
-     * @warning Returns device pointer
-     * @return (batch_size, seq_len, num_head, head_dim) tensor in device
+     * @note Writes (batch_size, num_head, head_dim, seq_len) into buffer_out_d.
      */
     void teansposeKeyForAttnScore(
         float *buffer_out_d)
     {
         TransposeKey(
-            deviceArrInTranspose,
+            mhead_out_device,
             buffer_out_d,
             n_head,
             head_dim,
