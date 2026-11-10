@@ -502,7 +502,7 @@ public:
     // and we are trying to retrive something different from forward pass so
     // we have a different seq_len for this forward pass called "prompt_seq_len"
 
-    void forward(std::string input, std::vector<char> &charPool, int gen = 15)
+    void forward(std::string input, std::vector<char> &charPool, int gen = 30)
     {
         helper = std::make_unique<Helper>(charPool);
 
@@ -590,7 +590,6 @@ public:
 
     void train(int epoch)
     {
-        int count_500 = 0;
         float loss = 0.0f;
 
         for (int i = 0; i < epoch; ++i)
@@ -612,7 +611,7 @@ public:
 
                 cudaMemcpy(attn_head_out, x, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToDevice);
 
-                
+
 
                 float *prob = lm_head->forward(x); // Shape (B, T, vocab_size) x is not changed here.
 

@@ -394,7 +394,7 @@ public:
         //     "device"
         // );
 
-        // (B, T, C) to (batch_size, seq_len, num_head, head_dim)
+        // (B, T, C) to (batch_size, num_head, seq_len, head_dim)
         Q = query->reshapeHead();
         K = key->reshapeHead();
         V = value->reshapeHead();
@@ -407,12 +407,6 @@ public:
             releaseBin(query->getWeightDevice(), "attn_weight_q.bin", d_model * d_model);
             originalMultiHeadedQKVShapeDebugger(Q, K, V);
         }
-
-        // (batch_size, seq_len, num_head, head_dim) to (batch_size, num_head, seq_len, head_dim)
-
-        Q = query->transposeMiddle4DTensor(); // (batch_size, num_head, seq_len, head_dim)
-        K = key->transposeMiddle4DTensor();   // (batch_size, num_head, seq_len, head_dim)
-        V = value->transposeMiddle4DTensor(); // (batch_size, num_head, seq_len, head_dim)
 
         // QKV cache
         cudaMemcpy(Q_cache, Q, batch_size * seq_len * num_heads * head_dim * sizeof(float), cudaMemcpyDeviceToDevice);
@@ -446,13 +440,12 @@ public:
 
         softmax(DeviceQKT, deviceSoftmaxOut, batch_size * num_heads * seq_len * seq_len, seq_len, num_heads, batch_size);
 
-        // cache P = softmax(x)
+        // cache P  = softmax(x)
         cudaMemcpy(P, deviceSoftmaxOut, batch_size * seq_len * num_heads * seq_len * sizeof(float), cudaMemcpyDeviceToDevice);
 
         if (debug)
             releaseBin(deviceSoftmaxOut, "softmaxed_attn.bin", batch_size * seq_len * num_heads * seq_len);
 
-   
         QKVMatmulFinal(
             deviceSoftmaxOut, // (batch_size, num_head, seq_len, seq_len)
             V,                // (batch_size, num_head, seq_len, head_dim)
@@ -462,7 +455,7 @@ public:
             num_heads,
             batch_size);
 
-     //   utils->tensor_min_max(softmaxed_qkv, batch_size * num_heads * seq_len * head_dim, "device");
+        //   utils->tensor_min_max(softmaxed_qkv, batch_size * num_heads * seq_len * head_dim, "device");
         // std::cout << "Token id " << std::endl;
         // utils->printFlatArray2D(embeddings->getDeviceX(), batch_size, seq_len, "device");
 
@@ -471,7 +464,6 @@ public:
 
         float *reformed_tensor = ReformShape(softmaxed_qkv);
 
-    
         if (debug)
             releaseBin(reformed_tensor, "re_shaped_multi_head.bin", batch_size * seq_len * d_model);
 
@@ -583,13 +575,9 @@ public:
         float *V = value->forward(prompt, B, T);
 
         // multi headed attention
-        Q = query->reshapeHead(B, T);
-        K = key->reshapeHead(B, T);
-        V = value->reshapeHead(B, T);
-
-        Q = query->transposeMiddle4DTensor(B, T); // (batch_size, num_head, seq_len, head_dim)
-        K = key->transposeMiddle4DTensor(B, T);   // (batch_size, num_head, seq_len, head_dim)
-        V = value->transposeMiddle4DTensor(B, T); // (batch_size, num_head, seq_len, head_dim)
+        Q = query->reshapeHead(B, T); // (B, n_head, seq_len, head_dim)
+        K = key->reshapeHead(B, T);   // (B, n_head, seq_len, head_dim)
+        V = value->reshapeHead(B, T); // (B, n_head, seq_len, head_dim)
 
         // This is completely okay for now.
         // Not a method that high performing API would invoke.
@@ -619,7 +607,6 @@ public:
 
         float *contact = outputProj->forward(reformedShapePrompt, B, T);
         float *add = addResidual(contact, promptX, B, T);
-
 
         return add;
     }

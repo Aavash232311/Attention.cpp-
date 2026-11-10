@@ -4,8 +4,6 @@
 #include <cuda_runtime.h>
 #include <iostream>
 #include <memory>
-#include <cstdio>
-#include <chrono>
 
 #include "../include/utils.hpp"
 #include "../include/p_head.hpp"
@@ -64,7 +62,6 @@ public:
         hostEmbeddings = utils->TwoDVectorToFlatMem(this->tokenEmbeddings);                 // this is from I am learning so I was too scared to touch kernel
 
         int sizeFinalEmbeddings = seq_len * d_model * batch_size * sizeof(float);
-        int sizeTokenEmbeddings = seq_len * batch_size * d_model * sizeof(float);
 
         lookedUpEmbeddings = (float *)malloc(sizeFinalEmbeddings);
         // copy to GPU memory
