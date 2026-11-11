@@ -53,11 +53,11 @@ int main()
     engine_run = true;
 #endif
 
-    int d_model = 16;
+    int d_model = 128;
     int vocab_size; // that depends upon the data that you are passing.
-    int num_heads = 8;
-    int batch_size = 12;
-    int seq_len = 12;
+    int num_heads = 16;
+    int batch_size = 16;
+    int seq_len = 16;
     int epoch = 2250;
     // int epoch = 20;
     bool drop_last = true; // for training set this to false, if someone is serious about this email me. the cost of implementing this feature will affect everything in depth many tradeoffs
@@ -104,7 +104,7 @@ int main()
      model->train(epoch);
      // For this 12-character prompt, the position-wise next-character target is
      // "he cat sat o"; the final-position next character is 'o'.
-     const std::string prompt = "on the mat. the ";
+     const std::string prompt = "the cat sat. the dog ran.";
      model->forward(prompt, charPool);
     // helper->inspect();
 
@@ -119,3 +119,4 @@ int main()
 
     return 0;
 }
+// checkmark
