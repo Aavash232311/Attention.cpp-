@@ -225,7 +225,7 @@ public:
             batch_size,
             debug);
 
-        optimizer = std::make_unique<OptimizerDebugger>(1e-3f, 0.0f, 0.9f, 0.98f, 1e-8f, debug);
+        optimizer = std::make_unique<OptimizerDebugger>(3e-3f, 0.0f, 0.9f, 0.98f, 1e-8f, debug);
 
         // pass in the derived class for proper inheritance
         autograd = std::make_unique<AutogradEngineDebuggerRelease>(
@@ -502,7 +502,7 @@ public:
     // and we are trying to retrive something different from forward pass so
     // we have a different seq_len for this forward pass called "prompt_seq_len"
 
-    void forward(std::string input, std::vector<char> &charPool, int gen = 30)
+    void forward(std::string input, std::vector<char> &charPool, int gen = 128)
     {
         helper = std::make_unique<Helper>(charPool);
 
