@@ -2,7 +2,7 @@
 
 The goal is to understand the attention mechanism in depth without a lot of abstraction. I may not remember much after a long time, but this project should give me an idea of how everything works inside a Transformer model. I am trying to make it as simple as possible, even though managing all these buffers gets complicated pretty quickly.
 
-I am studying how to build it. This is a learning project, and I will write more detailed docs later.
+I am studying how to build it. This is a learning project.
 
 ## What it does
 
@@ -38,7 +38,7 @@ The C++/CUDA implementation includes token embeddings, positional encoding, mult
 
 ## Derivations and notes
 
-These are my working notes in [src/unit_note](src/unit_note). I wrote them while trying to understand the math and connect it to the kernels. They are still rough; the detailed docs will come later.
+These are my working notes in [src/unit_note](src/unit_note). I wrote them while trying to understand the math.
 
 - [Attention backward derivation](src/unit_note/flashback.md) · [PDF](src/unit_note/flashback.pdf)
 - [Softmax and cross-entropy gradient derivation](src/unit_note/interfaceback.md) · [PDF](src/unit_note/interfaceback.pdf)
