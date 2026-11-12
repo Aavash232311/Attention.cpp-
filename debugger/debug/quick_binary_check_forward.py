@@ -1,3 +1,4 @@
+from debug.static import print_check
 import math
 import torch
 import numpy as np
@@ -54,14 +55,14 @@ def quick_attention_check():
                              shape=(batch_size, num_heads, seq_len, head_dim),
                              dtype=np.float32).to(device)
 
-    print("q:", torch.allclose(q_reshaped, q_org.transpose(1, 2).contiguous(), atol=1e-6, rtol=1e-6))
-    print("k:", torch.allclose(k_reshaped, k_org.transpose(1, 2).contiguous(), atol=1e-6, rtol=1e-6))
-    print("v:", torch.allclose(v_reshaped, v_org.transpose(1, 2).contiguous(), atol=1e-6, rtol=1e-6))
+    print_check("q:", torch.allclose(q_reshaped, q_org.transpose(1, 2).contiguous(), atol=1e-6, rtol=1e-6))
+    print_check("k:", torch.allclose(k_reshaped, k_org.transpose(1, 2).contiguous(), atol=1e-6, rtol=1e-6))
+    print_check("v:", torch.allclose(v_reshaped, v_org.transpose(1, 2).contiguous(), atol=1e-6, rtol=1e-6))
 
-    print("kt:", torch.allclose(kt, k_reshaped.transpose(-1, -2).contiguous(), atol=1e-6, rtol=1e-6))
+    print_check("kt:", torch.allclose(kt, k_reshaped.transpose(-1, -2).contiguous(), atol=1e-6, rtol=1e-6))
 
     check_qkt = torch.allclose(q_reshaped @ kt, qkt, atol=1e-6, rtol=1e-6)
-    print("Check QKT matmul: ", check_qkt)
+    print_check("QKT matmul", check_qkt)
 
     sqrt_d_head = load_tensor("./src/cache/cpp_out/sqrt_d_head.bin",
                                     shape=(batch_size, num_heads, seq_len, seq_len),
@@ -77,7 +78,7 @@ def quick_attention_check():
         atol=1e-6,
         rtol=1e-6
     )
-    print(f"Check division by d_head: {check_division}")
+    print_check("Check division by d_head", check_division)
 
     T = sqrt_d_head.size(-1)
     future = torch.triu(torch.ones(T, T, dtype=torch.bool, device=sqrt_d_head.device), diagonal=1)
@@ -93,7 +94,7 @@ def quick_attention_check():
         rtol=1e-6,
     )
 
-    print(f"check casual masking: {check_masked}")
+    print_check("check casual masking", check_masked)
 
 
     softmax_attn = load_tensor("./src/cache/cpp_out/softmaxed_attn.bin",
@@ -116,7 +117,7 @@ def quick_attention_check():
     ref_out = softmax_attn @ v_reshaped  # (B, H, T, head_dim)
 
     check_attn_out = torch.allclose(attn_out_cpp, ref_out, atol=1e-5, rtol=1e-5)
-    print(f"Final attention score: {check_attn_out}")
+    print_check("Final attention score", check_attn_out)
 
     re_shaped_multi_head = load_tensor("./src/cache/cpp_out/re_shaped_multi_head.bin",
                                        shape=(batch_size, seq_len, d_model),
@@ -140,7 +141,7 @@ def quick_attention_check():
                                shape=(batch_size, seq_len, d_model),
                                dtype=np.float32).to(device)
 
-    print(f"Reshaped attention score: {check_multi_head}")
+    print_check("Reshaped attention score", check_multi_head)
 
     ref_residual = temp_x + out_put_proj
 
@@ -168,7 +169,7 @@ def quick_attention_check():
 
     check_layer_norm = torch.allclose(normalized_x, ref_ln, atol=1e-5, rtol=1e-5)
 
-    print(f"Check layer_norm: {check_layer_norm}")
+    print_check("Check layer_norm", check_layer_norm)
 
     lm_head_out = load_tensor("./src/cache/cpp_out/lm_head_out.bin",
                               shape=(batch_size, seq_len, vocab_size),

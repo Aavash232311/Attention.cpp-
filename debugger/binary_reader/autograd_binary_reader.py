@@ -17,7 +17,7 @@ def ReaderFlashAttention(
     # batch_size * num_heads * seq_len * seq_len = P
     # batch_size * num_heads * seq_len * head_dim = V
     P = load_tensor('./src/cache/cpp_out/P.bin', shape=(batch_size, num_heads, seq_len, seq_len), dtype=np.float32).to(device)
-    V = load_tensor('./src/cache/cpp_out/V.bin', shape=(batch_size, num_heads, seq_len, head_dim), dtype=np.float32).to(device)
+    V = load_tensor('./src/cache/cpp_out/V.bin', shape=(batch_size, seq_len, num_heads, head_dim), dtype=np.float32).to(device)
 
     # Shape is same, value is different after the transpose operation takes place
     PT = load_tensor('./src/cache/cpp_out/pt.bin', shape=(batch_size, num_heads, seq_len, seq_len), dtype=np.float32).to(device)
@@ -48,11 +48,11 @@ def ReaderFlashAttention(
 
     # load K and Q cache in the debugger
     k = load_tensor("./src/cache/cpp_out/k.bin",
-                    shape=(batch_size, num_heads, seq_len, head_dim), # (batch_size, num_head, seq_len, head_dim)
+                    shape=(batch_size, seq_len, num_heads, head_dim), # (batch_size, num_head, seq_len, head_dim)
                     dtype=np.float32
                     ).to(device)
     q = load_tensor("./src/cache/cpp_out/q.bin",
-                    shape=(batch_size, num_heads, seq_len, head_dim), # (batch_size, num_head, seq_len, head_dim)
+                    shape=(batch_size, seq_len, num_heads, head_dim), # (batch_size, num_head, seq_len, head_dim)
                     dtype=np.float32
                     ).to(device)
 
