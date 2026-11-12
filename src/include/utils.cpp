@@ -743,6 +743,12 @@ void Utility::tensor_min_max(T *tensor, int N, std::string type)
     }
 }
 
+void Utility::save_state_dict(FlashAttentionPointers &paramaters)
+{
+    
+}
+
+
 // These template definitions live in this translation unit, so instantiate
 // the types used by the model and its debug helpers for the linker.
 template void Utility::showVector<int>(std::vector<int> &);

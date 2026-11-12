@@ -4,9 +4,10 @@
 #include <random>
 #include <fstream>
 #include <iomanip>
-#include <cstring>
 #include <iostream>
 #include <unordered_map>
+
+#include "../include/netattention.hpp"
 
 using namespace std;
 
@@ -98,4 +99,6 @@ public:
 
     template <typename T>
     void tensor_min_max(T *tensor, int N, std::string type);
+
+    void save_state_dict(FlashAttentionPointers &paramaters);
 };

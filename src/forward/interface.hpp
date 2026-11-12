@@ -4,9 +4,7 @@
 #include <cuda_runtime.h>
 #include <iostream>
 #include <memory>
-#include <cstdio>
 #include <algorithm>
-#include <chrono>
 
 #include "../include/utils.hpp"
 #include "../forward/linear.hpp"
@@ -20,7 +18,6 @@
 #include "../include/data_loader.hpp"
 #include "../include/netattention.hpp"
 #include "../forward/attention_head.hpp"
-#include "../include/single_embeddings.hpp"
 #include "../optimizer/ds/AdamW_config.hpp"
 #include "../optimizer/optimizer_debugger.hpp"
 #include "../backpropagation/interface_back.hpp"
