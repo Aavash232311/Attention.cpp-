@@ -6,7 +6,7 @@ device = torch.device("cpu")
 if torch.cuda.is_available():
     device = torch.device("cuda")
 
-def ReaderFlashAttention(
+def read_attention_backward_tensors(
         batch_size: int,
         seq_len: int,
         vocab_size: int,
@@ -246,7 +246,7 @@ def ReaderFlashAttention(
             normalized_xt)
 
 
-def Reader(
+def read_lm_head_backward_tensors(
         batch_size: int,
         seq_len: int,
         vocab_size: int,

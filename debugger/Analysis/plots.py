@@ -12,7 +12,7 @@ from pathlib import Path
 import numpy as np
 
 
-def read_hyperparamaters(path="./src/cache/config.json"):
+def read_hyperparameters(path="./src/cache/config.json"):
     try:
         with open(path, 'r', encoding='utf-8') as file:
             data = json.load(file)
@@ -22,7 +22,7 @@ def read_hyperparamaters(path="./src/cache/config.json"):
         print("Exiting program.")
         sys.exit(1)
 
-    print("Autograd engine C++ kenrel out")
+    print("Autograd engine C++ kernel dumps")
 
 
 
@@ -40,7 +40,7 @@ def load_tensor(path, shape, dtype=np.float32, offset=0):
 
 
 def inspect_weights():
-    d_model, vocab_size, batch_size, seq_len, num_heads = read_hyperparamaters()
+    d_model, vocab_size, batch_size, seq_len, num_heads = read_hyperparameters()
     weight = load_tensor("./src/cache/cpp_out/attn_weight_q.bin",
                                shape=(batch_size, batch_size),
                                dtype=np.float32)

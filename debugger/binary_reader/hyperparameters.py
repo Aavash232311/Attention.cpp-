@@ -4,11 +4,11 @@ import json
 import torch
 import warnings
 
-# Read the released hyperparamaters .json file from C++ script.
+# Read the released hyperparameters .json file from C++ script.
 warnings.filterwarnings("ignore", category=UserWarning, message="The given buffer is not writable")
 
 
-def read_hyperparamaters(path="./src/cache/config.json"):
+def read_hyperparameters(path="./src/cache/config.json"):
     try:
         with open(path, 'r', encoding='utf-8') as file:
             data = json.load(file)
@@ -18,7 +18,7 @@ def read_hyperparamaters(path="./src/cache/config.json"):
         print("Exiting program.")
         sys.exit(1)
 
-    print("Autograd engine C++ kenrel out")
+    print("Autograd engine C++ kernel dumps")
 
 
 

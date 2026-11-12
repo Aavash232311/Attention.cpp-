@@ -1,9 +1,9 @@
 import math
 
 import torch
-from debug.static import RESET, RED, GREEN
-from binary_reader.autograd_binary_reader import ReaderFlashAttention
-from debug.Complex_kernel_opreations.equivalent_kernel_functions import layer_backward_analytical, layer_norm_beta_gamma_analytical, compute_token_embedding_grad
+from debug.static import print_check
+from binary_reader.autograd_binary_reader import read_attention_backward_tensors
+from debug.complex_kernel_operations.equivalent_kernel_functions import layer_backward_analytical, layer_norm_beta_gamma_analytical, compute_token_embedding_grad
 
 ''' This will debug the mathematical operation in flash attention class '''
 
@@ -36,24 +36,18 @@ class DebugFlashAttention(torch.nn.Module):
          self.d_bias_q, self.d_bias_k, self.d_bias_v,
          self.bias_q, self.bias_k, self.bias_v, self.d_weight_output_project,
          self.output_projection_xt, self.output_projection_x, self.normalized_x,
-         self.normalized_xt) = ReaderFlashAttention(batch_size, seq_len, vocab_size, d_model, num_heads, head_dim)
+         self.normalized_xt) = read_attention_backward_tensors(batch_size, seq_len, vocab_size, d_model, num_heads, head_dim)
 
     # dV = P^T G
     # dP = GV^T
-    def victor_tango(self):
+    def verify_backward(self):
         torch.set_printoptions(precision=3, sci_mode=False, threshold=float('inf'))
         check_transpose_p = torch.allclose(self.P.transpose(2, 3), self.PT)
         check_transpose_v = torch.allclose(self.V.transpose(2, 3), self.VT)
 
-        if not check_transpose_p:
-            print(f"Checking PT C++ kernel, status:{RED} {check_transpose_p} {RESET}")
-        else:
-            print(f"Checking PT C++ kernel, status:{GREEN} {check_transpose_p} {RESET}")
+        print_check('Attention probability transpose', check_transpose_p)
 
-        if not check_transpose_v:
-            print(f"Checking VT C++ kernel, status:{RED} {check_transpose_v} {RESET}")
-        else:
-            print(f"Checking VT C++ kernel, status:{GREEN} {check_transpose_v} {RESET}")
+        print_check('Value transpose', check_transpose_v)
 
         # check the un-contact logic here for upstream gradient G
         dis_g_torch = self.G.view(
@@ -65,7 +59,7 @@ class DebugFlashAttention(torch.nn.Module):
 
         # G_unc = Shape (B, n_head, seq_len, head_dim)
         g_unc_t = self.G_unc.transpose(1, 2)
-        check_un_contact_G = torch.allclose(
+        check_split_head_gradient = torch.allclose(
             dis_g_torch,
             g_unc_t, # just to check, confusion glued together here.
             atol=1e-4,
@@ -114,79 +108,40 @@ class DebugFlashAttention(torch.nn.Module):
         # kernel-related problems. This is just a small sanity check.
 
 
-        if not check_dp:
-            print(f"Checking dp kernel, status:{RED} {check_dp} {RESET}")
-        else:
-            print(f"Checking dp kernel, status:{GREEN} {check_dp} {RESET}")
+        print_check('Attention probability gradient', check_dp)
 
-        if not check_dv:
-            print(f"Checking dv kernel, status:{RED} {check_dv} {RESET}")
-        else:
-            print(f"Checking dv kernel, status:{GREEN} {check_dv} {RESET}")
+        print_check('Value gradient', check_dv)
 
-        if not check_un_contact_G:
-            print(f"Checking contact/uncontact dl_dh kernel, status:{RED} {check_un_contact_G} {RESET}")
-        else:
-            print(f"Checking contact/uncontact dl_dh kernel, status:{GREEN} {check_un_contact_G} {RESET}")
+        print_check('Split attention output gradient into heads', check_split_head_gradient)
 
-        if not check_softmax_Grad:
-            print(f"Checking softmax back pass kernel, status:{RED} {check_softmax_Grad} {RESET}")
-        else:
-            print(f"Checking softmax back pass kernel, status:{GREEN} {check_softmax_Grad} {RESET}")
+        print_check('Attention softmax backward', check_softmax_Grad)
 
-        if not check_dq:
-            print(f"Checking dQ kernel, status:{RED} {check_dq} {RESET}")
-        else:
-            print(f"Checking dQ kernel, status:{GREEN} {check_dq} {RESET}")
+        print_check('Query gradient', check_dq)
 
-        if not check_d_score_t:
-            print(f"Checking d score transpose kernel, status:{RED} {check_d_score_t} {RESET}")
-        else:
-            print(f"Checking d score transpose kernel, status:{GREEN} {check_d_score_t} {RESET}")
+        print_check('Attention score gradient transpose', check_d_score_t)
 
-        if not check_dk:
-            print(f"Checking dk kernel, status:{RED} {check_dk} {RESET}")
-        else:
-            print(f"Checking dk kernel, status:{GREEN} {check_dk} {RESET}")
+        print_check('Key gradient', check_dk)
 
         check_wqt = torch.allclose(self.wq.T, self.wqt)
-        if not check_wqt:
-            print(f"Checking wqt kernel, status:{RED} {check_wqt} {RESET}")
-        else:
-            print(f"Checking wqt kernel, status:{GREEN} {check_wqt} {RESET}")
+        print_check('Query weight transpose', check_wqt)
 
         check_wkt = torch.allclose(self.wk.T, self.wkt)
-        if not check_wkt:
-            print(f"Checking wkt kernel, status:{RED} {check_wkt} {RESET}")
-        else:
-            print(f"Checking wkt kernel, status:{GREEN} {check_wkt} {RESET}")
+        print_check('Key weight transpose', check_wkt)
 
         check_wvt = torch.allclose(self.wv.T, self.wvt)
-        if not check_wvt:
-            print(f"Checking wvt kernel, status:{RED} {check_wvt} {RESET}")
-        else:
-            print(f"Checking wvt kernel, status:{GREEN} {check_wvt} {RESET}")
+        print_check('Value weight transpose', check_wvt)
 
         dQ_compact = self.dQ.transpose(1, 2).reshape(self.batch_size, self.seq_len, self.d_model)
         check_dQ = torch.allclose(dQ_compact, self.upq)
-        if not check_dQ:
-            print(f"Checking dQ reshape kernel, status:{RED} {check_dQ} {RESET}")
-        else:
-            print(f"Checking dQ reshape kernel, status:{GREEN} {check_dQ} {RESET}")
+        print_check('Query gradient head merge', check_dQ)
 
         dK_compact = self.dK.transpose(1, 2).reshape(self.batch_size, self.seq_len, self.d_model)
         check_dK = torch.allclose(dK_compact, self.upk)
-        if not check_dK:
-            print(f"Checking dK reshape kernel, status:{RED} {check_dK} {RESET}")
-        else:
-            print(f"Checking dK reshape kernel, status:{GREEN} {check_dK} {RESET}")
+        print_check('Key gradient head merge', check_dK)
 
         dV_compact = self.dv.transpose(1, 2).reshape(self.batch_size, self.seq_len, self.d_model)
         check_dV = torch.allclose(dV_compact, self.upv)
-        if not check_dV:
-            print(f"Checking dV reshape kernel, status:{RED} {check_dV} {RESET}")
-        else:
-            print(f"Checking dV reshape kernel, status:{GREEN} {check_dV} {RESET}")
+        print_check('Value gradient head merge', check_dV)
 
         # Now lets check the contact of these qkv weights
 
@@ -196,10 +151,7 @@ class DebugFlashAttention(torch.nn.Module):
 
         G_hat_net = dQ_Wq + dK_Wk + dV_Wv
         check_G_x_hat = torch.allclose(G_hat_net, self.G_x_hat,atol=1e-4, rtol=1e-4)
-        if not check_G_x_hat:
-            print(f"Checking G_x_hat (total upstream for layer norm), status: {RED} {check_G_x_hat} {RESET}")
-        else:
-            print(f"Checking G_x_hat (total upstream for layer norm), status: {GREEN} {check_G_x_hat} {RESET}")
+        print_check('LayerNorm upstream gradient', check_G_x_hat)
 
         back_x = layer_backward_analytical(
             self.x,
@@ -215,10 +167,7 @@ class DebugFlashAttention(torch.nn.Module):
         # this layer_norm was little bit tricky many parallel reduction, and shapes to take care of
         check_layer_norm_back_grad = torch.allclose(back_x, self.layer_norm_back_x,atol=1e-4, rtol=1e-4)
 
-        if not check_layer_norm_back_grad:
-            print(f"Checking check_layer_norm_back_grad status: {RED} {check_layer_norm_back_grad} {RESET}")
-        else:
-            print(f"Checking check_layer_norm_back_grad status: {GREEN} {check_layer_norm_back_grad} {RESET}")
+        print_check('LayerNorm input gradient', check_layer_norm_back_grad)
 
         d_gamma, d_beta = layer_norm_beta_gamma_analytical(
             self.x,
@@ -232,35 +181,23 @@ class DebugFlashAttention(torch.nn.Module):
         check_d_gamma = torch.allclose(d_gamma, self.d_gamma,atol=1e-4, rtol=1e-4)
         check_d_beta = torch.allclose(d_beta, self.d_beta,atol=1e-4, rtol=1e-4)
 
-        if not check_d_gamma:
-            print(f"Checking check_d_gamma status: {RED} {check_d_gamma} {RESET}")
-        else:
-            print(f"Checking check_d_gamma status: {GREEN} {check_d_gamma} {RESET}")
+        print_check('LayerNorm scale gradient', check_d_gamma)
 
-        if not check_d_beta:
-            print(f"Checking check_d_beta status: {GREEN} {check_d_beta} {RESET}")
-        else:
-            print(f"Checking check_d_beta status: {GREEN} {check_d_beta} {RESET}")
+        print_check('LayerNorm bias gradient', check_d_beta)
 
         ''' Here we are checking the output projection linear background '''
 
-        output_project_weight_transposed_troch = self.weight_contact.T
-        check_output_project_weight_transposed_troch = torch.allclose(output_project_weight_transposed_troch, self.weight_contact_transpose,atol=1e-4, rtol=1e-4)
+        output_projection_weight_transpose = self.weight_contact.T
+        check_output_projection_weight_transpose = torch.allclose(output_projection_weight_transpose, self.weight_contact_transpose,atol=1e-4, rtol=1e-4)
 
 
-        if not check_output_project_weight_transposed_troch:
-            print(f"Checking output_project_weight_transposed_troch status: {RED} {check_output_project_weight_transposed_troch} {RESET} ")
-        else:
-            print(f"Checking output_project_weight_transposed_troch status: {GREEN} {check_output_project_weight_transposed_troch} {RESET} ")
+        print_check('Output projection weight transpose', check_output_projection_weight_transpose)
 
         ''' dl_dh = Gradient from the interface '''
         d_attention_torch = self.dl_dh @ self.weight_contact_transpose
         check_d_attention = torch.allclose(d_attention_torch, self.G, atol=1e-4, rtol=1e-4)
 
-        if not check_d_attention:
-            print(f"Checking check_d_attention status: {RED} {check_d_attention} {RESET}")
-        else:
-            print(f"Checking check_d_attention status: {GREEN} {check_d_attention} {RESET}")
+        print_check('Output projection input gradient', check_d_attention)
 
         check_d_bias_output_proj = torch.allclose(self.d_bias_output_proj,
                                                   self.dl_dh.sum(dim=(0, 1)),
@@ -271,10 +208,7 @@ class DebugFlashAttention(torch.nn.Module):
 
         # Here in the output project our upstream gradient is dl_dh
 
-        if not check_d_bias_output_proj:
-            print(f"Checking dbias output projection: {RED} {check_d_bias_output_proj} {RESET}")
-        else:
-            print(f"Checking dbias output projection: {GREEN} {check_d_bias_output_proj} {RESET}")
+        print_check('Output projection bias gradient', check_d_bias_output_proj)
 
         # add the net gradient dl_dh and output from layer norm backward in torch here for the first part
         final_grad_torch = self.dl_dh + self.layer_norm_back_x
@@ -286,10 +220,7 @@ class DebugFlashAttention(torch.nn.Module):
             rtol=1e-4
         )
 
-        if not check_final_grad:
-            print(f"Checking final_gradient status: {RED} {check_final_grad} {RESET}")
-        else:
-            print(f"Checking final_gradient status: {GREEN} {check_final_grad} {RESET}")
+        print_check('Input gradient including residual', check_final_grad)
 
 
         d_token_embedding_torch = compute_token_embedding_grad(
@@ -301,30 +232,18 @@ class DebugFlashAttention(torch.nn.Module):
         check_d_embedding = torch.allclose(d_token_embedding_torch, self.d_embeddings, atol=1e-4,
             rtol=1e-4)
 
-        if not check_d_embedding:
-            print(f"Checking d_embedding status: {RED} {check_d_embedding} {RESET}")
-        else:
-            print(f"Checking d_embedding status: {GREEN} {check_d_embedding} {RESET}")
+        print_check('Token embedding gradient', check_d_embedding)
 
         # Here we will check the gradient calculation for attention heads Q, K and V.
         check_dw_q = torch.allclose(self.d_weight_q @ self.wqt, self.d_weight_q @ self.wqt, atol=1e-4, rtol=1e-4)
         check_dw_k = torch.allclose(self.d_weight_k @ self.wkt, self.d_weight_k @ self.wkt, atol=1e-4, rtol=1e-4)
         check_dw_v = torch.allclose(self.d_weight_v @ self.wvt, self.d_weight_v @ self.wvt, atol=1e-4, rtol=1e-4)
 
-        if not check_dw_q:
-            print(f"Checking delta weights q status: {RED} {check_dw_q} {RESET}")
-        else:
-            print(f"Checking delta weights q status: {GREEN} {check_dw_q} {RESET}")
+        print_check('Query weight gradient', check_dw_q)
 
-        if not check_dw_k:
-            print(f"Checking delta weight k status: {RED} {check_dw_k} {RESET}")
-        else:
-            print(f"Checking delta weight k status: {GREEN} {check_dw_k} {RESET}")
+        print_check('Key weight gradient', check_dw_k)
 
-        if not check_dw_v:
-            print(f"Checking delta weights v status: {RED} {check_dw_v} {RESET}")
-        else:
-            print(f"Checking delta weights v status: {GREEN} {check_dw_v} {RESET}")
+        print_check('Value weight gradient', check_dw_v)
 
         # sum along the b,t because that's the gradient for the bias term here.
 
@@ -334,20 +253,11 @@ class DebugFlashAttention(torch.nn.Module):
         check_d_bias_k = torch.allclose(self.upk.sum(dim=(0, 1)), self.d_bias_k, atol=1e-4, rtol=1e-4)
         check_d_bias_v = torch.allclose(self.upv.sum(dim=(0, 1)), self.d_bias_v, atol=1e-4, rtol=1e-4)
 
-        if not check_d_bias_q:
-            print(f"Checking d_bias_q status: {RED} {check_d_bias_q} {RESET}")
-        else:
-            print(f"Checking d_bias_q status: {GREEN} {check_d_bias_q} {RESET}")
+        print_check('Query bias gradient', check_d_bias_q)
 
-        if not check_d_bias_k:
-            print(f"Checking d_bias_k status: {RED} {check_d_bias_k} {RESET}")
-        else:
-            print(f"Checking d_bias_k status: {GREEN} {check_d_bias_k} {RESET}")
+        print_check('Key bias gradient', check_d_bias_k)
 
-        if not check_d_bias_v:
-            print(f"Checking d_bias_v status: {RED} {check_d_bias_v} {RESET}")
-        else:
-            print(f"Checking d_bias_v status: {GREEN} {check_d_bias_v} {RESET}")
+        print_check('Value bias gradient', check_d_bias_v)
 
 
         checking_x_output_project = torch.allclose(
@@ -357,20 +267,14 @@ class DebugFlashAttention(torch.nn.Module):
             rtol=1e-4
         )
 
-        if not checking_x_output_project:
-            print(f"Checking x_output_project status: {RED} {checking_x_output_project} {RESET}")
-        else:
-            print(f"Checking x_output_project status: {GREEN} {checking_x_output_project} {RESET}")
+        print_check('Output projection input transpose', checking_x_output_project)
 
 
         local_weight_output_proj = (self.output_projection_xt @ self.dl_dh).sum(dim=(0))
 
         check_local_weight_lm_head = torch.allclose(local_weight_output_proj, self.d_weight_output_project, atol=1e-4, rtol=1e-4)
 
-        if not check_local_weight_lm_head:
-            print(f"checking weight gradient output project local gradient: {RED} {check_local_weight_lm_head} {RESET}")
-        else:
-            print(f"checking weight gradient output project local gradient:  {GREEN} {check_local_weight_lm_head} {RESET}")
+        print_check('Output projection weight gradient', check_local_weight_lm_head)
 
         # self.layer_norm_back_x is something that is fed into the layer norm.
         # meaning after net embedding.
@@ -383,7 +287,4 @@ class DebugFlashAttention(torch.nn.Module):
             rtol=1e-3
         )
 
-        if not check_transpose_norm_x:
-            print(f"checking transpose norm x status: {RED} {check_transpose_norm_x} {RESET}")
-        else:
-            print(f"checking transpose norm x status: {GREEN} {check_transpose_norm_x} {RESET}")
+        print_check('Normalized input transpose', check_transpose_norm_x)

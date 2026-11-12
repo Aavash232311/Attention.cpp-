@@ -26,8 +26,8 @@ def verify_embeddings(
 
     pe = sinusoidal_positional_encoding(seq_len=seq_len, d_model=d_model)
     # same embedding that c++ uses after being released from python.
-    k_total_embeddings = debugger.readEmbeddings('embedding.bin', batch_size * seq_len * d_model)
-    x = debugger.readX("batch.bin", seq_len * batch_size)
+    k_total_embeddings = debugger.read_embeddings('embedding.bin', batch_size * seq_len * d_model)
+    x = debugger.read_token_ids("batch.bin", seq_len * batch_size)
 
     # todo: Known I issue sometimes the embedding is True and sometimes it's False.
     # This is a serious problem but I will get back to this later.

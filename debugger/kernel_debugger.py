@@ -10,7 +10,7 @@ from debug.debug_embeddings import verify_embeddings
 from debug.debug_flash_attention import DebugFlashAttention
 from debug.debug_optimizer import DebugOptimizer
 
-from binary_reader.hyperparamaters import read_hyperparamaters
+from binary_reader.hyperparameters import read_hyperparameters
 
 from debug.quick_binary_check_forward import quick_attention_check
 
@@ -29,7 +29,7 @@ from debug.quick_binary_check_forward import quick_attention_check
 os.chdir(Path(__file__).resolve().parents[1])
 
 
-# After hyperparamaters are loaded, we need to load those binary that the C++ releases
+# After hyperparameters are loaded, we need to load those binary that the C++ releases
 # CMake caches each object file and rebuilds only changed sources in parallel.
 subprocess.run([
     "cmake", "-S", ".", "-B", "build-debugger",
@@ -49,8 +49,8 @@ print("Forward pass ")
 print('*' * 60)
 quick_attention_check()
 
-# Read release hyperparameters, compiles the C++ and releases the hyperparamaters.
-d_model, vocab_size, batch_size, seq_len, num_heads = read_hyperparamaters()
+# Read release hyperparameters, compiles the C++ and releases the hyperparameters.
+d_model, vocab_size, batch_size, seq_len, num_heads = read_hyperparameters()
 
 print("\n")
 print('*' * 60)
@@ -71,10 +71,10 @@ G = debug_autograd(d_model=d_model, seq_len=seq_len, batch_size=batch_size, voca
 
 
 flash_attention_debugger = DebugFlashAttention(d_model=d_model, seq_len=seq_len, batch_size=batch_size, vocab_size=vocab_size, num_heads=num_heads, head_dim=d_model // num_heads, dl_dw=G)
-flash_attention_debugger.victor_tango()
+flash_attention_debugger.verify_backward()
 
 # why would you do this in weird way? well this is a scratch work.
 # if you pay me to write code it won't be this messy
 # optimizer_debugger = DebugOptimizer(d_model=d_model, seq_len=seq_len, batch_size=batch_size, vocab_size=vocab_size, num_heads=num_heads, head_dim=d_model // num_heads, dl_dw=G)
-# optimizer_debugger.optimizer_health()
+# optimizer_debugger.verify_optimizer()
 
