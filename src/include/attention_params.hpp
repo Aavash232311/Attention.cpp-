@@ -6,146 +6,206 @@
 // I am afraid that I manage memory like I have no common sense at all
 // but anyway right now we just want it to work.
 
-// todo: add a production grade comment after a single working prototype comes into play
-// todo: add a production grade comment after a single working prototype comes into play
 struct AttentionParamaters
 {
 
 
+    /**
+     * Attention score pointer. Kept here for the attention cache.
+     *
+     * @note No active shape yet; this pointer is currently unused.
+     * @param S location not assigned in the current implementation
+     */
     float *S;
 
     /**
-     * Softmaxed value in the procress of attention score.
-     *
+     * Softmaxed value in the process of attention score.
      * @note Shape (batch_size, num_heads, seq_len, seq_len)
-     * @param P 
+     *
+     * @note Expected shape (batch_size, num_heads, seq_len, seq_len)
+     * @param P location device
      */
     float *P;
+    /**
+     * Attention output pointer. Kept here for the attention cache.
+     *
+     * @note No active shape yet; this pointer is currently unused.
+     * @param O location not assigned in the current implementation
+     */
     float *O;
 
-        /**
+    /**
      * Value matrix
-     *
      * @note Shape (batch_size, num_heads, seq_len, head_dim)
+     *
+     * @note Expected shape (batch_size, num_heads, seq_len, head_dim)
      * @param V location device
      */
     float *V;
 
-    // We are re-using the buffer for BTC and Batch Seq Number of head and head dim to save reources
+    /**
+     * We are re-using the buffer for BTC and Batch Seq Number of head and head dim to save resources
+     * Scratch space for (B, T, C) tensors on the device.
+     *
+     * @note Expected shape (batch_size, seq_len, d_model)
+     * @param DEVCIE_BUFFER_BTC location device
+     */
     float *DEVCIE_BUFFER_BTC;
+    /**
+     * Scratch space for (B, H, T, D) tensors on the device.
+     *
+     * @note Expected shape (batch_size, num_heads, seq_len, head_dim)
+     * @param DEVICE_BUFFER_MULTIHEAD location device
+     */
     float *DEVICE_BUFFER_MULTIHEAD;
 
+    /**
+     * Keep Q for backward so we do not have to calculate it again, shape (B, H, T, D).
+     *
+     * @note Expected shape (batch_size, num_heads, seq_len, head_dim)
+     * @param Q_cache location device
+     */
     float *Q_cache;
+    /**
+     * Same idea for K, shape (B, H, T, D).
+     *
+     * @note Expected shape (batch_size, num_heads, seq_len, head_dim)
+     * @param K_cache location device
+     */
     float *K_cache;
 
     /**
      * (B,T,C) tensor after net embedding added location GPU
      *
-     * @param x (BTC) tensor inside of the GPU, after net embedding.
+     * @note Expected shape (batch_size, seq_len, d_model)
+     * @param x location device
      */
     float *x;
 
     /**
-     * (B,T,C) tensor after net embedding transposed
+     * Normalized input transposed from (B, T, C) to (B, C, T)
      *
-     * @param normalized_xt (BTC) tensor inside of the GPU. Transposing it.
+     * @note Expected shape (batch_size, d_model, seq_len)
+     * @param normalized_xt location device
      */
     float *normalized_xt;
 
     /**
      * (B,T,C) tensor after the layer norm on the forward pass
-     * @note this goes in as "x" in the QKV linear paramaters.
+     * @note this goes in as "x" in the QKV linear parameters.
      *
-     * @param normalized_x (BTC) tensor inside of the GPU. Afrer the lear norm
+     * @note Expected shape (batch_size, seq_len, d_model)
+     * @param normalized_x location device
      */
     float *normalized_x;
 
     /**
      * mean cache from forward pass LayerNorm
-     * Shape (B * T, C)
+     * Shape (B * T), one value per token
+     *
+     * @note Expected shape (batch_size * seq_len)
      * @param mean_cache location device
      */
     float *mean_cache;
 
     /**
      * std dev cache from forward pass LayerNorm
-     * Shape (B * T, C)
+     * Shape (B * T), one value per token
+     *
+     * @note Expected shape (batch_size * seq_len)
      * @param std_dev_cache location device
      */
     float *std_dev_cache;
 
     /**
-     * local derivative of learnable paramater gamma
+     * Learnable LayerNorm scale gamma, not its gradient
      * Shape (C)
-     * @param gamma device
+     *
+     * @note Expected shape (d_model)
+     * @param gamma location device
      */
     float *gamma;
 
     /**
-     * local derivative of learnable paramater beta
+     * Learnable LayerNorm bias beta, not its gradient
      * Shape (C)
-     * @param beta device
+     *
+     * @note Expected shape (d_model)
+     * @param beta location device
      */
     float *beta;
 
     /**
      * Weight of query
      * Shape (C, C)
-     * @param device_WQ device
+     *
+     * @note Expected shape (d_model, d_model)
+     * @param device_WQ location device
      */
     float *device_WQ;
     /**
      * Weight of key
      * Shape (C, C)
-     * @param device_WK device
+     *
+     * @note Expected shape (d_model, d_model)
+     * @param device_WK location device
      */
     float *device_WK;
     /**
      * Weight of value
      * Shape (C, C)
-     * @param device_WV device
+     *
+     * @note Expected shape (d_model, d_model)
+     * @param device_WV location device
      */
     float *device_WV;
 
     /**
-     * concatenation paramater (output projection) weight
-     * Shape (B, T, C)
+     * Output projection weight after merging the heads
+     * Shape (C, C)
+     *
+     * @note Expected shape (d_model, d_model)
      * @param wo location device
      */
     float *wo;
 
     /**
-     * concatenation paramater (output projection) bias
+     * concatenation parameter (output projection) bias
      * Shape (C, )
      *
+     * @note Expected shape (d_model)
      * @param wo_bias location device
      */
     float *wo_bias;
 
     /**
-     * concatenation paramater (output projection) bias output
+     * concatenation parameter (output projection) bias output
      * dbias, sum across B, T dimension of the upstream gradient of shape (B, T, C)
      * Shape (C)
      *
-     * @param wo_bias location device
+     * @note Expected shape (d_model)
+     * @param doutput_bias location device
      */
     float *doutput_bias;
 
     /**
      * Bias of the query from attention head.
      *
+     * @note Expected shape (d_model)
      * @param bias_q location device
      */
     float *bias_q;
     /**
      * Bias of the key from attention head.
      *
+     * @note Expected shape (d_model)
      * @param bias_k location device
      */
     float *bias_k;
     /**
      * Bias of the value from attention head.
      *
+     * @note Expected shape (d_model)
      * @param bias_v location device
      */
     float *bias_v;
@@ -153,6 +213,7 @@ struct AttentionParamaters
     /**
      * Output projection cache x for backpropagation
      *
+     * @note Expected shape (batch_size, seq_len, d_model)
      * @param output_porjection_x location device
      */
     float *output_porjection_x;
@@ -160,15 +221,17 @@ struct AttentionParamaters
     /**
      * For local gradient weight wt we need this for output project
      *
+     * @note Expected shape (batch_size, d_model, seq_len)
      * @param output_project_xt location device
      */
     float *output_project_xt;
 
     /**
-     * Actual embedding He-Init originally generated in host now in device.
-     * That is the "theta" from the AdamW
+     * The actual token embedding table, originally generated on the host and now on the device.
+     * This is the "theta" that AdamW updates.
      *
-     * @param embedding_device location device
+     * @note Expected shape (vocab_size, d_model)
+     * @param device_embedding_paramaters location device
      */
     float *device_embedding_paramaters;
 };
