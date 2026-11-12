@@ -1,13 +1,13 @@
 import warnings
 import json
-# Read the released hyperparamaters .json file from C++ script.
+# Read the released hyperparameters .json file from C++ script.
 warnings.filterwarnings("ignore", category=UserWarning, message="The given buffer is not writable")
 
 
 import torch
 from debug.debug_flash_attention import DebugFlashAttention
 from binary_reader.autograd_binary_reader import load_optimized_grad
-from debug.static import RESET, RED, GREEN
+from debug.static import print_check
 from ml_components.grad import load_tensor
 import numpy as np
 
@@ -21,7 +21,7 @@ class DebugOptimizer(DebugFlashAttention):
     def __init__(self, batch_size, seq_len, vocab_size, d_model, num_heads, head_dim, dl_dw: torch.Tensor):
         self.path ="./src/cache/optimizer_config.json"
 
-        self.params = self._read_hyperparamaters()
+        self.params = self._read_hyperparameters()
         self.beta_1 = self.params["beta_1"]
         self.beta_2 = self.params["beta_2"]
         self.epsilon = self.params["epsilon"]
@@ -37,7 +37,7 @@ class DebugOptimizer(DebugFlashAttention):
 
         # print(self.params, self.beta_1, self.beta_2, self.epsilon, self.weight_decay, self.learning_rate)
 
-    def _read_hyperparamaters(self):
+    def _read_hyperparameters(self):
         try:
             with open(self.path, 'r', encoding='utf-8') as file:
                 data = json.load(file)
@@ -46,7 +46,7 @@ class DebugOptimizer(DebugFlashAttention):
 
         except (FileNotFoundError, json.JSONDecodeError) as e:
             print(f"Critical Error: {e}")
-            print("Exiting program. Couldn't read the hyperparamaters, try build again with the debugger flag.")
+            print("Exiting program. Couldn't read the hyperparameters, try build again with the debugger flag.")
             sys.exit(1)
 
     def _optimize(self):
@@ -75,7 +75,7 @@ class DebugOptimizer(DebugFlashAttention):
         return param.detach(), st["exp_avg"].flatten(), st["exp_avg_sq"].flatten()
 
 
-    def optimizer_health(self):
+    def verify_optimizer(self):
 
         # check this one in loose precision
         torch_wq_optimal, m_t, v_t = self._optimize()
@@ -97,10 +97,7 @@ class DebugOptimizer(DebugFlashAttention):
         # Here arg of mine is if it works for the one kernel then it works for every kernel
         # until and unless you passed something.
         # we will make this as arb
-        if not check_optimizer:
-            print(f"AadamW C++ kernel status: {RED} {check_optimizer} {RESET}")
-        else:
-            print(f"AdamW C++ kernel status: {GREEN} {check_optimizer} {RESET}")
+        print_check('AdamW parameter update', check_optimizer)
 
         # print("Optimized from kernel")
         # print(self.d_weight_q_optimal)
@@ -116,14 +113,8 @@ class DebugOptimizer(DebugFlashAttention):
 
         check_vd = torch.allclose(self.v_d, v_t, atol=1e-4, rtol=1e-4)
 
-        if not check_md:
-            print(f"check m_t {RED} {check_md} {RESET}")
-        else:
-            print(f"check m_t {GREEN} {check_md} {RESET}")
+        print_check('AdamW first moment', check_md)
 
-        if not check_vd:
-            print(f"check v_d {RED} {check_vd} {RESET}")
-        else:
-            print(f"check v_d {GREEN} {check_vd} {RESET}")
+        print_check('AdamW second moment', check_vd)
 
 

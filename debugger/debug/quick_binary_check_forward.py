@@ -4,7 +4,7 @@ import torch
 import numpy as np
 import torch.nn.functional as F
 from ml_components.grad import load_tensor
-from binary_reader.hyperparamaters import read_hyperparamaters
+from binary_reader.hyperparameters import read_hyperparameters
 
 
 def quick_attention_check():
@@ -14,7 +14,7 @@ def quick_attention_check():
         device = torch.device("cuda")
 
 
-    d_model, vocab_size, batch_size, seq_len, num_heads = read_hyperparamaters()
+    d_model, vocab_size, batch_size, seq_len, num_heads = read_hyperparameters()
 
     head_dim = d_model // num_heads
 
@@ -55,11 +55,11 @@ def quick_attention_check():
                              shape=(batch_size, num_heads, seq_len, head_dim),
                              dtype=np.float32).to(device)
 
-    print_check("q:", torch.allclose(q_reshaped, q_org.transpose(1, 2).contiguous(), atol=1e-6, rtol=1e-6))
-    print_check("k:", torch.allclose(k_reshaped, k_org.transpose(1, 2).contiguous(), atol=1e-6, rtol=1e-6))
-    print_check("v:", torch.allclose(v_reshaped, v_org.transpose(1, 2).contiguous(), atol=1e-6, rtol=1e-6))
+    print_check("Query head split and transpose", torch.allclose(q_reshaped, q_org.transpose(1, 2).contiguous(), atol=1e-6, rtol=1e-6))
+    print_check("Key head split and transpose", torch.allclose(k_reshaped, k_org.transpose(1, 2).contiguous(), atol=1e-6, rtol=1e-6))
+    print_check("Value head split and transpose", torch.allclose(v_reshaped, v_org.transpose(1, 2).contiguous(), atol=1e-6, rtol=1e-6))
 
-    print_check("kt:", torch.allclose(kt, k_reshaped.transpose(-1, -2).contiguous(), atol=1e-6, rtol=1e-6))
+    print_check("Key transpose", torch.allclose(kt, k_reshaped.transpose(-1, -2).contiguous(), atol=1e-6, rtol=1e-6))
 
     check_qkt = torch.allclose(q_reshaped @ kt, qkt, atol=1e-6, rtol=1e-6)
     print_check("QKT matmul", check_qkt)
@@ -68,7 +68,7 @@ def quick_attention_check():
                                     shape=(batch_size, num_heads, seq_len, seq_len),
                                     dtype=np.float32).to(device)
 
-    casual_masking = load_tensor("./src/cache/cpp_out/casual_masking.bin",
+    causal_masking = load_tensor("./src/cache/cpp_out/casual_masking.bin",
                                  shape=(batch_size, num_heads, seq_len, seq_len),
                                  dtype=np.float32).to(device)
 
@@ -78,30 +78,31 @@ def quick_attention_check():
         atol=1e-6,
         rtol=1e-6
     )
-    print_check("Check division by d_head", check_division)
+    print_check("Attention scaling by sqrt(head_dim)", check_division)
 
     T = sqrt_d_head.size(-1)
     future = torch.triu(torch.ones(T, T, dtype=torch.bool, device=sqrt_d_head.device), diagonal=1)
 
     # Masked positions must be -inf
-    check_masked = torch.isneginf(casual_masking[..., future]).all()
+    check_masked = torch.isneginf(causal_masking[..., future]).all()
 
     # Unmasked positions must be unchanged from the sqrt_d_head scores
     check_kept = torch.allclose(
-        casual_masking[..., ~future],
+        causal_masking[..., ~future],
         sqrt_d_head[..., ~future],
         atol=1e-6,
         rtol=1e-6,
     )
 
-    print_check("check casual masking", check_masked)
+    print_check("Causal mask: future positions", check_masked)
+    print_check("Causal mask: preserved positions", check_kept)
 
 
     softmax_attn = load_tensor("./src/cache/cpp_out/softmaxed_attn.bin",
                                shape=(batch_size, num_heads, seq_len, seq_len),
                                dtype=np.float32).to(device)
 
-    ref_softmax = torch.softmax(casual_masking, dim=-1)
+    ref_softmax = torch.softmax(causal_masking, dim=-1)
 
     check_softmax = torch.allclose(
         softmax_attn,
@@ -110,6 +111,8 @@ def quick_attention_check():
         rtol=1e-5,
     )
 
+    print_check("Attention softmax", check_softmax)
+
     attn_out_cpp = load_tensor("./src/cache/cpp_out/attn_score.bin",
                                shape=(batch_size, num_heads, seq_len, head_dim),
                                dtype=np.float32).to(device)
@@ -117,7 +120,7 @@ def quick_attention_check():
     ref_out = softmax_attn @ v_reshaped  # (B, H, T, head_dim)
 
     check_attn_out = torch.allclose(attn_out_cpp, ref_out, atol=1e-5, rtol=1e-5)
-    print_check("Final attention score", check_attn_out)
+    print_check("Attention weighted value sum", check_attn_out)
 
     re_shaped_multi_head = load_tensor("./src/cache/cpp_out/re_shaped_multi_head.bin",
                                        shape=(batch_size, seq_len, d_model),
@@ -141,7 +144,7 @@ def quick_attention_check():
                                shape=(batch_size, seq_len, d_model),
                                dtype=np.float32).to(device)
 
-    print_check("Reshaped attention score", check_multi_head)
+    print_check("Attention head merge", check_multi_head)
 
     ref_residual = temp_x + out_put_proj
 
@@ -152,6 +155,8 @@ def quick_attention_check():
         rtol=1e-5,
     )
 
+
+    print_check("Attention residual addition", check_residual_adding)
 
     normalized_x = load_tensor("./src/cache/cpp_out/layer_norm_forward.bin",
                                shape=(batch_size, seq_len, d_model),
@@ -169,7 +174,7 @@ def quick_attention_check():
 
     check_layer_norm = torch.allclose(normalized_x, ref_ln, atol=1e-5, rtol=1e-5)
 
-    print_check("Check layer_norm", check_layer_norm)
+    print_check("LayerNorm forward", check_layer_norm)
 
     lm_head_out = load_tensor("./src/cache/cpp_out/lm_head_out.bin",
                               shape=(batch_size, seq_len, vocab_size),
