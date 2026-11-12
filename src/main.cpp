@@ -101,11 +101,13 @@ int main()
         debug,
         engine_run);
 
-     model->train(epoch);
-     // For this 12-character prompt, the position-wise next-character target is
-     // "he cat sat o"; the final-position next character is 'o'.
-     const std::string prompt = "the cat sat. the dog ran.";
-     model->forward(prompt, charPool);
+    // Debug comparisons require fresh forward/backward dumps for this config.
+    if (debug)
+        model->train(epoch);
+    //  // For this 12-character prompt, the position-wise next-character target is
+    //  // "he cat sat o"; the final-position next character is 'o'.
+    //  const std::string prompt = "the cat sat. the dog ran.";
+    //  model->forward(prompt, charPool);
     // helper->inspect();
 
     auto end = std::chrono::high_resolution_clock::now();

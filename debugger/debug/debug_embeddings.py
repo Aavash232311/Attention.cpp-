@@ -1,6 +1,6 @@
 import torch
 
-from debug.static import RED, GREEN, RESET
+from debug.static import print_check
 from binary_reader.embedding_reader import Debugger
 from ml_components.transformer import total_embeddings
 from ml_components.positional_encoding import sinusoidal_positional_encoding
@@ -35,7 +35,4 @@ def verify_embeddings(
                                                 positional_embedding_table=pe)
 
     check = torch.allclose(py_total_embedding, k_total_embeddings)
-    if not check:
-        print(f"Checking net embedding C++ kernel, status:{RED} {check} {RESET}")
-        return
-    print(f"Checking net embedding C++ kernel, status:{GREEN} {check} {RESET}")
+    print_check("Net embedding C++ kernel", check)

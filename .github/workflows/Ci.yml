@@ -49,7 +49,7 @@ jobs:
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
       - name: Build
-        run: cmake --build build --parallel "$(nproc)"
+        run: cmake --build build --target attention --parallel "$(nproc)"
 
       - name: Show compiler cache statistics
         if: always()

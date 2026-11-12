@@ -385,6 +385,11 @@ public:
         float *K = key->forward(x);
         float *V = value->forward(x);
 
+        // Capture (B,T,C) before reshapeHead reorders it into (B,H,T,D).
+        // Python views these original channels as (B,T,H,D).
+        if (debug)
+            originalMultiHeadedQKVShapeDebugger(Q, K, V);
+
         // utils->printFlatArray3D(
         //     Q,
         //     batch_size,
@@ -405,7 +410,6 @@ public:
         if (debug)
         {
             releaseBin(query->getWeightDevice(), "attn_weight_q.bin", d_model * d_model);
-            originalMultiHeadedQKVShapeDebugger(Q, K, V);
         }
 
         // QKV cache

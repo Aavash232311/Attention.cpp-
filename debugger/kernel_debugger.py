@@ -1,4 +1,5 @@
 import os
+import subprocess
 import torch
 from pathlib import Path
 
@@ -25,12 +26,21 @@ from debug.quick_binary_check_forward import quick_attention_check
  '''
 
 # Make sure we are able to read C++ project directory from here
-os.chdir(Path.cwd().parent)
+os.chdir(Path(__file__).resolve().parents[1])
 
 
 # After hyperparamaters are loaded, we need to load those binary that the C++ releases
-os.system("nvcc --time=build_time.log -DDEBUG -DDRUN -I. src/main.cpp src/kernel/utils.cu src/forward/Kernel/layer_norm.cu src/forward/Kernel/embedding.cu src/forward/Kernel/linear.cu src/forward/Kernel/attention_head.cu src/forward/Kernel/interface.cu src/backpropagation/Kernel/interface_back.cu src/backpropagation/Kernel/flash_attention.cu src/optimizer/Kernel/AdamW.cu -o src/bin/attention")
-os.system("./src/bin/attention") # this releases the forward pass binary as well
+# CMake caches each object file and rebuilds only changed sources in parallel.
+subprocess.run([
+    "cmake", "-S", ".", "-B", "build-debugger",
+    "-DCMAKE_BUILD_TYPE=Release", "-DATTENTION_DEBUG_DUMPS=ON",
+    "-DATTENTION_ENGINE_RUN=OFF",
+], check=True)
+subprocess.run([
+    "cmake", "--build", "build-debugger", "--target", "attention",
+    "--parallel", str(os.cpu_count() or 1),
+], check=True)
+subprocess.run(["./src/bin/attention"], check=True) # this releases the forward pass binary as well
 
 
 print("\n")

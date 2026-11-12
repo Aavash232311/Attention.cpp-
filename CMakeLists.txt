@@ -12,10 +12,12 @@ option(ATTENTION_ENGINE_RUN "Enable existing ENGINE_RUN code paths" OFF)
 
 # main.cpp includes CUDA-specific headers. Compile it with nvcc, as in the
 # original command; each translation unit gets its own cached object file.
-set_source_files_properties(src/main.cpp PROPERTIES LANGUAGE CUDA)
+set_source_files_properties(src/main.cpp src/include/utils.cpp PROPERTIES LANGUAGE CUDA)
 
 add_executable(attention
     src/main.cpp
+    src/include/helper.cpp
+    src/include/utils.cpp
     src/kernel/utils.cu
     src/forward/Kernel/layer_norm.cu
     src/forward/Kernel/embedding.cu
