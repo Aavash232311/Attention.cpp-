@@ -6,6 +6,7 @@
 #include <cstdio>
 #include <chrono>
 
+#include "include/tensor.hpp"
 #include "forward/linear.hpp"
 #include "include/linear.hpp"
 #include "include/p_head.hpp"
@@ -62,7 +63,6 @@ int main()
     // int epoch = 20;
     bool drop_last = true; // for training set this to false, if someone is serious about this email me. the cost of implementing this feature will affect everything in depth many tradeoffs
 
-
     std::string path = "./src/data/chunk.txt";
 
     auto utils = std::make_unique<Utility>();
@@ -113,6 +113,10 @@ int main()
     auto end = std::chrono::high_resolution_clock::now();
     cudaDeviceSynchronize(); // CPU is waiting for the GPU to finish
     std::chrono::duration<double, std::milli> duration = end - start;
+
+    auto tensor = Tensor<float>(std::vector<int>{1, 2, 3}, DEVICE);
+
+    cout << tensor;
 
     if (!(debug))
     {

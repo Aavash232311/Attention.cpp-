@@ -18,6 +18,7 @@ add_executable(attention
     src/main.cpp
     src/include/helper.cpp
     src/include/utils.cpp
+    src/include/tensor.cpp
     src/kernel/utils.cu
     src/forward/Kernel/layer_norm.cu
     src/forward/Kernel/embedding.cu
