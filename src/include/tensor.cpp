@@ -1,46 +1,31 @@
 #include "./tensor.hpp"
 
-
-template <typename T>
-ostream &operator<<(ostream &out, const Tensor<T> &t)
+static size_t sizeElem(const vector<int> &shape)
 {
-    
-    return out;
+    size_t count = 1;
+    for (size_t i = 0; i < shape.size(); ++i)
+        count *= shape[i];
+    return count;
 }
 
-
-int intVecSum(vector<int> vec)
-{
-    int N = 0;
-    for (size_t i = 0; i < vec.size(); ++i)
-    {
-        N += vec[i];
-    }
-    return N;
-}
-
-
 template <typename T>
-Tensor<T>::Tensor(vector<int> shape, Location location)
+Tensor<T>::Tensor(const vector<int> &shape, Location location, bool zero_init)
     : shape(shape), location(location)
 {
-
-    size_t N = 1;
-    for (int dimension : shape)
-        N *= dimension;
-
-    if (this->location == DEVICE)
+    size_t count = sizeElem(shape);
+    if (location == DEVICE)
     {
-        cudaMalloc((&tensor), N * sizeof(T));
+        cudaMalloc(&tensor, count * sizeof(T));
+        if (zero_init)
+        {
+            cudaMemset(tensor, 0, count * sizeof(T));
+        }
     }
-    if (this->location == HOST)
+    else 
     {
-        tensor = (T *)malloc(N * sizeof(T));
+        tensor = (T *)malloc(count * sizeof(T));
     }
-
-    std::cout << N << std::endl;
-
-    this->N = N;
+    this->N = count;
 }
 
 template <typename T>
@@ -56,6 +41,11 @@ Tensor<T>::~Tensor()
     }
 }
 
+template <typename T>
+T *Tensor<T>::get()
+{
+    return this->tensor;
+}
 
 template class Tensor<float>;
-template ostream &operator<< <float>(ostream &, const Tensor<float> &);
+// I am giving opreator overloading a pause here for now

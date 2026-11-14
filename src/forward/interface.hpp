@@ -6,6 +6,7 @@
 #include <memory>
 #include <algorithm>
 
+#include "../include/tensor.hpp"
 #include "../include/utils.hpp"
 #include "../forward/linear.hpp"
 #include "../include/linear.hpp"
@@ -69,7 +70,7 @@ class AttentionInterface
 
     // LOW LEVEL BY DESIGN IS LITTLE BIT MESSY COMES WITH A TRADE OFFS ANYWAY
 
-    float *upstream_softmax_ce;
+    float* upstream_softmax_ce;
 
     float *dl_dw_out_device;
 
@@ -80,10 +81,6 @@ class AttentionInterface
 
     // ---------- Autograd engine declaration --------------------
     float *ht_device;
-
-    // even for SWE after years of building things on my own
-    // now I realize how stupid I was, sure this is the dumbest possible thing
-    // goal is not perfection here, I just want to make it work
 
     // ---------- Autograd engine weight lm head ---------------------
     float *w_out_d;
@@ -242,7 +239,8 @@ public:
             num_heads);
 
         // BUFFER CPU/GPU allocation for the auto grad engine
-        cudaMalloc((void **)&upstream_softmax_ce, batch_size * seq_len * vocab_size * sizeof(float));
+        // cudaMalloc((void **)&upstream_softmax_ce, batch_size * seq_len * vocab_size * sizeof(float));
+       upstream_softmax_ce = upstream_softmax_ce = Tensor<float>(std::vector<int>{batch_size, seq_len, vocab_size}, DEVICE);
 
         //   dataLoader = std::make_unique<DataLoader>(batch_size, data, seq_len, drop_last);
 
@@ -350,7 +348,6 @@ public:
 
         free(outCrossEntropyHost);
 
-        cudaFree(upstream_softmax_ce);
         cudaFree(ht_device);
 
         cudaFree(dl_dw_out_device);

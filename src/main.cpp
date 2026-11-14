@@ -106,17 +106,17 @@ int main()
         model->train(epoch);
     //  // For this 12-character prompt, the position-wise next-character target is
     //  // "he cat sat o"; the final-position next character is 'o'.
-    //  const std::string prompt = "the cat sat. the dog ran.";
-    //  model->forward(prompt, charPool);
+    const std::string prompt = "the cat sat. the dog ran.";
+    model->train(epoch);
+    model->forward(prompt, charPool);
     // helper->inspect();
 
     auto end = std::chrono::high_resolution_clock::now();
     cudaDeviceSynchronize(); // CPU is waiting for the GPU to finish
     std::chrono::duration<double, std::milli> duration = end - start;
 
-    auto tensor = Tensor<float>(std::vector<int>{1, 2, 3}, DEVICE);
-
-    cout << tensor;
+    float* tensor = Tensor<float>(std::vector<int>{1, 2}, DEVICE, true);
+    utils->printFlatArray2D(tensor, 1, 2, "device");
 
     if (!(debug))
     {

@@ -4,6 +4,7 @@
 #include <vector>
 #include <memory>
 #include <random>
+#include <tuple>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -28,13 +29,15 @@ private:
 
 public:
     vector<int> shape;
-    int N;
     Location location;
+    int N;
 
-    Tensor(vector<int> shape, Location location);
-    int friend intVecSum(vector<int> vec);
-
-    template <typename U>
-    friend ostream &operator<<(ostream &out, const Tensor<U> &t);
+    Tensor(const vector<int> &shape, Location location, bool zero_init = false);
+    T *get();
+    
+    operator T *()
+    {
+        return tensor;
+    }
     ~Tensor();
 };
