@@ -239,8 +239,8 @@ public:
             num_heads);
 
         // BUFFER CPU/GPU allocation for the auto grad engine
-        // cudaMalloc((void **)&upstream_softmax_ce, batch_size * seq_len * vocab_size * sizeof(float));
-       upstream_softmax_ce = upstream_softmax_ce = Tensor<float>(std::vector<int>{batch_size, seq_len, vocab_size}, DEVICE);
+        cudaMalloc((void **)&upstream_softmax_ce, batch_size * seq_len * vocab_size * sizeof(float));
+       // upstream_softmax_ce = upstream_softmax_ce = Tensor<float>(std::vector<int>{batch_size, seq_len, vocab_size}, DEVICE);
 
         //   dataLoader = std::make_unique<DataLoader>(batch_size, data, seq_len, drop_last);
 
@@ -348,6 +348,7 @@ public:
 
         free(outCrossEntropyHost);
 
+        cudaFree(upstream_softmax_ce);
         cudaFree(ht_device);
 
         cudaFree(dl_dw_out_device);

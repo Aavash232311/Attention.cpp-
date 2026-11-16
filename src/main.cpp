@@ -115,8 +115,8 @@ int main()
     cudaDeviceSynchronize(); // CPU is waiting for the GPU to finish
     std::chrono::duration<double, std::milli> duration = end - start;
 
-    float* tensor = Tensor<float>(std::vector<int>{1, 2}, DEVICE, true);
-    utils->printFlatArray2D(tensor, 1, 2, "device");
+    // float* tensor = Tensor<float>(std::vector<int>{1, 2}, DEVICE, true);
+    // utils->printFlatArray2D(tensor, 1, 2, "device");
 
     if (!(debug))
     {
