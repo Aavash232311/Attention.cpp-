@@ -108,8 +108,10 @@ int main()
     //  // For this 12-character prompt, the position-wise next-character target is
     //  // "he cat sat o"; the final-position next character is 'o'.
     const std::string prompt = "the cat sat. the dog ran.";
-    // model->train(epoch);
-    // model->forward(prompt, charPool);
+    model->train(epoch);
+    model->forward(prompt, charPool);
+
+    
     // helper->inspect();
 
     auto end = std::chrono::high_resolution_clock::now();
@@ -119,7 +121,7 @@ int main()
     Tensor<float> tensor(std::vector<int>{2, 3, 4}, DEVICE, true);
     tensor.NormalInit();
     
-    utils->printFlatArray3D<float>(tensor, 2, 3, 4, false, "device");
+    // utils->printFlatArray3D<float>(tensor, 2, 3, 4, false, "device");
 
     if (!(debug))
     {

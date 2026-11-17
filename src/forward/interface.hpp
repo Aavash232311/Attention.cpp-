@@ -56,115 +56,115 @@ class AttentionInterface
     bool debug = true;
 
     // DEVICE SFOTMAX BEFORE CROSS ENTROPY LOSS IN
-    float *DeviceSoftmaxBLin;
+    std::unique_ptr<Tensor<float>> DeviceSoftmaxBLin;
     // DEVICE SOFTMAX BEFORE CORSS ENTROPY LOSS OUT
-    float *DeviceSoftmaxBLout;
+    std::unique_ptr<Tensor<float>> DeviceSoftmaxBLout;
 
     // ALLOCATE MEMORY FOR Y
-    float *yHotEncodeDeviceOut;
-    float *outCrossEntropyDevice;
+    std::unique_ptr<Tensor<float>> yHotEncodeDeviceOut;
+    std::unique_ptr<Tensor<float>> outCrossEntropyDevice;
 
-    float *outCrossEntropyHost;
+    std::unique_ptr<Tensor<float>> outCrossEntropyHost;
 
     std::unique_ptr<AutogradEngineDebuggerRelease> autograd;
 
     // LOW LEVEL BY DESIGN IS LITTLE BIT MESSY COMES WITH A TRADE OFFS ANYWAY
 
-    float* upstream_softmax_ce;
+    std::unique_ptr<Tensor<float>> upstream_softmax_ce;
 
-    float *dl_dw_out_device;
+    std::unique_ptr<Tensor<float>> dl_dw_out_device;
 
-    float *d_softmax_upstream;
+    std::unique_ptr<Tensor<float>> d_softmax_upstream;
 
     // GPU buffer for the autograd engine in the attention interface.
     FlashAttentionPointers modelParamaters;
 
     // ---------- Autograd engine declaration --------------------
-    float *ht_device;
+    std::unique_ptr<Tensor<float>> ht_device;
 
     // ---------- Autograd engine weight lm head ---------------------
-    float *w_out_d;
+    std::unique_ptr<Tensor<float>> w_out_d;
 
     // For the net gradient we also want to allocate for
     // WkT and WvT
 
-    float *WkT;
-    float *WvT;
-    float *WqT;
+    std::unique_ptr<Tensor<float>> WkT;
+    std::unique_ptr<Tensor<float>> WvT;
+    std::unique_ptr<Tensor<float>> WqT;
 
-    float *Wk;
-    float *WV;
-    float *WQ;
+    std::unique_ptr<Tensor<float>> Wk;
+    std::unique_ptr<Tensor<float>> WV;
+    std::unique_ptr<Tensor<float>> WQ;
 
     // ------------ Allocation fhas attention class ---------------------
 
-    float *S_device;
-    float *P_device;
-    float *O_device;
+    std::unique_ptr<Tensor<float>> S_device;
+    std::unique_ptr<Tensor<float>> P_device;
+    std::unique_ptr<Tensor<float>> O_device;
 
     // P^T and V^T device alloication
 
-    float *P_T_device_out;
-    float *V_T_device_out;
+    std::unique_ptr<Tensor<float>> P_T_device_out;
+    std::unique_ptr<Tensor<float>> V_T_device_out;
 
-    float *Uncontact_G_Upstream;
-    float *Contact_G_Upstream;
+    std::unique_ptr<Tensor<float>> Uncontact_G_Upstream;
+    std::unique_ptr<Tensor<float>> Contact_G_Upstream;
 
-    float *dV; // O = PV one of the derivative terms.
-    float *dP; // same derviative terms.
+    std::unique_ptr<Tensor<float>> dV; // O = PV one of the derivative terms.
+    std::unique_ptr<Tensor<float>> dP; // same derviative terms.
 
-    float *dQ;
-    float *dK;
+    std::unique_ptr<Tensor<float>> dQ;
+    std::unique_ptr<Tensor<float>> dK;
 
     // softmax activation derivative terms.
 
-    float *ppt;
+    std::unique_ptr<Tensor<float>> ppt;
 
-    float *d_score_t;
+    std::unique_ptr<Tensor<float>> d_score_t;
 
     /*
         Net G for layer norm very end formula in
         flashback.md
     */
 
-    float *qUp;
-    float *kUp;
-    float *vUp;
+    std::unique_ptr<Tensor<float>> qUp;
+    std::unique_ptr<Tensor<float>> kUp;
+    std::unique_ptr<Tensor<float>> vUp;
 
-    float *dqWt;
-    float *dkWt;
-    float *dvWt;
+    std::unique_ptr<Tensor<float>> dqWt;
+    std::unique_ptr<Tensor<float>> dkWt;
+    std::unique_ptr<Tensor<float>> dvWt;
 
-    float *G_x_hat; // total added up tensor
+    std::unique_ptr<Tensor<float>> G_x_hat; // total added up tensor
 
-    float *dbeta;
-    float *dgamma;
+    std::unique_ptr<Tensor<float>> dbeta;
+    std::unique_ptr<Tensor<float>> dgamma;
 
-    float *WoT;
+    std::unique_ptr<Tensor<float>> WoT;
 
-    float *dl_dh_output;
+    std::unique_ptr<Tensor<float>> dl_dh_output;
 
-    float *dbias_lm_head_pred;
+    std::unique_ptr<Tensor<float>> dbias_lm_head_pred;
 
-    float *d_add_residual_output;
+    std::unique_ptr<Tensor<float>> d_add_residual_output;
 
-    float *d_embedding;
+    std::unique_ptr<Tensor<float>> d_embedding;
 
-    float *d_bias_q;
-    float *d_bias_k;
-    float *d_bias_v;
+    std::unique_ptr<Tensor<float>> d_bias_q;
+    std::unique_ptr<Tensor<float>> d_bias_k;
+    std::unique_ptr<Tensor<float>> d_bias_v;
 
-    float *d_weight_q;
-    float *d_weight_k;
-    float *d_weight_v;
+    std::unique_ptr<Tensor<float>> d_weight_q;
+    std::unique_ptr<Tensor<float>> d_weight_k;
+    std::unique_ptr<Tensor<float>> d_weight_v;
 
-    float *d_weight_output_project;
+    std::unique_ptr<Tensor<float>> d_weight_output_project;
 
-    float *dx;
+    std::unique_ptr<Tensor<float>> dx;
 
     bool engine_run;
 
-    float *attn_head_out;
+    std::unique_ptr<Tensor<float>> attn_head_out;
 
 private:
     // ----------- TEMPORARY DEBUGGER SCRIPT ---------------------
@@ -239,189 +239,113 @@ public:
             num_heads);
 
         // BUFFER CPU/GPU allocation for the auto grad engine
-        cudaMalloc((void **)&upstream_softmax_ce, batch_size * seq_len * vocab_size * sizeof(float));
-       // upstream_softmax_ce = upstream_softmax_ce = Tensor<float>(std::vector<int>{batch_size, seq_len, vocab_size}, DEVICE);
-
+        upstream_softmax_ce = std::make_unique<Tensor<float>>(std::vector<int>{batch_size, seq_len, vocab_size}, DEVICE);
         //   dataLoader = std::make_unique<DataLoader>(batch_size, data, seq_len, drop_last);
 
         lm_head = std::make_unique<Linear>(d_model, vocab_size, seq_len, batch_size, num_heads, debug);
 
-        cudaMalloc((void **)&DeviceSoftmaxBLin, batch_size * seq_len * vocab_size * sizeof(float)); // wont something like this reserve GDDR RAM for too long till the liftspan of the object? Yes. -Avash
-        cudaMalloc((void **)&DeviceSoftmaxBLout, batch_size * seq_len * vocab_size * sizeof(float));
+        // wont something like this reserve GDDR RAM for too long till the liftspan of the object? Yes. -Avash
+        DeviceSoftmaxBLin = std::make_unique<Tensor<float>>(std::vector<int>{batch_size, seq_len, vocab_size}, DEVICE);
+        // Tensor<float> DeviceSoftmaxBLout(vector<int>{batch_size, seq_len, vocab_size}, DEVICE);
+        DeviceSoftmaxBLout = std::make_unique<Tensor<float>>(std::vector<int>{batch_size, seq_len, vocab_size}, DEVICE);
 
-        cudaMalloc((void **)&outCrossEntropyDevice, batch_size * seq_len * sizeof(float)); // (N) across all of the BT we will have the loss.
-        cudaMemset(outCrossEntropyDevice, 0, batch_size * seq_len * sizeof(float));        // make it zero for the things that we are not touching.
+        outCrossEntropyDevice = std::make_unique<Tensor<float>>(std::vector<int>{batch_size, seq_len}, DEVICE); // (N) across all of the BT we will have the loss.
+        cudaMemset(outCrossEntropyDevice->get(), 0, batch_size * seq_len * sizeof(float));        // make it zero for the things that we are not touching.
 
         // YOU DO NEED THIS PART BECAUSE ANOTHER KERNEL FOR THE CORSS ENTROPY LOSS WILL BE USING THIS.
-        cudaMalloc((void **)&yHotEncodeDeviceOut, vocab_size * seq_len * batch_size * sizeof(float)); // (B, T)
-        cudaMemset(yHotEncodeDeviceOut, 0, batch_size * seq_len * vocab_size * sizeof(float));        // make default 0
+        yHotEncodeDeviceOut = std::make_unique<Tensor<float>>(std::vector<int>{vocab_size, seq_len, batch_size}, DEVICE); // (B, T)
+        cudaMemset(yHotEncodeDeviceOut->get(), 0, batch_size * seq_len * vocab_size * sizeof(float));        // make default 0
 
-        outCrossEntropyHost = (float *)malloc(batch_size * seq_len * vocab_size * sizeof(float));
+        outCrossEntropyHost = std::make_unique<Tensor<float>>(std::vector<int>{batch_size, seq_len, vocab_size}, HOST);
 
-        cudaMalloc((void **)&ht_device, batch_size * seq_len * d_model * sizeof(float));
+        ht_device = std::make_unique<Tensor<float>>(std::vector<int>{batch_size, seq_len, d_model}, DEVICE);
 
-        cudaMalloc((void **)&dl_dw_out_device, d_model * vocab_size * sizeof(float));
+        dl_dw_out_device = std::make_unique<Tensor<float>>(std::vector<int>{d_model, vocab_size}, DEVICE);
 
         // ------------ for w in lm head --------------
 
-        cudaMalloc((void **)&w_out_d, d_model * vocab_size * sizeof(float));
+        w_out_d = std::make_unique<Tensor<float>>(std::vector<int>{d_model, vocab_size}, DEVICE);
 
         // ----- For flash attention kernel -------------------
-        cudaMalloc((void **)&S_device, seq_len * batch_size * num_heads * head_dim * sizeof(float));
-        cudaMalloc((void **)&P_device, batch_size * num_heads * seq_len * seq_len * sizeof(float));
-        cudaMalloc((void **)&O_device, batch_size * num_heads * seq_len * head_dim * sizeof(float));
+        S_device = std::make_unique<Tensor<float>>(std::vector<int>{seq_len, batch_size, num_heads, head_dim}, DEVICE);
+        P_device = std::make_unique<Tensor<float>>(std::vector<int>{batch_size, num_heads, seq_len, seq_len}, DEVICE);
+        O_device = std::make_unique<Tensor<float>>(std::vector<int>{batch_size, num_heads, seq_len, head_dim}, DEVICE);
 
         // output, I know not the most efficient kernel or way but lets get to the end-result here first.
-        cudaMalloc((void **)&P_T_device_out, batch_size * num_heads * seq_len * seq_len * sizeof(float));
-        cudaMalloc((void **)&V_T_device_out, batch_size * num_heads * seq_len * head_dim * sizeof(float));
+        P_T_device_out = std::make_unique<Tensor<float>>(std::vector<int>{batch_size, num_heads, seq_len, seq_len}, DEVICE);
+        V_T_device_out = std::make_unique<Tensor<float>>(std::vector<int>{batch_size, num_heads, seq_len, head_dim}, DEVICE);
 
-        cudaMalloc((void **)&Uncontact_G_Upstream, batch_size * seq_len * num_heads * head_dim * sizeof(float));
+        Uncontact_G_Upstream = std::make_unique<Tensor<float>>(std::vector<int>{batch_size, seq_len, num_heads, head_dim}, DEVICE);
 
-        cudaMalloc((void **)&Contact_G_Upstream, batch_size * seq_len * d_model * sizeof(float));
+        Contact_G_Upstream = std::make_unique<Tensor<float>>(std::vector<int>{batch_size, seq_len, d_model}, DEVICE);
 
-        cudaMalloc((void **)&dV, batch_size * num_heads * seq_len * head_dim * sizeof(float));
-        cudaMalloc((void **)&dP, batch_size * num_heads * seq_len * seq_len * sizeof(float));
+        dV = std::make_unique<Tensor<float>>(std::vector<int>{batch_size, num_heads, seq_len, head_dim}, DEVICE);
+        dP = std::make_unique<Tensor<float>>(std::vector<int>{batch_size, num_heads, seq_len, seq_len}, DEVICE);
 
-        cudaMalloc((void **)&ppt, batch_size * num_heads * seq_len * seq_len * sizeof(float));
+        ppt = std::make_unique<Tensor<float>>(std::vector<int>{batch_size, num_heads, seq_len, seq_len}, DEVICE);
 
         // dQ and dK for the QK^T backpropagation
-        cudaMalloc((void **)&dQ, batch_size * seq_len * num_heads * head_dim * sizeof(float));
-        cudaMalloc((void **)&dK, batch_size * seq_len * num_heads * head_dim * sizeof(float));
+        dQ = std::make_unique<Tensor<float>>(std::vector<int>{batch_size, seq_len, num_heads, head_dim}, DEVICE);
+        dK = std::make_unique<Tensor<float>>(std::vector<int>{batch_size, seq_len, num_heads, head_dim}, DEVICE);
 
-        cudaMalloc((void **)&d_score_t, batch_size * num_heads * seq_len * seq_len * sizeof(float));
+        d_score_t = std::make_unique<Tensor<float>>(std::vector<int>{batch_size, num_heads, seq_len, seq_len}, DEVICE);
 
-        cudaMalloc((void **)&WkT, d_model * d_model * sizeof(float));
-        cudaMalloc((void **)&WvT, d_model * d_model * sizeof(float));
-        cudaMalloc((void **)&WqT, d_model * d_model * sizeof(float));
+        WkT = std::make_unique<Tensor<float>>(std::vector<int>{d_model, d_model}, DEVICE);
+        WvT = std::make_unique<Tensor<float>>(std::vector<int>{d_model, d_model}, DEVICE);
+        WqT = std::make_unique<Tensor<float>>(std::vector<int>{d_model, d_model}, DEVICE);
 
-        cudaMalloc((void **)&Wk, d_model * d_model * sizeof(float));
-        cudaMalloc((void **)&WV, d_model * d_model * sizeof(float));
-        cudaMalloc((void **)&WQ, d_model * d_model * sizeof(float));
+        Wk = std::make_unique<Tensor<float>>(std::vector<int>{d_model, d_model}, DEVICE);
+        WV = std::make_unique<Tensor<float>>(std::vector<int>{d_model, d_model}, DEVICE);
+        WQ = std::make_unique<Tensor<float>>(std::vector<int>{d_model, d_model}, DEVICE);
 
-        cudaMalloc((void **)&qUp, batch_size * seq_len * d_model * sizeof(float));
-        cudaMalloc((void **)&kUp, batch_size * seq_len * d_model * sizeof(float));
-        cudaMalloc((void **)&vUp, batch_size * seq_len * d_model * sizeof(float));
+        qUp = std::make_unique<Tensor<float>>(std::vector<int>{batch_size, seq_len, d_model}, DEVICE);
+        kUp = std::make_unique<Tensor<float>>(std::vector<int>{batch_size, seq_len, d_model}, DEVICE);
+        vUp = std::make_unique<Tensor<float>>(std::vector<int>{batch_size, seq_len, d_model}, DEVICE);
 
-        cudaMalloc((void **)&G_x_hat, batch_size * seq_len * d_model * sizeof(float));
+        G_x_hat = std::make_unique<Tensor<float>>(std::vector<int>{batch_size, seq_len, d_model}, DEVICE);
 
-        cudaMalloc((void **)&dqWt, batch_size * seq_len * d_model * sizeof(float));
-        cudaMalloc((void **)&dkWt, batch_size * seq_len * d_model * sizeof(float));
-        cudaMalloc((void **)&dvWt, batch_size * seq_len * d_model * sizeof(float));
+        dqWt = std::make_unique<Tensor<float>>(std::vector<int>{batch_size, seq_len, d_model}, DEVICE);
+        dkWt = std::make_unique<Tensor<float>>(std::vector<int>{batch_size, seq_len, d_model}, DEVICE);
+        dvWt = std::make_unique<Tensor<float>>(std::vector<int>{batch_size, seq_len, d_model}, DEVICE);
 
-        cudaMalloc((void **)&dbeta, d_model * sizeof(float));
-        cudaMalloc((void **)&dgamma, d_model * sizeof(float));
+        dbeta = std::make_unique<Tensor<float>>(std::vector<int>{d_model}, DEVICE);
+        dgamma = std::make_unique<Tensor<float>>(std::vector<int>{d_model}, DEVICE);
 
-        cudaMalloc((void **)&dbias_lm_head_pred, vocab_size * sizeof(float));
+        dbias_lm_head_pred = std::make_unique<Tensor<float>>(std::vector<int>{vocab_size}, DEVICE);
 
-        cudaMalloc((void **)&WoT, d_model * d_model * sizeof(float));
+        WoT = std::make_unique<Tensor<float>>(std::vector<int>{d_model, d_model}, DEVICE);
 
-        cudaMalloc((void **)&dl_dh_output, batch_size * seq_len * d_model * sizeof(float));
+        dl_dh_output = std::make_unique<Tensor<float>>(std::vector<int>{batch_size, seq_len, d_model}, DEVICE);
 
-        cudaMalloc((void **)&d_add_residual_output, batch_size * seq_len * d_model * sizeof(float));
+        d_add_residual_output = std::make_unique<Tensor<float>>(std::vector<int>{batch_size, seq_len, d_model}, DEVICE);
 
-        cudaMalloc((void **)&d_embedding, vocab_size * d_model * sizeof(float));
+        d_embedding = std::make_unique<Tensor<float>>(std::vector<int>{vocab_size, d_model}, DEVICE);
 
-        cudaMalloc((void **)&d_bias_q, d_model * sizeof(float));
-        cudaMalloc((void **)&d_bias_k, d_model * sizeof(float));
-        cudaMalloc((void **)&d_bias_v, d_model * sizeof(float));
+        d_bias_q = std::make_unique<Tensor<float>>(std::vector<int>{d_model}, DEVICE);
+        d_bias_k = std::make_unique<Tensor<float>>(std::vector<int>{d_model}, DEVICE);
+        d_bias_v = std::make_unique<Tensor<float>>(std::vector<int>{d_model}, DEVICE);
 
-        cudaMalloc((void **)&d_weight_q, d_model * d_model * sizeof(float));
-        cudaMalloc((void **)&d_weight_k, d_model * d_model * sizeof(float));
-        cudaMalloc((void **)&d_weight_v, d_model * d_model * sizeof(float));
+        d_weight_q = std::make_unique<Tensor<float>>(std::vector<int>{d_model, d_model}, DEVICE);
+        d_weight_k = std::make_unique<Tensor<float>>(std::vector<int>{d_model, d_model}, DEVICE);
+        d_weight_v = std::make_unique<Tensor<float>>(std::vector<int>{d_model, d_model}, DEVICE);
 
-        cudaMalloc((void **)&d_weight_output_project, d_model * d_model * sizeof(float));
+        d_weight_output_project = std::make_unique<Tensor<float>>(std::vector<int>{d_model, d_model}, DEVICE);
 
-        cudaMalloc((void **)&d_softmax_upstream, batch_size * num_heads * seq_len * seq_len * sizeof(float));
+        d_softmax_upstream = std::make_unique<Tensor<float>>(std::vector<int>{batch_size, num_heads, seq_len, seq_len}, DEVICE);
 
-        cudaMalloc((void **)&dx, batch_size * seq_len * d_model * sizeof(float));
+        dx = std::make_unique<Tensor<float>>(std::vector<int>{batch_size, seq_len, d_model}, DEVICE);
 
-        cudaMalloc((void **)&attn_head_out, batch_size * seq_len * d_model * sizeof(float));
+        attn_head_out = std::make_unique<Tensor<float>>(std::vector<int>{batch_size, seq_len, d_model}, DEVICE);
     }
 
     ~AttentionInterface()
     {
-        cudaFree(DeviceSoftmaxBLin);
-        cudaFree(DeviceSoftmaxBLout);
+        // cudaFree(DeviceSoftmaxBLin);
+        //  cudaFree(DeviceSoftmaxBLout);
 
-        cudaFree(yHotEncodeDeviceOut);
-        cudaFree(outCrossEntropyDevice);
-
-        free(outCrossEntropyHost);
-
-        cudaFree(upstream_softmax_ce);
-        cudaFree(ht_device);
-
-        cudaFree(dl_dw_out_device);
-
-        cudaFree(w_out_d);
 
         // free flash-attention device allocations
-        cudaFree(S_device);
-        cudaFree(P_device);
-        cudaFree(O_device);
 
-        cudaFree(V_T_device_out);
-        cudaFree(P_T_device_out);
-
-        cudaFree(Uncontact_G_Upstream);
-
-        cudaFree(Contact_G_Upstream);
-
-        cudaFree(dV);
-        cudaFree(dP);
-        cudaFree(ppt);
-
-        cudaFree(dQ);
-        cudaFree(dK);
-
-        cudaFree(d_score_t);
-
-        cudaFree(WkT);
-        cudaFree(WvT);
-        cudaFree(WqT);
-
-        cudaFree(Wk);
-        cudaFree(WV);
-        cudaFree(WQ);
-
-        cudaFree(qUp);
-        cudaFree(kUp);
-        cudaFree(vUp);
-
-        cudaFree(dkWt);
-        cudaFree(dqWt);
-        cudaFree(dkWt);
-
-        cudaFree(G_x_hat);
-
-        cudaFree(dbeta);
-        cudaFree(dgamma);
-
-        cudaFree(dbias_lm_head_pred);
-
-        cudaFree(WoT);
-
-        cudaFree(dl_dh_output);
-
-        cudaFree(d_add_residual_output);
-
-        cudaFree(d_embedding);
-
-        cudaFree(d_bias_q);
-        cudaFree(d_bias_k);
-        cudaFree(d_bias_v);
-
-        cudaFree(d_weight_q);
-        cudaFree(d_weight_k);
-        cudaFree(d_weight_v);
-
-        cudaFree(d_weight_output_project);
-
-        cudaFree(d_softmax_upstream);
-
-        cudaFree(dx);
-
-        cudaFree(attn_head_out);
     }
 
     LinearParams getLmHeadParams()
@@ -446,7 +370,7 @@ public:
 
         softmax2D(
             probality,
-            DeviceSoftmaxBLout,
+            DeviceSoftmaxBLout->get(),
             batch_size,
             seq_len,
             vocab_size);
@@ -454,18 +378,18 @@ public:
         // utils->printFlatArray3D(DeviceSoftmaxBLout, batch_size, seq_len, vocab_size, false, "device");
 
         if (debug)
-            attention->releaseBin(DeviceSoftmaxBLout, "ce_softmax_out.bin", batch_size * seq_len * vocab_size);
+            attention->releaseBin(DeviceSoftmaxBLout->get(), "ce_softmax_out.bin", batch_size * seq_len * vocab_size);
 
         CrossEntropy(
-            DeviceSoftmaxBLout, // out from softmaxed
+            DeviceSoftmaxBLout->get(), // out from softmaxed
             y,
-            yHotEncodeDeviceOut,
-            outCrossEntropyDevice,
+            yHotEncodeDeviceOut->get(),
+            outCrossEntropyDevice->get(),
             batch_size,
             seq_len,
             vocab_size);
 
-        cudaMemcpy(outCrossEntropyHost, outCrossEntropyDevice, batch_size * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(outCrossEntropyHost->get(), outCrossEntropyDevice->get(), batch_size * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
 
         // utils->printFlatArray2D(outCrossEntropyDevice, batch_size, seq_len, "device");
 
@@ -524,7 +448,6 @@ public:
                 encodedInput.end() - prompt_seq_len,
                 encodedInput.end());
 
-     
             int *tokens = utils->vectorToFlatStrip(window, "gpu");
 
             float *emb = attention->embeddings->forward(
@@ -535,7 +458,6 @@ public:
 
             float *logits = lm_head->forward(
                 attnScore, 1, prompt_seq_len);
-
 
             softmax2D(
                 logits,
@@ -604,9 +526,7 @@ public:
 
                 float *x = attention->forward(batch);
 
-                cudaMemcpy(attn_head_out, x, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToDevice);
-
-
+                cudaMemcpy(attn_head_out->get(), x, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToDevice);
 
                 float *prob = lm_head->forward(x); // Shape (B, T, vocab_size) x is not changed here.
 
@@ -631,7 +551,7 @@ public:
 
                 softmaxAcrossProballityCrossEntropyLoss(prob, batch.y);
 
-                loss_per_batch += this->utils->averageFlatStrip2D(outCrossEntropyHost, batch_size * seq_len);
+                loss_per_batch += this->utils->averageFlatStrip2D(outCrossEntropyHost->get(), batch_size * seq_len);
 
                 //  cout << "Loss per batch: " << this->utils->averageFlatStrip2D(outCrossEntropyHost, batch_size * seq_len) << endl;
 
@@ -654,81 +574,81 @@ public:
                 // ----------- Lets gather overall paramaters here ---------- //
                 modelParamaters.attention_head = attention->getParamaters();
                 modelParamaters.lm_head = LinearParams{lm_head->getWeightDevice(), lm_head->getBaiasDevice()};
-                modelParamaters.L = outCrossEntropyDevice;        // CE Out
-                modelParamaters.y_actual = yHotEncodeDeviceOut;   // (B, T, vocab_size) from actual
-                modelParamaters.y_predicted = DeviceSoftmaxBLout; // (B, T, vocab_size) to predicted proballity
+                modelParamaters.L = outCrossEntropyDevice->get();        // CE Out
+                modelParamaters.y_actual = yHotEncodeDeviceOut->get();   // (B, T, vocab_size) from actual
+                modelParamaters.y_predicted = DeviceSoftmaxBLout->get(); // (B, T, vocab_size) to predicted proballity
 
-                modelParamaters.upsteram_out_softmax_ce = upstream_softmax_ce;
+                modelParamaters.upsteram_out_softmax_ce = upstream_softmax_ce->get();
 
-                modelParamaters.final_attn_tensor = attn_head_out; // (B, T, d_model) on device
-                modelParamaters.xt_device = ht_device;
+                modelParamaters.final_attn_tensor = attn_head_out->get(); // (B, T, d_model) on device
+                modelParamaters.xt_device = ht_device->get();
 
-                modelParamaters.dbias_lm_head_pred = dbias_lm_head_pred;
+                modelParamaters.dbias_lm_head_pred = dbias_lm_head_pred->get();
 
                 // for dl_dw = delta h^T derived in flashback.md
 
-                modelParamaters.dweight_lm_head = dl_dw_out_device;
+                modelParamaters.dweight_lm_head = dl_dw_out_device->get();
 
                 // these are just borrowed pointers
-                modelParamaters.wt_lm_head_deice = w_out_d;
+                modelParamaters.wt_lm_head_deice = w_out_d->get();
 
-                modelParamaters.P_T_device_out = P_T_device_out;
-                modelParamaters.V_T_device_out = V_T_device_out;
+                modelParamaters.P_T_device_out = P_T_device_out->get();
+                modelParamaters.V_T_device_out = V_T_device_out->get();
 
                 // GDDR RAM
-                modelParamaters.Uncontact_G_Upstream = Uncontact_G_Upstream;
-                modelParamaters.upstream_grad_output_proj = Contact_G_Upstream;
+                modelParamaters.Uncontact_G_Upstream = Uncontact_G_Upstream->get();
+                modelParamaters.upstream_grad_output_proj = Contact_G_Upstream->get();
 
-                modelParamaters.dV = dV;
-                modelParamaters.dP = dP;
+                modelParamaters.dV = dV->get();
+                modelParamaters.dP = dP->get();
 
-                modelParamaters.ppt = ppt;
+                modelParamaters.ppt = ppt->get();
 
-                modelParamaters.dQ = dQ;
-                modelParamaters.dK = dK;
+                modelParamaters.dQ = dQ->get();
+                modelParamaters.dK = dK->get();
 
-                modelParamaters.d_score_t = d_score_t;
+                modelParamaters.d_score_t = d_score_t->get();
 
-                modelParamaters.WkT = WkT;
-                modelParamaters.WvT = WvT;
-                modelParamaters.WqT = WqT;
+                modelParamaters.WkT = WkT->get();
+                modelParamaters.WvT = WvT->get();
+                modelParamaters.WqT = WqT->get();
 
-                modelParamaters.Wk = Wk;
-                modelParamaters.WV = WV;
-                modelParamaters.WQ = WQ;
+                modelParamaters.Wk = Wk->get();
+                modelParamaters.WV = WV->get();
+                modelParamaters.WQ = WQ->get();
 
-                modelParamaters.qUp = qUp;
-                modelParamaters.kUp = kUp;
-                modelParamaters.vUp = vUp;
+                modelParamaters.qUp = qUp->get();
+                modelParamaters.kUp = kUp->get();
+                modelParamaters.vUp = vUp->get();
 
-                modelParamaters.d_weight_q = d_weight_q;
-                modelParamaters.d_weight_k = d_weight_k;
-                modelParamaters.d_weight_v = d_weight_v;
+                modelParamaters.d_weight_q = d_weight_q->get();
+                modelParamaters.d_weight_k = d_weight_k->get();
+                modelParamaters.d_weight_v = d_weight_v->get();
 
-                modelParamaters.d_bias_q = d_bias_q;
-                modelParamaters.d_bias_k = d_bias_k;
-                modelParamaters.d_bias_v = d_bias_v;
+                modelParamaters.d_bias_q = d_bias_q->get();
+                modelParamaters.d_bias_k = d_bias_k->get();
+                modelParamaters.d_bias_v = d_bias_v->get();
 
-                modelParamaters.dqWt = dqWt;
-                modelParamaters.dkWt = dkWt;
-                modelParamaters.dvWt = dvWt;
+                modelParamaters.dqWt = dqWt->get();
+                modelParamaters.dkWt = dkWt->get();
+                modelParamaters.dvWt = dvWt->get();
 
-                modelParamaters.G_x_hat = G_x_hat; // net G_hat from the derivation
+                modelParamaters.G_x_hat = G_x_hat->get(); // net G_hat from the derivation
 
-                modelParamaters.debeta = dbeta;
-                modelParamaters.dgamma = dgamma;
+                modelParamaters.debeta = dbeta->get();
+                modelParamaters.dgamma = dgamma->get();
 
                 // Tranapose of weight of contact i.e output projection
-                modelParamaters.WoT = WoT;
-                modelParamaters.dl_dh_output = dl_dh_output;
-                modelParamaters.d_add_residual_output = d_add_residual_output;
+                modelParamaters.WoT = WoT->get();
+                modelParamaters.dl_dh_output = dl_dh_output->get();
+                modelParamaters.d_add_residual_output = d_add_residual_output->get();
 
-                modelParamaters.d_embedding = d_embedding;
+                modelParamaters.d_embedding = d_embedding->get();
 
-                modelParamaters.d_weight_output_project = d_weight_output_project;
-                modelParamaters.d_softmax_upstream = d_softmax_upstream;
+                modelParamaters.d_weight_output_project = d_weight_output_project->get();
+                modelParamaters.d_softmax_upstream = d_softmax_upstream->get();
 
-                modelParamaters.dx = dx;
+                modelParamaters.dx = dx->get();
 
                 // because the backprops needs to be done for each epoch.
                 // we need to keep in mind that the things hurting performace like cuda malloc and everything declared
