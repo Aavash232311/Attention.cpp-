@@ -30,14 +30,20 @@ private:
 public:
     vector<int> shape;
     Location location;
-    int N;
+    int N = 1;
 
-    Tensor(const vector<int> &shape, Location location, bool zero_init = false);
+    explicit Tensor(const vector<int> &shape, Location location, bool zero_init = false);
+    Tensor(const Tensor &) = delete;
+    Tensor &operator=(const Tensor &) = delete;
+    
+    Tensor<T>& NormalInit(float stdDev = 0.9f, float center=0.0f);
     T *get();
     
-    operator T *()
+    // The owner must stay alive while its pointer is being used.
+    operator T *() &
     {
         return tensor;
     }
+    operator T *() && = delete;
     ~Tensor();
 };

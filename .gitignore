@@ -38,3 +38,7 @@ __pycache__/
 /build/
 /build-*/
 /.ccache/
+
+# Local cleanup clone and generated PDFs
+/repo-cleanup/
+/output/pdf/
