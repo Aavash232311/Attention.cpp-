@@ -119,7 +119,6 @@ int main()
     Tensor<float> tensor(std::vector<int>{2, 3, 4}, DEVICE, true);
     tensor.NormalInit();
     
-    
     utils->printFlatArray3D<float>(tensor, 2, 3, 4, false, "device");
 
     if (!(debug))
@@ -129,4 +128,3 @@ int main()
 
     return 0;
 }
-// checkmark
