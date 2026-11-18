@@ -17,6 +17,8 @@ extern "C" void addTwoTensor(float *A, float *B, float *Out, int batch_size, int
 extern "C" void updateTokenEmbedding(float *G, float *d_emebdding, int *token_ids, int batch_size, int seq_len, int d_model, int vocab_size);
 extern "C" void dl_dw_upstream(float *deta, float *ht, float *out, int B, int T, int C, int vocab_size);
 extern "C" void lm_head_transpose_h(float *h, float *out, int B, int T, int C);
+
+
 class FlashAttentionLinear : virtual public AutoGradEngine
 {
 
@@ -26,7 +28,7 @@ private:
      * @bug         Note: ISSUE
         dQ, dK, dV are each upstream gradient for
         dweight and dbias for QKV after that we sum the weights
-        for the layer norm. And thats how the chain gets completed
+        for the layer norm. And that's how the chain gets completed
      */
     void linearBackForQKV()
     {

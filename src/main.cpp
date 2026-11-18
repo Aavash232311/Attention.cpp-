@@ -44,7 +44,7 @@ int main()
 #endif
 
     int d_model = 128;
-    int vocab_size; // that depends upon the data that you are passing.
+    // that depends upon the data that you are passing.
     int num_heads = 16;
     int batch_size = 16;
     int seq_len = 16;
@@ -63,7 +63,7 @@ int main()
     std::vector<char> charPool = textEncoderFile->getFileAsChar();
     auto helper = std::make_unique<Helper>(charPool);
 
-    vocab_size = helper->vocab_size();
+    int vocab_size = helper->vocab_size();
 
     releaseHyperParamaters(
         d_model,

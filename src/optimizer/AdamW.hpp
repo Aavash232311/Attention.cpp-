@@ -1,13 +1,9 @@
 #pragma once
 
 #include "../include/netattention.hpp"
-#include "../include/attention_params.hpp"
 
 #include "../include/utils.hpp"
-
-#include "./ds/optimizer_mem.hpp"
 #include "./ds/AdamW_config.hpp"
-#include <cuda_runtime.h>
 #include <memory>
 
 extern "C" void AdamWSTEP(
@@ -29,6 +25,8 @@ class AdamW
 {
 
 public:
+    virtual ~AdamW() = default;
+
     bool debug = true;
 
     float lr;
@@ -37,7 +35,7 @@ public:
     float beta_2;
     float epsilon;
 
-    FlashAttentionPointers modelParamaters;
+    FlashAttentionPointers network_parms{};
 
     virtual void releaseOptimizerHyperparameters(int t) {};
     virtual void releaseOptimizedWeight(
@@ -56,260 +54,10 @@ public:
         float beta_1 = 0.9f,
         float beta_2 = 0.999f,
         float epsilon = 1e-8f,
-        bool debug = false)
-    {
-        this->lr = lr;
-        this->debug = debug;
-        this->beta_1 = beta_1;
-        this->beta_2 = beta_2;
-        this->epsilon = epsilon;
-        this->weight_decay = weight_decay;
-    }
+        bool debug = false);
 
     void invoke(
         FlashAttentionPointers modelParamaters,
         AdamWMemConfig &config,
-        int epochs)
-    {
-
-        // lm head weight and bias
-
-        // if (debug)
-        // {
-        //     cout << "Theta & Grad before LM head " << endl;
-        //     cout << "Theta " << endl;
-        //     utils->printFlatArray2D(modelParamaters.weight_lm_head, config.d_model, config.d_model, "device");
-
-        //     cout << "Grad " << endl;
-        //     utils->printFlatArray2D(modelParamaters.dweight_lm_head, config.d_model, config.d_model, "device");
-        // }
-
-        // weight for lm head
-        AdamWSTEP(
-            modelParamaters.weight_lm_head,
-            modelParamaters.dweight_lm_head, // grad that needs to be updated
-            config.dl_dw.m_d,
-            config.dl_dw.v_d,
-            lr,
-            beta_1,
-            beta_2,
-            epsilon,
-            weight_decay,
-            config.t,
-            config.d_model * config.vocab_size);
-
-        // if (debug)
-        // {
-        //     std::cout << "N" << std::endl;
-        //     std::cout <<  config.d_model * config.vocab_size << std::endl;
-
-        //     std::cout << "wd" << std::endl;
-        //     std::cout << weight_decay << std::endl;
-
-        //     std::cout << "beta 1: " << beta_1 << " beta_2: " << beta_2 << std::endl;
-
-        //     std::cout << "learning rate" << std::endl;
-        //     std::cout << lr << std::endl;
-        // }
-
-        // float *w_host = (float *)malloc(config.d_model * config.vocab_size * sizeof(float));
-        // cudaMemcpy(w_host, modelParamaters.weight_lm_head, config.vocab_size * config.d_model * sizeof(float), cudaMemcpyDeviceToHost);
-
-        // utils->printFlatArray2D(w_host, config.d_model, config.vocab_size);
-
-        // free(w_host);
-
-        // bias for lm head
-        AdamWSTEP(
-            modelParamaters.bias_lm_head,
-            modelParamaters.dbias_lm_head_pred,
-            config.dl_db.m_d,
-            config.dl_db.v_d,
-            lr,
-            beta_1,
-            beta_2,
-            epsilon,
-            weight_decay,
-            config.t,
-            config.vocab_size);
-
-        // output projection linear layer
-
-        // weight
-        AdamWSTEP(
-            modelParamaters.attention_head.wo,
-            modelParamaters.d_weight_output_project,
-            config.weight_output_proj.m_d,
-            config.weight_output_proj.v_d,
-            lr,
-            beta_1,
-            beta_2,
-            epsilon,
-            weight_decay,
-            config.t,
-            config.d_model * config.d_model);
-
-        // bias
-        AdamWSTEP(
-            modelParamaters.attention_head.wo_bias,
-            modelParamaters.attention_head.doutput_bias,
-            config.bias_output_proj.m_d,
-            config.bias_output_proj.v_d,
-            lr,
-            beta_1,
-            beta_2,
-            epsilon,
-            weight_decay,
-            config.t,
-            config.d_model);
-
-        // QKV update
-
-        // Q weight
-
-        AdamWSTEP(
-            modelParamaters.attention_head.device_WQ,
-            modelParamaters.d_weight_q,
-            config.d_weight_q.m_d,
-            config.d_weight_q.v_d,
-            lr,
-            beta_1,
-            beta_2,
-            epsilon,
-            weight_decay,
-            config.t,
-            config.d_model * config.d_model);
-
-        // Q bias
-
-        AdamWSTEP(
-            modelParamaters.attention_head.bias_q,
-            modelParamaters.d_bias_q,
-            config.d_bias_q.m_d,
-            config.d_bias_q.v_d,
-            lr,
-            beta_1,
-            beta_2,
-            epsilon,
-            weight_decay,
-            config.t,
-            config.d_model);
-
-        // K wieght
-        AdamWSTEP(
-            modelParamaters.attention_head.device_WK,
-            modelParamaters.d_weight_k,
-            config.d_weight_k.m_d,
-            config.d_weight_k.v_d,
-            lr,
-            beta_1,
-            beta_2,
-            epsilon,
-            weight_decay,
-            config.t,
-            config.d_model * config.d_model);
-
-        // K bias
-        AdamWSTEP(
-            modelParamaters.attention_head.bias_k,
-            modelParamaters.d_bias_k,
-            config.d_bias_k.m_d,
-            config.d_bias_k.v_d,
-            lr,
-            beta_1,
-            beta_2,
-            epsilon,
-            weight_decay,
-            config.t,
-            config.d_model);
-
-        // v weight
-        AdamWSTEP(
-            modelParamaters.attention_head.device_WV,
-            modelParamaters.d_weight_v,
-            config.d_weight_v.m_d,
-            config.d_weight_v.v_d,
-            lr,
-            beta_1,
-            beta_2,
-            epsilon,
-            weight_decay,
-            config.t,
-            config.d_model * config.d_model);
-
-        // v bias
-        AdamWSTEP(
-            modelParamaters.attention_head.bias_v,
-            modelParamaters.d_bias_v,
-            config.d_bias_v.m_d,
-            config.d_bias_v.v_d,
-            lr,
-            beta_1,
-            beta_2,
-            epsilon,
-            weight_decay,
-            config.t,
-            config.d_model);
-
-        // // gamma and beta of the normalization paramater
-
-        // // learning paramater gamma
-        AdamWSTEP(
-            modelParamaters.attention_head.gamma, // this is the gamma pointer I will change this conflicting name
-            modelParamaters.dgamma,
-            config.Ln_gamma.m_d,
-            config.Ln_gamma.v_d,
-            lr,
-            beta_1,
-            beta_2,
-            epsilon,
-            weight_decay,
-            config.t,
-            config.d_model);
-
-        // learning paramater beta
-        AdamWSTEP(
-            modelParamaters.attention_head.beta, // this is the gamma pointer I will change this conflicting name
-            modelParamaters.debeta,
-            config.Ln_beta.m_d,
-            config.Ln_beta.v_d,
-            lr,
-            beta_1,
-            beta_2,
-            epsilon,
-            weight_decay,
-            config.t,
-            config.d_model);
-
-        // this->utils->printFlatArray3D(
-        //     modelParamaters.attention_head.x,
-        //     config.batch_size,
-        //     config.seq_len,
-        //     config.d_model,
-        //     false,
-        //     "device"
-        // );
-
-        AdamWSTEP(
-            modelParamaters.attention_head.device_embedding_paramaters,
-            modelParamaters.d_embedding,
-            config.d_token_embedding.m_d,
-            config.d_token_embedding.v_d,
-            lr,
-            beta_1,
-            beta_2,
-            epsilon,
-            weight_decay,
-            config.t,
-            config.vocab_size * config.d_model);
-
-        
-        // now "one" of the embedding only "one" we are using the traditional transformer
-
-        cudaDeviceSynchronize();
-
-        debug = false;
-
-        config.t++;
-    }
+        int epochs);
 };

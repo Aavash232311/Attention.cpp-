@@ -30,6 +30,9 @@ add_executable(attention
     src/optimizer/Kernel/AdamW.cu
         "src/GPT_Structure /unordered_map.cpp"
         "src/GPT_Structure /unordered_map.hpp"
+        src/optimizer/optimizer_debugger.cpp
+        src/optimizer/optimizer_debugger.hpp
+        src/optimizer/AdamW.cpp
 )
 
 set_target_properties(attention PROPERTIES
