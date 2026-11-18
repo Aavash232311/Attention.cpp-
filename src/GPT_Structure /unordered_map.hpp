@@ -1,0 +1,13 @@
+//
+// Created by avash on 11/17/26.
+//
+
+#ifndef CHARACTER_TRANSFORMER_UNORDERED_MAP_H
+#define CHARACTER_TRANSFORMER_UNORDERED_MAP_H
+
+
+class unordered_map {
+};
+
+
+#endif //CHARACTER_TRANSFORMER_UNORDERED_MAP_H

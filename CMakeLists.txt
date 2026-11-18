@@ -28,6 +28,8 @@ add_executable(attention
     src/backpropagation/Kernel/interface_back.cu
     src/backpropagation/Kernel/flash_attention.cu
     src/optimizer/Kernel/AdamW.cu
+        "src/GPT_Structure /unordered_map.cpp"
+        "src/GPT_Structure /unordered_map.hpp"
 )
 
 set_target_properties(attention PROPERTIES

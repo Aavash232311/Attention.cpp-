@@ -1,18 +1,11 @@
 #pragma once
 #include <algorithm>
-#include <math.h>
+#include <cmath>
 #include <iostream>
 #include <vector>
 #include <memory>
-#include <random>
-#include <cstdio>
-#include <math.h>
-#include <ranges>
 #include <fstream>
-#include <iomanip>
-#include <cstring>
-#include <iostream>
-#include <unordered_map>
+
 
 using namespace std;
 
@@ -27,7 +20,7 @@ public:
 
         if (!file.is_open())
         {
-            std::runtime_error("Failed to open the file");
+            throw std::runtime_error("Failed to open the file");
         }
 
         std::vector<char> charArray;

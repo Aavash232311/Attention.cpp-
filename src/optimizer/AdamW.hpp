@@ -3,18 +3,12 @@
 #include "../include/netattention.hpp"
 #include "../include/attention_params.hpp"
 
-#include "../include/helper.hpp"
 #include "../include/utils.hpp"
 
 #include "./ds/optimizer_mem.hpp"
 #include "./ds/AdamW_config.hpp"
-
-#include <curand_kernel.h>
 #include <cuda_runtime.h>
-#include <iostream>
 #include <memory>
-#include <cstdio>
-#include <chrono>
 
 extern "C" void AdamWSTEP(
     float *theta,

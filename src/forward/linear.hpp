@@ -1,9 +1,8 @@
 #pragma once
-#include "../include/helper.hpp"
+
 #include "../include/utils.hpp"
 #include <curand_kernel.h>
 #include <cuda_runtime.h>
-#include <iostream>
 #include <memory>
 #include <cstdio>
 #include <chrono>
@@ -11,7 +10,7 @@
 extern "C" void KaimingInit(float *arr, curandState *state, int x, int y, unsigned long seed);
 extern "C" void WeightedSum(float *x, float *w, float *b, float *c, int M, int K, int N);
 
-// in math.cu kenrel -Reused logic
+// in math.cu kernel -Reused logic
 extern "C" void multiHeadedAttention(float *ws, float *out, int num_head, int head_dimension, int batch_size, int d_model, int seq_len);
 extern "C" void TransposeKey(float *arr, float *out, int num_heads, int head_dim, int batch_size, int seq_len, bool reverse);
 extern "C" void TranposeMiddleTensor4(float *arr, float *out, int batch_size, int seq_len, int num_head, int head_dim);
@@ -96,11 +95,11 @@ public:
         (transposedP != nullptr ? cudaFree(transposedP) : cudaSuccess);
     }
 
-    // this is the exntension of the constructor dont know why this way but
+    // this is the extension of the constructor dont know why this way but
     void LinearParams(int fan_in, int fan_out)
     {
 
-        // To imporve the kernel performance this is pre-init and then used in the second kernel.
+        // To improve the kernel performance this is pre-init and then used in the second kernel.
         cudaMalloc(&d_state_weight, fan_in * fan_out * sizeof(curandState));
         cudaMalloc(&d_state_bias, fan_out * sizeof(curandState));
 

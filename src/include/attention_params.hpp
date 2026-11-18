@@ -1,12 +1,9 @@
 #pragma once
-#include "linear.hpp"
-#include "../include/utils.hpp"
-#include "single_embeddings.hpp"
 
 // I am afraid that I manage memory like I have no common sense at all
 // but anyway right now we just want it to work.
 
-struct AttentionParamaters
+struct AttentionParams
 {
 
 

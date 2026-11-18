@@ -1,33 +1,21 @@
 #include "include/helper.hpp"
-#include <curand_kernel.h>
 #include <cuda_runtime.h>
 #include <iostream>
 #include <memory>
-#include <cstdio>
 #include <chrono>
-
 #include "include/tensor.hpp"
-#include "forward/linear.hpp"
-#include "include/linear.hpp"
-#include "include/p_head.hpp"
 #include "include/utils.hpp"
-#include "include/cache_in.hpp"
 #include "include/cache_out.hpp"
 #include "forward/interface.hpp"
-#include "forward/layer_norm.hpp"
-#include "forward/embeddings.hpp"
 #include "include/data_loader.hpp"
-#include "include/netattention.hpp"
-#include "forward/attention_head.hpp"
-#include "include/single_embeddings.hpp"
-#include "backpropagation/interface_back.hpp"
+
 
 // Again my background is beginner here with little concept from C
-// Transformer are complex neural network artitecture so I will focus on
+// Transformer are complex neural network architecture so I will focus on
 // making the things right at first rather than micro level optimization
-// The goal is to learn the underlying concept we can always bring the performace up later on.
+// The goal is to learn the underlying concept we can always bring the performance up later on.
 
-// I handtyped this again why not
+// I hand-typed this again why not
 // I created a monolith here never mind.
 
 // nvcc src/main.cpp src/kernel/utils.cu src/forward/Kernel/layer_norm.cu src/forward/Kernel/embedding.cu src/forward/Kernel/linear.cu src/forward/Kernel/attention_head.cu src/forward/Kernel/interface.cu src/backpropagation/Kernel/interface_back.cu -o src/bin/attention
@@ -82,7 +70,7 @@ int main()
         vocab_size,
         batch_size,
         seq_len,
-        num_heads); // write the hyperparamaters down
+        num_heads); // write the hyperparameters down
 
     epoch = debug == true ? 1 : epoch;
 
@@ -121,7 +109,7 @@ int main()
     Tensor<float> tensor(std::vector<int>{2, 3, 4}, DEVICE, true);
     tensor.NormalInit();
     
-    // utils->printFlatArray3D<float>(tensor, 2, 3, 4, false, "device");
+    utils->printFlatArray3D<float>(tensor, 2, 3, 4, false, "device");
 
     if (!(debug))
     {

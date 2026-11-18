@@ -1,25 +1,16 @@
 #pragma once
 #include "../include/helper.hpp"
-#include <curand_kernel.h>
 #include <cuda_runtime.h>
-#include <iostream>
-#include <memory>
 #include <cstdio>
-#include <chrono>
-
 #include "./interface_back.hpp"
 #include "./flash_attention.hpp"
 #include "./flash_attention_linear.hpp"
 #include "./contact_residual_back.hpp"
 
-#include "../include/utils.hpp"
-#include "../include/linear.hpp"
-#include "../include/p_head.hpp"
-#include "../include/cache_in.hpp"
+
 #include "../include/cache_out.hpp"
 #include "../include/netattention.hpp"
 #include "../include/attention_params.hpp"
-#include "../include/single_embeddings.hpp"
 
 using namespace std;
 

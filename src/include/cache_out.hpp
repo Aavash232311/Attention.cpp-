@@ -5,7 +5,6 @@
 #include <fstream>
 #include <iostream>
 #include <filesystem>
-#include <unordered_map>
 
 using namespace std;
 namespace fs = std::filesystem;
@@ -81,7 +80,7 @@ inline void releaseConfig(
 
 
 
-// Realeses json for hyperparamaters config
+// Releases json for hyperparameters config
 
 inline void releaseHyperParamaters(
     int d_model,

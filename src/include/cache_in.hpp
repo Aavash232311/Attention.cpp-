@@ -1,6 +1,5 @@
 #pragma once
 #include <iostream>
-#include <vector>
 #include <fstream>
 #include <stdexcept>
 #include <nlohmann/json.hpp>
@@ -11,8 +10,8 @@ using namespace std;
 using json = nlohmann::json;
 /*
     First debugger call from python will write the hp in json format,
-    instead of passing in the paramaters here which will make it look not so clean
-    we can directly load the josn here
+    instead of passing in the parameters here which will make it look not so clean
+    we can directly load the json here
 */
 
 struct Hyperparamaters

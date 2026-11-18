@@ -1,12 +1,8 @@
 #pragma once
 #include "../include/utils.hpp"
-#include "../include/helper.hpp"
-#include <curand_kernel.h>
 #include <cuda_runtime.h>
-#include <iostream>
 #include <memory>
 #include <cstdio>
-#include <chrono>
 
 using namespace std;
 
@@ -14,7 +10,7 @@ extern "C" void layerNormalization(float *x, float *gamma, float *beta, float *s
 
 class LayerNorm
 {
-    // we can loose the symmantic meaning in the norm procress so gamma and beta as learnable parms adjusts accordingly.
+    // we can loose the symmantic meaning in the norm progress so gamma and beta as learnable parms adjusts accordingly.
     float *h_gamma = nullptr;
     float *h_beta = nullptr;
 
@@ -46,7 +42,7 @@ public:
 
         for (int i = 0; i < d_model; ++i)
         {
-            h_gamma[i] = 1.0f; // because these are the learnable paramaters
+            h_gamma[i] = 1.0f; // because these are the learnable parameters
             h_beta[i] = 0.0f;
         }
 
@@ -54,7 +50,7 @@ public:
         cudaMalloc((void **)&d_gamma, d_model * sizeof(float));
         cudaMalloc((void **)&d_beta, d_model * sizeof(float));
 
-        // copy to device for both now, should be done in constuctor to get the performace advantage.
+        // copy to device for both now, should be done in constructor to get the performance advantage.
         // H2D copy
         cudaMemcpy(d_gamma, h_gamma, d_model * sizeof(float), cudaMemcpyHostToDevice);
         cudaMemcpy(d_beta, h_beta, d_model * sizeof(float), cudaMemcpyHostToDevice);
@@ -78,8 +74,8 @@ public:
 
     void forward(float *x) // after adding the embeddings we have (B, T, C) shape
     {
-        // we first normalize and then pass it to the transofmer which is normal in modern transformer.
-        // we also have to be very precise in cases like this because the bugs are scilent and we would never know what happened.
+        // we first normalize and then pass it to the transfer which is normal in modern transformer.
+        // we also have to be very precise in cases like this because the bugs are silent and we would never know what happened.
 
         // first we need to calculate the mean μ
         // second standard deviation

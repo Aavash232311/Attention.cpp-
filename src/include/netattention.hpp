@@ -2,9 +2,11 @@
 #include "attention_params.hpp"
 #include "linear.hpp"
 
+using namespace std;
+
 struct NetAttentionParamaters
 {
-    AttentionParamaters attention_head;
+    AttentionParams attention_head;
     LinearParams lm_head;
 
     /**

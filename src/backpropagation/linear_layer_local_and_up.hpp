@@ -1,14 +1,7 @@
 #pragma once
-#include "../include/helper.hpp"
-#include "../include/utils.hpp"
-#include <curand_kernel.h>
-#include <cuda_runtime.h>
-#include <iostream>
-#include <memory>
-#include <cstdio>
-#include <chrono>
 
-#include "./interface_back.hpp"
+#include <cstdio>
+
 
 using namespace std;
 
@@ -135,7 +128,7 @@ public:
         else
         {
             // don't judge on how bad of a programmer I am
-            // I am solving todays problem here.
+            // I am solving today problem here.
             wt_upstream(
                 W,
                 Wt,

@@ -1,15 +1,10 @@
 #pragma once
 #include "../include/helper.hpp"
-#include <curand_kernel.h>
 #include <cuda_runtime.h>
-#include <iostream>
 #include <memory>
 #include <cstdio>
-#include <chrono>
 
 #include "../include/utils.hpp"
-#include "../include/linear.hpp"
-#include "../include/linear.hpp"
 #include "../forward/linear.hpp"
 #include "../forward/embeddings.hpp"
 #include "../forward/layer_norm.hpp"
@@ -46,7 +41,7 @@ public:
     float *DeviceQ;
     float *DeviceQKT;
     // shape is like B, num head, head_dim, seq_len
-    float *BTC_MULTI_HEAD_BUFFER_HOST = nullptr; // most of this null pointer is uncessary but ok does not hurt.
+    float *BTC_MULTI_HEAD_BUFFER_HOST = nullptr; // most of this null pointer is unnecessary but ok does not hurt.
 
     float *B_NUMHEAD_T_T; // QK^T host
 
@@ -67,20 +62,21 @@ public:
     float *BTCdevice;
     // same buffer for temp
 
-    float *resedualOutDevice;
+
+    float *residualOutDevice;
 
     float *tempX;
     float *x_device;
 
-    // ----- Paramater required for standard attention backpropagation not the flash ------
+    // ----- Parameter required for standard attention backpropagation not the flash ------
     // at the learning stage of mine this is fine as well
 
     // UNTIL AND UNLESS YOU REALLY KNOW WHAT YOU ARE DOING
     // YOU WONT EVER KNOW WHAT WENT WRONG
     // BUGS IN KERNEL ARE THAT QUIET ON TOP OF THIS INSANE
-    // MATHAMATICS
+    // MATHEMATICS
 
-    float *softmaxed_qkv;
+    float *softmax_qkv_out;
 
     float *S = nullptr;
     float *P = nullptr;
@@ -91,7 +87,7 @@ public:
     float *K_cache;
 
     float *normalized_xt;
-    // after the normalization we feed that "x" into the QK,andV paramater.
+    // after the normalization we feed that "x" into the QK,andV parameter.
 
     float *doutput_bias;
 
@@ -123,7 +119,7 @@ public:
      *  as doing so could significantly degrade performance.
      *
      * @note This is good as we do not allocate or copy memory when training.
-     * But this lacks the flexiblity to just pass in a tensor of a given shape and
+     * But this lacks the flexibility to just pass in a tensor of a given shape and
      * pass through the attention head.
      *
      * @return None
@@ -144,7 +140,7 @@ public:
         this->batch_size = batch_size;
         this->debug = debug;
 
-        // Its okay to free this in destructor because we are using this buffer throught the duration of
+        // Its okay to free this in destructor because we are using this buffer through the duration of
         // this object or iteration anyway.
 
         this->embeddings = std::make_unique<Embeddings>(
@@ -163,13 +159,6 @@ public:
 
         layerNorm = std::make_unique<LayerNorm>(batch_size, seq_len, d_model);
 
-        // Just to test and keep track of things
-        // std::cout << "d_model: " << d_model << std::endl;
-        // std::cout << "vocab_size: " << vocab_size << std::endl;
-        // std::cout << "seq_len: " << seq_len << std::endl;
-        // std::cout << "num_heads: " << num_heads << std::endl;
-        // std::cout << "batch size: " << batch_size << std::endl;
-
         this->head_dim = d_model / num_heads;
 
         // --------- Buffer shape allocations -------------
@@ -183,7 +172,7 @@ public:
         BTC_MULTI_HEAD_BUFFER_HOST = (float *)malloc(batch_size * num_heads * head_dim * seq_len * sizeof(float));
 
         cudaMalloc((void **)&deviceQKTSqrtD, batch_size * num_heads * seq_len * seq_len * sizeof(float));
-        cudaMalloc((void **)&softmaxed_qkv, batch_size * num_heads * seq_len * head_dim * sizeof(float));
+        cudaMalloc((void **)&softmax_qkv_out, batch_size * num_heads * seq_len * head_dim * sizeof(float));
 
         B_NUMHEAD_T_T = (float *)malloc(batch_size * num_heads * seq_len * seq_len * sizeof(float)); // T,T end shape after QK^T
 
@@ -198,14 +187,14 @@ public:
         B_NUMHEAD_SEQLEN_HEADDIM = (float *)malloc(batch_size * num_heads * seq_len * head_dim * sizeof(float));
 
         // Here we will start the memory allocation for (B,T,C) since after computation the shapes are brought back
-        this->BTCHost = (float *)malloc(batch_size * seq_len * d_model * sizeof(float)); // we aready have the in buffer allocation so I wont worry about that for right now., this is for output. we bring back the original shape.
-        cudaMalloc((void **)&BTCdevice, batch_size * seq_len * d_model * sizeof(float));
+        this->BTCHost = static_cast<float *>(malloc(batch_size * seq_len * d_model * sizeof(float))); // we already have the in buffer allocation so I wont worry about that for right now., this is for output. we bring back the original shape.
+        cudaMalloc(reinterpret_cast<void **>(&BTCdevice), batch_size * seq_len * d_model * sizeof(float));
 
         cudaMalloc((void **)&tempX, batch_size * seq_len * d_model * sizeof(float));
 
-        cudaMalloc((void **)&resedualOutDevice, batch_size * seq_len * d_model * sizeof(float));
+        cudaMalloc((void **)&residualOutDevice, batch_size * seq_len * d_model * sizeof(float));
 
-        // ---- S, P, O ---- are required for backpropagation allocate here according to reqired size.
+        // ---- S, P, O ---- are required for backpropagation allocate here according to required size.
         S = (float *)malloc(seq_len * batch_size * num_heads * head_dim * sizeof(float));
 
         cudaMalloc((void **)&P, batch_size * num_heads * seq_len * seq_len * sizeof(float));
@@ -237,7 +226,7 @@ public:
         cudaFree(DeviceQ);
         cudaFree(DeviceQKT);
 
-        cudaFree(softmaxed_qkv);
+        cudaFree(softmax_qkv_out);
 
         cudaFree(deviceQKTSqrtD);
 
@@ -262,7 +251,7 @@ public:
         cudaFree(QKVOutDeviceOut); // we could free in the individual method but if we never call them then its never free.
 
         cudaFree(BTCdevice);
-        cudaFree(resedualOutDevice);
+        cudaFree(residualOutDevice);
 
         cudaFree(doutput_bias);
 
@@ -300,7 +289,7 @@ private:
     }
 
 public:
-    // This method divides by sqrt of d_model so that atlast forward lgoic in this program looks readable to a normal human being.
+    // This method divides by sqrt of d_model so that atlast forward logic in this program looks readable to a normal human being.
     void scalerDvisionAcrossMat(float *QKt)
     {
         ScalerDvisionElem(
@@ -453,20 +442,16 @@ public:
         QKVMatmulFinal(
             deviceSoftmaxOut, // (batch_size, num_head, seq_len, seq_len)
             V,                // (batch_size, num_head, seq_len, head_dim)
-            softmaxed_qkv,    // (batch_size, num_head, seq_len, head_dim)
+            softmax_qkv_out,    // (batch_size, num_head, seq_len, head_dim)
             seq_len,
             head_dim,
             num_heads,
             batch_size);
 
-        //   utils->tensor_min_max(softmaxed_qkv, batch_size * num_heads * seq_len * head_dim, "device");
-        // std::cout << "Token id " << std::endl;
-        // utils->printFlatArray2D(embeddings->getDeviceX(), batch_size, seq_len, "device");
-
         if (debug)
-            releaseBin(softmaxed_qkv, "attn_score.bin", batch_size * num_heads * seq_len * head_dim);
+            releaseBin(softmax_qkv_out, "attn_score.bin", batch_size * num_heads * seq_len * head_dim);
 
-        float *reformed_tensor = ReformShape(softmaxed_qkv);
+        float *reformed_tensor = ReformShape(softmax_qkv_out);
 
         if (debug)
             releaseBin(reformed_tensor, "re_shaped_multi_head.bin", batch_size * seq_len * d_model);
@@ -491,7 +476,7 @@ public:
      *
      * @class Attention
      * @attention forward()
-     * @brief Forwrd pass to train
+     * @brief Forward pass to train
      *
      * @warning Used to train as this uses buffers initllized from the consturcotr.
      *
@@ -618,9 +603,9 @@ public:
     float *addResidual(float *input, float *temp)
     {
 
-        vectorKernel(input, temp, resedualOutDevice, batch_size * seq_len * d_model);
+        vectorKernel(input, temp, residualOutDevice, batch_size * seq_len * d_model);
 
-        return resedualOutDevice;
+        return residualOutDevice;
     }
 
     float *addResidual(float *input, float *temp, int B, int T)
@@ -630,9 +615,9 @@ public:
         return promptResidualOut;
     }
 
-    AttentionParamaters attentionParamaters; // just the reference so stack allocation is fine
+    AttentionParams attentionParamaters; // just the reference so stack allocation is fine
 
-    AttentionParamaters getParamaters()
+    AttentionParams getParamaters()
     {
 
         return {
@@ -642,7 +627,7 @@ public:
             value_mat,
 
             BTCdevice,
-            softmaxed_qkv,
+            softmax_qkv_out,
 
             Q_cache,
             K_cache,

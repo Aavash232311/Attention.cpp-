@@ -1,10 +1,9 @@
 #pragma once
 #include "../include/helper.hpp"
-#include <curand_kernel.h>
 #include <cuda_runtime.h>
 #include <iostream>
 #include <memory>
-#include <algorithm>
+
 
 #include "../include/tensor.hpp"
 #include "../include/utils.hpp"
@@ -13,8 +12,6 @@
 #include "../include/p_head.hpp"
 #include "../optimizer/AdamW.hpp"
 #include "../include/cache_in.hpp"
-#include "../include/cache_out.hpp"
-#include "../forward/layer_norm.hpp"
 #include "../forward/embeddings.hpp"
 #include "../include/data_loader.hpp"
 #include "../include/netattention.hpp"
@@ -22,7 +19,6 @@
 #include "../optimizer/ds/AdamW_config.hpp"
 #include "../optimizer/optimizer_debugger.hpp"
 #include "../backpropagation/interface_back.hpp"
-#include "../backpropagation/flash_attention.hpp"
 #include "../backpropagation/debugger_release.hpp"
 
 using namespace std;
@@ -50,14 +46,14 @@ class AttentionInterface
     std::unique_ptr<AdamWMemConfig> adamMemConfig;
     std::unique_ptr<Helper> helper;
 
-    // turn those result into proballity score
+    // turn those result into probability score
     std::unique_ptr<Linear> lm_head;
 
     bool debug = true;
 
-    // DEVICE SFOTMAX BEFORE CROSS ENTROPY LOSS IN
+    // DEVICE SOFTMAX BEFORE CROSS ENTROPY LOSS IN
     std::unique_ptr<Tensor<float>> DeviceSoftmaxBLin;
-    // DEVICE SOFTMAX BEFORE CORSS ENTROPY LOSS OUT
+    // DEVICE SOFTMAX BEFORE CROSS ENTROPY LOSS OUT
     std::unique_ptr<Tensor<float>> DeviceSoftmaxBLout;
 
     // ALLOCATE MEMORY FOR Y
@@ -96,13 +92,13 @@ class AttentionInterface
     std::unique_ptr<Tensor<float>> WV;
     std::unique_ptr<Tensor<float>> WQ;
 
-    // ------------ Allocation fhas attention class ---------------------
+    // ------------ Allocation has attention class ---------------------
 
     std::unique_ptr<Tensor<float>> S_device;
     std::unique_ptr<Tensor<float>> P_device;
     std::unique_ptr<Tensor<float>> O_device;
 
-    // P^T and V^T device alloication
+    // P^T and V^T device allocation
 
     std::unique_ptr<Tensor<float>> P_T_device_out;
     std::unique_ptr<Tensor<float>> V_T_device_out;
@@ -169,7 +165,7 @@ class AttentionInterface
 private:
     // ----------- TEMPORARY DEBUGGER SCRIPT ---------------------
 
-    // B,T,C shape use if you want to see and inspeace device
+    // B,T,C shape use if you want to see and inspect device
     void DebugBTCFlatArray3D(
         float *d_arr,
         int B,

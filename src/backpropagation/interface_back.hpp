@@ -1,22 +1,16 @@
 #pragma once
-#include "../include/helper.hpp"
-#include <curand_kernel.h>
+
 #include <cuda_runtime.h>
-#include <iostream>
 #include <memory>
 #include <cstdio>
-#include <chrono>
 
 #include "./linear_layer_local_and_up.hpp"
 
 #include "../include/utils.hpp"
-#include "../include/linear.hpp"
-#include "../include/p_head.hpp"
 #include "../include/cache_in.hpp"
 #include "../include/cache_out.hpp"
 #include "../include/netattention.hpp"
-#include "../include/attention_params.hpp"
-#include "../include/single_embeddings.hpp"
+
 
 // ----------- Backpropgation ------------------------
 extern "C" void upstream_dl_dz(float *actual, float *predicted, float *delta, int B, int T, int C);

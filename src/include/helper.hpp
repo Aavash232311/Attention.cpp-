@@ -1,16 +1,6 @@
 #pragma once
 #include <vector>
-#include <memory>
-#include <random>
-#include <cstdio>
-#include <math.h>
-#include <ranges>
-#include <fstream>
-#include <iomanip>
-#include <cstring>
-#include <iostream>
 #include <unordered_map>
-#include <stdexcept>
 #include <iosfwd>
 
 using namespace std;

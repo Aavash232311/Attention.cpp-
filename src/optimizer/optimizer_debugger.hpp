@@ -1,24 +1,15 @@
 #pragma once
 #include "../include/helper.hpp"
-#include <curand_kernel.h>
 #include <cuda_runtime.h>
 #include <iostream>
-#include <memory>
 #include <cstdio>
-#include <chrono>
 
 #include "./AdamW.hpp"
 
-#include "../include/utils.hpp"
-#include "../include/linear.hpp"
-#include "../include/p_head.hpp"
-#include "../include/cache_in.hpp"
+
 #include "../include/cache_out.hpp"
 #include "../include/netattention.hpp"
 #include "../include/attention_params.hpp"
-#include "../include/single_embeddings.hpp"
-
-#include "../include/cache_out.hpp"
 
 using namespace std;
 
