@@ -346,7 +346,7 @@ public:
 
     LinearParams getLmHeadParams()
     {
-        return LinearParams{lm_head->getWeightDevice(), lm_head->getBaiasDevice()};
+        return LinearParams{lm_head->getWeightDevice(), lm_head->getBiasDevice()};
     }
 
     void softmaxAcrossProballityCrossEntropyLoss(float *probality, int *y)
@@ -540,7 +540,7 @@ public:
 
                 modelParamaters.weight_lm_head = lm_head->getWeightDevice();
 
-                modelParamaters.bias_lm_head = lm_head->getBaiasDevice();
+                modelParamaters.bias_lm_head = lm_head->getBiasDevice();
 
                 // std::cout << " LM head " << std::endl;
                 // this->utils->printFlatArray3D(prob, batch_size, seq_len, vocab_size, false, "device");
@@ -569,7 +569,7 @@ public:
                 // utils->printFlatArray2D(b, batch_size, seq_len, "device");
                 // ----------- Lets gather overall paramaters here ---------- //
                 modelParamaters.attention_head = attention->getParamaters();
-                modelParamaters.lm_head = LinearParams{lm_head->getWeightDevice(), lm_head->getBaiasDevice()};
+                modelParamaters.lm_head = LinearParams{lm_head->getWeightDevice(), lm_head->getBiasDevice()};
                 modelParamaters.L = outCrossEntropyDevice->get();        // CE Out
                 modelParamaters.y_actual = yHotEncodeDeviceOut->get();   // (B, T, vocab_size) from actual
                 modelParamaters.y_predicted = DeviceSoftmaxBLout->get(); // (B, T, vocab_size) to predicted proballity

@@ -410,7 +410,7 @@ public:
             resehapedQKVShapeDebugger(Q, K, V);
 
         // (batch_size, num_head, seq_len, head_dim) to (batch_size, num_head, head_dim, seq_len)
-        key->teansposeKeyForAttnScore(DeviceKt);
+        key->transposeKeyForAttnScore(DeviceKt);
 
         if (debug)
             releaseBin(DeviceKt, "tranposed_k.bin", batch_size * seq_len * num_heads * head_dim);
@@ -575,7 +575,7 @@ public:
         cudaMalloc((void **)&softmaxedPormpt, B * num_heads * T * T * sizeof(float));
         cudaMalloc((void **)&attnScorePrompt, B * num_heads * T * head_dim * sizeof(float));
 
-        key->teansposeKeyForAttnScore(keyTransposedPrompt, B, T);
+        key->transposeKeyForAttnScore(keyTransposedPrompt, B, T);
 
         QKmatmul(Q, keyTransposedPrompt, qktPrompt, T, head_dim, B, num_heads);
         ScalerDvisionElem(qktPrompt, B, num_heads, T, head_dim);
@@ -646,13 +646,13 @@ public:
             value->getWeightDevice(),
 
             outputProj->getWeightDevice(),
-            outputProj->getBaiasDevice(),
+            outputProj->getBiasDevice(),
 
             doutput_bias,
 
-            query->getBaiasDevice(),
-            key->getBaiasDevice(),
-            value->getBaiasDevice(),
+            query->getBiasDevice(),
+            key->getBiasDevice(),
+            value->getBiasDevice(),
 
             output_porjection_x,
             output_project_xt,

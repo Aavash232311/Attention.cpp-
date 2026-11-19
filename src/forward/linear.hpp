@@ -18,12 +18,9 @@ class Linear
 {
     bool dLinear = true;
     float *ws = nullptr; // weighted sum
-
     float *x = nullptr;
-
-    float *h_mha;
-
-    float *weighted_sum_device;
+    float *h_mha{};
+    float *weighted_sum_device{};
 
     int f_in;
     int f_out;
@@ -31,248 +28,41 @@ class Linear
     int batch_size;
     std::unique_ptr<Utility> utils = std::make_unique<Utility>();
 
-    float *mhead_out_device; // this is multi head attention out device
-    float *device_hhead_in;  // copy to this from weighted sum
+    float *multi_head_out_device{}; // this is multi head attention out device
+    float *device_weighted_sum_in{};  // copy to this from weighted sum
 
-    float n_head;
-    float head_dim;
+    int n_head;
+    int head_dim;
 
     bool debug = true;
 
-    float *deviceArrInTranspose;
+    float *deviceArrInTranspose{};
 
-    float *device_weight;
-    float *device_bias;
-    curandState *d_state_weight;
-    curandState *d_state_bias;
-
-public:
-    Linear(int feature_in, int feature_out, int seq_len, int batch_size, int n_head, bool debug)
-    {
-        this->seq_len = seq_len;
-        this->batch_size = batch_size;
-        this->f_in = feature_in;
-        this->f_out = feature_out;
-        this->n_head = n_head;
-        this->head_dim = feature_out / n_head;
-        this->LinearParams(feature_in, feature_out);
-        this->debug = debug;
-
-        // pre-allocate memroy in the constructor
-        // because we need to flattern this, x (batch_size, seq_len, d_model)
-
-        this->ws = (float *)malloc(seq_len * batch_size * f_out * sizeof(float));
-
-        cudaMalloc((void **)&weighted_sum_device, seq_len * batch_size * f_out * sizeof(float));
-
-        /// allocate the memory for multi headed attention Shape(B, T, num_heads, head_dim), JUST BTC when in
-        cudaMalloc((void **)&device_hhead_in, seq_len * batch_size * f_out * sizeof(float)); // copy ws here
-
-        cudaMalloc((void **)&mhead_out_device, seq_len * batch_size * n_head * head_dim * sizeof(float));
-
-        // In order to transpose that Q,K,V and swap we need to allocate the memory in GDDR VRAM
-        cudaMalloc((void **)&deviceArrInTranspose, batch_size * seq_len * n_head * head_dim * sizeof(float));
-    }
-
-    ~Linear()
-    {
-        free(ws);
-
-        cudaFree(weighted_sum_device);
-
-        cudaFree(deviceArrInTranspose);
-
-        cudaFree(mhead_out_device);
-
-        cudaFree(device_weight);
-        cudaFree(device_bias);
-        cudaFree(d_state_weight);
-        cudaFree(d_state_bias);
-
-        (weightedSumP != nullptr ? cudaFree(weightedSumP) : cudaSuccess);
-        (multiHeadedP != nullptr ? cudaFree(multiHeadedP) : cudaSuccess);
-        (transposedP != nullptr ? cudaFree(transposedP) : cudaSuccess);
-    }
-
-    // this is the extension of the constructor dont know why this way but
-    void LinearParams(int fan_in, int fan_out)
-    {
-
-        // To improve the kernel performance this is pre-init and then used in the second kernel.
-        cudaMalloc(&d_state_weight, fan_in * fan_out * sizeof(curandState));
-        cudaMalloc(&d_state_bias, fan_out * sizeof(curandState));
-
-        cudaMalloc((void **)&device_weight, fan_in * fan_out * sizeof(float));
-        cudaMalloc((void **)&device_bias, fan_out * sizeof(float));
-
-        // making sure these seeds are different
-        unsigned long seed_1 = static_cast<unsigned long>(
-            std::chrono::high_resolution_clock::now()
-                .time_since_epoch()
-                .count());
-
-        unsigned long seed_2 = static_cast<unsigned long>(
-            std::chrono::high_resolution_clock::now()
-                .time_since_epoch()
-                .count());
-
-        // we need tow kernal launches here
-        KaimingInit(device_weight, d_state_weight, fan_in, fan_out, seed_1);
-        KaimingInit(device_bias, d_state_bias, 1, fan_out, seed_2);
-    }
-
-    float *getBaiasDevice()
-    {
-        return this->device_bias;
-    }
-
-    float *getWeightDevice()
-    {
-        return this->device_weight;
-    }
-
-    float *getMultiHeadedDeivce()
-    {
-        return this->mhead_out_device;
-    }
-
-    /**
-     *
-     * @class forward()
-     * @brief expects BTC tenosr for Linear transformation
-     *
-     * @warning  Expects a device pointer
-     * @return (Linear transformed tensor)
-     */
-    float *forward(float *val)
-    {
-        WeightedSum(val, device_weight, device_bias, weighted_sum_device, batch_size * seq_len, f_in, f_out);
-        return weighted_sum_device;
-    }
+    float *device_weight{};
+    float *device_bias{};
+    curandState *d_state_weight{};
+    curandState *d_state_bias{};
 
     float *weightedSumP = nullptr;
     float *multiHeadedP = nullptr;
     float *transposedP = nullptr;
-    /**
-     *
-     * @class forward()
-     * @brief Expects a BTC tensor for the linear transformation.
-     * Applies the linear transformation using the existing weights and biases
-     * while supporting different batch sizes.
-     *
-     * If this were a high-performance API, this approach would be inefficient.
-     * However, it is sufficient for our current use case.
-     *
-     * @param val (B, T, C) tensor
-     * @warning  Expects a device pointer
-     * @return (Linear transformed tensor)
-     */
-    float *forward(float *val, int b, int prompt_seq_len)
-    {
-        cudaFree(weightedSumP);
-        weightedSumP = nullptr;
-        
-        int t = prompt_seq_len;
-        cudaMalloc((void **)&weightedSumP, b * t * f_out * sizeof(float));
 
-        WeightedSum(val, device_weight, device_bias, weightedSumP, b * t, f_in, f_out);
+public:
+    Linear(int feature_in, int feature_out, int seq_len, int batch_size, int n_head, bool debug);
+    ~Linear();
 
-        return weightedSumP;
-    }
-
-    /**
-     * @brief splits channels and reorders (B,T,C) into (B,H,T,D)
-     *
-     * @warning Returns device pointer
-     * @return (batch_size, num_head, seq_len, head_dim) tensor in device
-     */
-    float *reshapeHead()
-    {
-        multiHeadedAttention(weighted_sum_device, mhead_out_device, n_head, head_dim, batch_size, f_out, seq_len);
-
-        return mhead_out_device;
-    }
-
-    /**
-     * @brief splits channels and reorders (B,T,C) into (B,H,T,D)
-     *
-     * @param B batch size
-     * @param T seq_len
-     * @warning Returns device pointer
-     * @return (batch_size, num_head, seq_len, head_dim) tensor in device
-     */
-    float *reshapeHead(int B, int prompt_seq_len)
-    {
-        cudaFree(multiHeadedP);
-        multiHeadedP = nullptr;
-        int T = prompt_seq_len;
-        cudaMalloc(&multiHeadedP, B * T * head_dim * n_head * sizeof(float));
-
-        multiHeadedAttention(weightedSumP, multiHeadedP, n_head, head_dim, B, f_out, T);
-
-        return multiHeadedP;
-    }
+    [[nodiscard]] float *reshapeHead() const;
+    [[nodiscard]] float *transposeMiddle4DTensor() const;
+    [[nodiscard]] float *getBiasDevice() const{ return this->device_bias;}
+    [[nodiscard]] float *getWeightDevice() const {return this->device_weight;}
+    [[nodiscard]] float *getMultiHeadedDevice() const {return this->multi_head_out_device;}
 
 
-    float *transposeMiddle4DTensor()
-    {
-        TranposeMiddleTensor4(
-            mhead_out_device,
-            deviceArrInTranspose,
-            batch_size,
-            seq_len,
-            n_head,
-            head_dim);
-
-        return deviceArrInTranspose; // (batch_size, num_head, seq_len, head_dim) changed shape
-    }
-
-    float *transposeMiddle4DTensor(int B, int prompt_seq_len)
-    {
-        int T = prompt_seq_len;
-        cudaFree(transposedP); transposedP = nullptr;
-        cudaMalloc(&transposedP, B * T * head_dim * n_head * sizeof(float));
-        TranposeMiddleTensor4(
-            multiHeadedP,
-            transposedP,
-            B,
-            T,
-            n_head,
-            head_dim);
-        // unknown reasons :)
-        // utils->printFlarArray4D(x, B, T, n_head, head_dim, "device");
-
-        return transposedP; // (batch_size, num_head, seq_len, head_dim) changed shape
-    }
-
-    void teansposeKeyForAttnScore(float *buffer_out_d, int b, int prompt_seq_len)
-    {
-        TransposeKey(
-            multiHeadedP,
-            buffer_out_d,
-            n_head,
-            head_dim,
-            b,
-            prompt_seq_len,
-            false);
-    }
-
-    /**
-     * @class teansposeKeyForAttnScore
-     * @brief transforms (batch_size, num_head, seq_len, head_dim) to (batch_size, num_head, head_dim, seq_len)
-     *
-     * @note Writes (batch_size, num_head, head_dim, seq_len) into buffer_out_d.
-     */
-    void teansposeKeyForAttnScore(
-        float *buffer_out_d)
-    {
-        TransposeKey(
-            mhead_out_device,
-            buffer_out_d,
-            n_head,
-            head_dim,
-            batch_size,
-            seq_len,
-            false);
-    }
+    float *forward(float *val) const;
+    void LinearParams(int fan_in, int fan_out);
+    float *reshapeHead(int B, int prompt_seq_len);
+    float *forward(float *val, int b, int prompt_seq_len);
+    void transposeKeyForAttnScore(float *buffer_out_d) const;
+    float *transposeMiddle4DTensor(int B, int prompt_seq_len);
+    void transposeKeyForAttnScore(float *buffer_out_d, int b, int prompt_seq_len) const;
 };
