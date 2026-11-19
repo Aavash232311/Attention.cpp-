@@ -4,7 +4,6 @@
 #include <curand_kernel.h>
 #include <cuda_runtime.h>
 #include <memory>
-#include <cstdio>
 #include <chrono>
 
 extern "C" void KaimingInit(float *arr, curandState *state, int x, int y, unsigned long seed);

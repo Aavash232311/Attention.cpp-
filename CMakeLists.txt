@@ -33,6 +33,7 @@ add_executable(attention
         src/optimizer/optimizer_debugger.cpp
         src/optimizer/optimizer_debugger.hpp
         src/optimizer/AdamW.cpp
+        src/include/data_loader.cpp
 )
 
 set_target_properties(attention PROPERTIES
