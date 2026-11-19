@@ -10,14 +10,11 @@ Linear::Linear(const int feature_in, const int feature_out, const int seq_len, c
 {
     this->head_dim = feature_out / n_head;
     this->LinearParams(feature_in, feature_out);
-
-    this->ws = static_cast<float *>(malloc(seq_len * batch_size * f_out * sizeof(float)));
-
     weighted_sum_device = make_unique<Tensor<float>>(vector<int>{batch_size, seq_len, f_out}, DEVICE);
     multi_head_out_device = make_unique<Tensor<float>>(vector<int>{batch_size, seq_len, n_head, head_dim}, DEVICE);
 
     // In order to transpose that Q,K,V and swap we need to allocate the memory in video memory
-    cudaMalloc(reinterpret_cast<void **>(&deviceArrInTranspose), batch_size * seq_len * n_head * head_dim * sizeof(float));
+    deviceArrInTranspose = make_unique<Tensor<float>>(vector<int>{batch_size, seq_len, n_head, head_dim}, DEVICE);
 }
 
 void Linear::LinearParams(const int fan_in, const int fan_out) {
@@ -104,45 +101,42 @@ float *Linear::forward(float *val, const int b, const int prompt_seq_len) {
  * @return (batch_size, num_head, seq_len, head_dim) tensor in device
  */
 float* Linear::reshapeHead(const int B, const int prompt_seq_len) {
-    cudaFree(multiHeadedP);
-    multiHeadedP = nullptr;
     const int T = prompt_seq_len;
-    cudaMalloc(&multiHeadedP, B * T * head_dim * n_head * sizeof(float));
+    multiHeadedP = make_unique<Tensor<float>>(vector<int>{batch_size, seq_len, head_dim, n_head}, DEVICE);
 
-    multiHeadedAttention(weightedSumP->get(), multiHeadedP, n_head, head_dim, B, f_out, T);
+    multiHeadedAttention(weightedSumP->get(), multiHeadedP->get(), n_head, head_dim, B, f_out, T);
 
-    return multiHeadedP;
+    return multiHeadedP->get();
 }
 
 float* Linear::transposeMiddle4DTensor() const {
     TransposeMiddleTensor4(
     multi_head_out_device->get(),
-    deviceArrInTranspose,
+    deviceArrInTranspose->get(),
     batch_size,
     seq_len,
     n_head,
     head_dim);
 
-    return deviceArrInTranspose; // (batch_size, num_head, seq_len, head_dim) changed shape
+    return deviceArrInTranspose->get(); // (batch_size, num_head, seq_len, head_dim) changed shape
 }
 
 float* Linear::transposeMiddle4DTensor(const int B, const int prompt_seq_len)  {
     const int T = prompt_seq_len;
-    cudaFree(transposedP); transposedP = nullptr;
-    cudaMalloc(&transposedP, B * T * head_dim * n_head * sizeof(float));
+    transposedP = make_unique<Tensor<float>>(vector<int>{batch_size, seq_len, head_dim, n_head}, DEVICE);
     TransposeMiddleTensor4(
-        multiHeadedP,
-        transposedP,
+        multiHeadedP->get(),
+        transposedP->get(),
         B,
         T,
         n_head,
         head_dim);
-    return transposedP; // (batch_size, num_head, seq_len, head_dim) changed shape
+    return transposedP->get(); // (batch_size, num_head, seq_len, head_dim) changed shape
 }
 
 void Linear::transposeKeyForAttnScore(float *buffer_out_d, const int b, const int prompt_seq_len) const {
     TransposeKey(
-    multiHeadedP,
+    multiHeadedP->get(),
     buffer_out_d,
     n_head,
     head_dim,
@@ -169,11 +163,6 @@ void Linear::transposeKeyForAttnScore(float *buffer_out_d) const {
 }
 
 Linear::~Linear() {
-    free(ws);
-    cudaFree(deviceArrInTranspose);
     cudaFree(d_state_weight);
     cudaFree(d_state_bias);
-
-    (multiHeadedP != nullptr ? cudaFree(multiHeadedP) : cudaSuccess);
-    (transposedP != nullptr ? cudaFree(transposedP) : cudaSuccess);
 }

@@ -657,6 +657,6 @@ public:
             output_porjection_x,
             output_project_xt,
 
-            embeddings->getEmbeddingParmaterDevice()};
+            embeddings->getEmbeddingParameterDevice()};
     }
 };

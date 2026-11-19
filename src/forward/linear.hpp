@@ -19,10 +19,6 @@ using namespace std;
 class Linear
 {
     bool dLinear = true;
-    float *ws = nullptr; // weighted sum
-
-    float *x = nullptr;
-    float *h_mha{};
 
     int f_in;
     int f_out;
@@ -33,19 +29,18 @@ class Linear
 
     bool debug = true;
 
-    float *deviceArrInTranspose{};
-
     unique_ptr<Tensor<float>> device_bias;
     unique_ptr<Tensor<float>> device_weight;
     unique_ptr<Tensor<float>> weighted_sum_device;
     unique_ptr<Tensor<float>> multi_head_out_device;
+    unique_ptr<Tensor<float>> deviceArrInTranspose;
 
     curandState *d_state_weight{};
     curandState *d_state_bias{};
 
     unique_ptr<Tensor<float>> weightedSumP;
-    float *multiHeadedP = nullptr;
-    float *transposedP = nullptr;
+    unique_ptr<Tensor<float>> multiHeadedP;
+    unique_ptr<Tensor<float>> transposedP;
 
     std::unique_ptr<Utility> utils = std::make_unique<Utility>();
 

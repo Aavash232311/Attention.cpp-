@@ -35,6 +35,7 @@ add_executable(attention
         src/optimizer/AdamW.cpp
         src/include/data_loader.cpp
         src/forward/linear.cpp
+        src/forward/embeddings.cpp
 )
 
 set_target_properties(attention PROPERTIES

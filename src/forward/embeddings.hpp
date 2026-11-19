@@ -5,6 +5,7 @@
 #include "../include/utils.hpp"
 #include "../include/norm_dis.hpp"
 #include "../include/data_loader.hpp"
+#include "../include/tensor.hpp"
 
 extern "C" void positionalEmbeddings(float *out, int seq_len, int d_model);
 extern "C" void lookup(int *x, float *embeddings, float *C, int d_model, int seq_len, int batch_size, int vocab_size);
@@ -23,154 +24,30 @@ public:
     int batch_size;
 
     std::unique_ptr<Utility> utils = std::make_unique<Utility>();
-    std::unique_ptr<Initializer> initilizer = std::make_unique<Initializer>();
+    std::unique_ptr<Initializer> init = std::make_unique<Initializer>();
     std::vector<std::vector<float>> tokenEmbeddings;
 
     // This is for debudding
     bool debug = true; // this is like s switch runs once and then turns off, now this was ment to debug by printing.
 
-    // Initlize memory here, in a method that is frequently called is more costly.
-    float *lookedUpEmbeddings = nullptr;
-
-    float *hostEmbeddings;
-
-
-    float *deviceEmbeddings;
-    float *deviceFinalEmbeddings;
-    float *lookupDeviceOut;
-
-    float *devicePositionalEncoding;
-
-    Embeddings(int d_model, int vocab_size, int seq_len, int batch_size, bool debug) // this batch size can very depending upon the use use
-    {
-        this->d_model = d_model;
-        this->vocab_size = vocab_size;
-        this->seq_len = seq_len;
-        this->batch_size = batch_size;
-        this->debug = debug;
-
-        cudaMalloc((void **)&devicePositionalEncoding, seq_len * d_model * sizeof(float));
-        positionalEmbeddings(devicePositionalEncoding, seq_len, d_model); // Let positional embedding stay on the global memory
-
-        this->tokenEmbeddings = initilizer->EmbeddingInit(this->vocab_size, this->d_model); // token embeddings, Shape(vocab_size, d_model)
-                                                                                            // initlize fixed memory here so that our program runs faster.
-        hostEmbeddings = utils->TwoDVectorToFlatMem(this->tokenEmbeddings);                 // this is from I am learning so I was too scared to touch kernel
-
-        int sizeFinalEmbeddings = seq_len * d_model * batch_size * sizeof(float);
-
-        lookedUpEmbeddings = (float *)malloc(sizeFinalEmbeddings);
-        // copy to GPU memory
-        // copy embeddings to the GPU after making int flat
-        cudaMalloc((void **)&deviceEmbeddings, vocab_size * d_model * sizeof(float));
-        cudaMemcpy(deviceEmbeddings, hostEmbeddings, vocab_size * d_model * sizeof(float), cudaMemcpyHostToDevice);
-
-        // allocare GPU memory for final embeddings
-        cudaMalloc((void **)&deviceFinalEmbeddings, seq_len * d_model * batch_size * sizeof(float));
-        // allocate memory for output after lookup Shape(seq_len, batch_size, d_model)
-        cudaMalloc((void **)&lookupDeviceOut, seq_len * batch_size * d_model * sizeof(float));
-    };
-
-    ~Embeddings()
-    {
-        (lookedUpEmbeddings != nullptr ? free(lookedUpEmbeddings) : void());
-
-        (deviceXPrompt != nullptr ? cudaFree(deviceXPrompt) : cudaSuccess);
-        (lookupDeviceOutPrompt != nullptr ? cudaFree(lookupDeviceOutPrompt) : cudaSuccess);
-        (deviceEmbeddingsFinalPrompt != nullptr ? cudaFree(deviceEmbeddingsFinalPrompt) : cudaSuccess);
-
-        delete[] hostEmbeddings;
-
-
-        cudaFree(deviceEmbeddings);
-        cudaFree(deviceFinalEmbeddings);
-
-        cudaFree(devicePositionalEncoding);
-        cudaFree(lookupDeviceOut);
-    }
-
-    /**
-     * @class Embeddings
-     * @brief Embedding forward, token embeddings and positional encoding.
-     *
-     *
-     * @param currentBatch batch (B, T) from the host.
-     * @warning expects the batch in GPU
-     *
-     * @warning  returns BTC tensor from the device
-     * @returns returns BTC tensor from the device
-     * @author Avash Lamichhane
-     *
-     */
-    float *forward(Batch currentBatch)
-    {
-
-        int actual_batch = batch_size;
-
-
-
-        // std::cout << "from the class " << std::endl;
-        // utils->printFlatArray2D(deviceX, batch_size, seq_len, "device");
-
-        lookup(currentBatch.x, deviceEmbeddings, lookupDeviceOut, d_model, seq_len, actual_batch, vocab_size); // actual batch because the batch size may vary here
-
-    //    utils->printFlatArray3D(lookupDeviceOut, batch_size, seq_len, d_model, false, "device");
-
-     //   cout << " Batch size: " << batch_size << " Seq_len: " << seq_len << " Actual batch: " << actual_batch << endl;
-
-        // utils->printFlatArray2D(currentBatch.x, batch_size, seq_len, "device");
-
-        // Now this result gets added
-        addEmbeddings(lookupDeviceOut, devicePositionalEncoding, deviceFinalEmbeddings, d_model, seq_len, actual_batch);
-
-        // std::cout << " Added embeddings from embedding method " << std::endl;
-
-        //   utils->printFlatArray3D(deviceFinalEmbeddings, batch_size, seq_len, d_model, false, "device");
-
-     //   utils->printFlatArray2D(deviceEmbeddings, vocab_size, d_model, "device");
-
-        debug = false;
-        return deviceFinalEmbeddings;
-    }
-
     int *deviceXPrompt = nullptr;
     float *lookupDeviceOutPrompt = nullptr;
     float *deviceEmbeddingsFinalPrompt = nullptr;
 
-    void freePromptBuffers()
-    {
-        cudaFree(deviceXPrompt);
-        deviceXPrompt = nullptr;
-        cudaFree(lookupDeviceOutPrompt);
-        lookupDeviceOutPrompt = nullptr;
-        cudaFree(deviceEmbeddingsFinalPrompt);
-        deviceEmbeddingsFinalPrompt = nullptr;
-    }
+    // Initialize memory here, in a method that is frequently called is more costly.
+    unique_ptr<Tensor<float>> lookedUpEmbeddings;
+    float *hostEmbeddings;
+    float *deviceEmbeddings{};
+    float *deviceFinalEmbeddings{};
+    float *lookupDeviceOut{};
+    float *devicePositionalEncoding{};
 
-    float *forward(int *prompt, int B, int prompt_seq_len)
-    {
-        freePromptBuffers();
-        // utils->printFlatArray2D(deviceEmbeddings, vocab_size, d_model, "device");
-        cudaMalloc(&deviceXPrompt, B * prompt_seq_len * sizeof(int));
-        cudaMalloc(&lookupDeviceOutPrompt, B * prompt_seq_len * d_model * sizeof(float));
-        cudaMalloc(&deviceEmbeddingsFinalPrompt, B * prompt_seq_len * d_model * sizeof(float));
+    Embeddings(int d_model, int vocab_size, int seq_len, int batch_size, bool debug); // this batch size can very depending upon the use use;
+    ~Embeddings();
 
-        // Inference callers pass the GPU buffer returned by vectorToFlatStrip(..., "gpu").
-        cudaMemcpy(deviceXPrompt, prompt, B * prompt_seq_len * sizeof(int), cudaMemcpyDeviceToDevice);
-
-        lookup(deviceXPrompt, deviceEmbeddings, lookupDeviceOutPrompt, d_model, prompt_seq_len, B, vocab_size);
-        addEmbeddings(lookupDeviceOutPrompt, devicePositionalEncoding, deviceEmbeddingsFinalPrompt, d_model, prompt_seq_len, B);
-
-        return deviceEmbeddingsFinalPrompt;
-    }
-
-
-    float *getFinalEmbeddingDevice()
-    {
-        return this->deviceFinalEmbeddings;
-    }
-
-    float *getEmbeddingParmaterDevice()
-    {
-        return deviceEmbeddings;
-    }
+    void freePromptBuffers();
+    float *forward(const Batch &currentBatch);
+    float *forward(const int *prompt, int B, int prompt_seq_len);
+    [[nodiscard]] float *getFinalEmbeddingDevice() const{ return this->deviceFinalEmbeddings;}
+    [[nodiscard]] float *getEmbeddingParameterDevice() const{return deviceEmbeddings;}
 };
