@@ -22,7 +22,7 @@ struct Tensor4
 class Utility
 {
 public:
-    void showHashMap(std::vector<std::unordered_map<char, int>> &encoded_input);
+    static void showHashMap(std::vector<std::unordered_map<char, int>> &encoded_input);
     template <typename T>
     void showVector(std::vector<T> &arr);
 
@@ -71,18 +71,18 @@ public:
         const char *label = "Matrix",
         std::string pointer_type = "host");
     template <typename T>
-    void printFlarArray4D(T *data, int B, int S, int num_heads, int head_dim, std::string pointer_type = "host");
+    void printFlarArray4D(T *data, int B, int S, int num_heads, int head_dim, const std::string& pointer_type = "host");
 
     /*
         So I cannot make judgement in 4D tensor which is printed as flat.
         Espically for swapNT I want to verify that claim using this method
     */
-    void print2DTensorOnDemmand(float *data, int dim0, int dim1, int dim2, int dim3,
+    static void print2DTensorOnDemand(const float *data, int dim0, int dim1, int dim2, int dim3,
                                 int fix0, int fix1);
     template <typename T>
     void printLastOneOf3D(const T *arr, int D0, int D1, int D2, std::string pointer_type = "host");
 
-    // THIS IS FOR PRINTHING ALL THE ROWS OF ONE HOT ENCODED ARRAY
+    // THIS IS FOR PRINTING ALL THE ROWS OF ONE HOT ENCODED ARRAY
     template <typename T>
     void printAllOneHot3D(const T *arr, int D0, int D1, int D2);
 

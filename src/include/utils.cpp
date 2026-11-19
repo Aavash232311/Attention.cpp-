@@ -531,13 +531,13 @@ void Utility::print2DMatrixLastTwoRect(
  * @brief Used for debugging
  */
 template <typename T>
-void Utility::printFlarArray4D(T *data, int B, int S, int num_heads, int head_dim, std::string pointer_type)
+void Utility::printFlarArray4D(T *data, int B, int S, int num_heads, int head_dim, const std::string& pointer_type)
 {
     float *h_arr = nullptr;
 
     if (pointer_type == "device")
     {
-        h_arr = (T *)malloc(B * S * num_heads * head_dim * sizeof(T));
+        h_arr = static_cast<T *>(malloc(B * S * num_heads * head_dim * sizeof(T)));
         cudaMemcpy(h_arr, data, B * S * num_heads * head_dim * sizeof(T), cudaMemcpyDeviceToHost);
         data = h_arr;
     }
@@ -566,9 +566,9 @@ void Utility::printFlarArray4D(T *data, int B, int S, int num_heads, int head_di
 
 /*
     So I cannot make judgement in 4D tensor which is printed as flat.
-    Espically for swapNT I want to verify that claim using this method
+    Epically for swapNT I want to verify that claim using this method
 */
-void Utility::print2DTensorOnDemmand(float *data, int dim0, int dim1, int dim2, int dim3,
+void Utility::print2DTensorOnDemand(const float *data, int dim0, int dim1, int dim2, int dim3,
                                      int fix0, int fix1)
 {
     int base = fix0 * (dim1 * dim2 * dim3) + fix1 * (dim2 * dim3);
@@ -745,7 +745,7 @@ void Utility::tensor_min_max(T *tensor, int N, std::string type)
 
 void Utility::save_state_dict(FlashAttentionPointers &paramaters)
 {
-    
+
 }
 
 
@@ -768,7 +768,8 @@ template int *Utility::vectorToFlatStrip<int>(std::vector<int>, std::string);
 template float *Utility::TwoDVectorToFlatMem<float>(const std::vector<std::vector<float>> &, bool);
 template void Utility::print2DMatrixLastTwo<float>(float *, int, int, int, int, std::string);
 template void Utility::print2DMatrixLastTwoRect<float>(float *, int, int, int, int, const char *, std::string);
-template void Utility::printFlarArray4D<float>(float *, int, int, int, int, std::string);
+template <typename T>
+void printFlatArray4D(T *data, int B, int S, int num_heads, int head_dim,const std::string& pointer_type = "host");
 template void Utility::printLastOneOf3D<float>(const float *, int, int, int, std::string);
 template void Utility::printAllOneHot3D<float>(const float *, int, int, int);
 template void Utility::printFlatArray1D<float>(const float *, int, std::string, std::string);
