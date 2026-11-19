@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../include/utils.hpp"
+#include "../include/tensor.hpp"
 #include <curand_kernel.h>
 #include <cuda_runtime.h>
 #include <memory>
@@ -8,44 +9,45 @@
 
 extern "C" void KaimingInit(float *arr, curandState *state, int x, int y, unsigned long seed);
 extern "C" void WeightedSum(float *x, float *w, float *b, float *c, int M, int K, int N);
-
 // in math.cu kernel -Reused logic
 extern "C" void multiHeadedAttention(float *ws, float *out, int num_head, int head_dimension, int batch_size, int d_model, int seq_len);
 extern "C" void TransposeKey(float *arr, float *out, int num_heads, int head_dim, int batch_size, int seq_len, bool reverse);
-extern "C" void TranposeMiddleTensor4(float *arr, float *out, int batch_size, int seq_len, int num_head, int head_dim);
+extern "C" void TransposeMiddleTensor4(float *arr, float *out, int batch_size, int seq_len, int num_head, int head_dim);
 
+
+using namespace std;
 class Linear
 {
     bool dLinear = true;
     float *ws = nullptr; // weighted sum
+
     float *x = nullptr;
     float *h_mha{};
-    float *weighted_sum_device{};
 
     int f_in;
     int f_out;
-    int seq_len;
-    int batch_size;
-    std::unique_ptr<Utility> utils = std::make_unique<Utility>();
-
-    float *multi_head_out_device{}; // this is multi head attention out device
-    float *device_weighted_sum_in{};  // copy to this from weighted sum
-
     int n_head;
+    int seq_len;
     int head_dim;
+    int batch_size;
 
     bool debug = true;
 
     float *deviceArrInTranspose{};
 
-    float *device_weight{};
-    float *device_bias{};
+    unique_ptr<Tensor<float>> device_bias;
+    unique_ptr<Tensor<float>> device_weight;
+    unique_ptr<Tensor<float>> weighted_sum_device;
+    unique_ptr<Tensor<float>> multi_head_out_device;
+
     curandState *d_state_weight{};
     curandState *d_state_bias{};
 
-    float *weightedSumP = nullptr;
+    unique_ptr<Tensor<float>> weightedSumP;
     float *multiHeadedP = nullptr;
     float *transposedP = nullptr;
+
+    std::unique_ptr<Utility> utils = std::make_unique<Utility>();
 
 public:
     Linear(int feature_in, int feature_out, int seq_len, int batch_size, int n_head, bool debug);
@@ -53,9 +55,9 @@ public:
 
     [[nodiscard]] float *reshapeHead() const;
     [[nodiscard]] float *transposeMiddle4DTensor() const;
-    [[nodiscard]] float *getBiasDevice() const{ return this->device_bias;}
-    [[nodiscard]] float *getWeightDevice() const {return this->device_weight;}
-    [[nodiscard]] float *getMultiHeadedDevice() const {return this->multi_head_out_device;}
+    [[nodiscard]] float *getBiasDevice() const{ return this->device_bias->get();}
+    [[nodiscard]] float *getWeightDevice() const {return this->device_weight->get();}
+    [[nodiscard]] float *getMultiHeadedDevice() const {return this->multi_head_out_device->get();}
 
 
     float *forward(float *val) const;

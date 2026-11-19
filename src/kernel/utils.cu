@@ -150,7 +150,7 @@ __global__ void TranposeMiddleTensor4Kernel(
 extern "C"
 {
 
-    void TranposeMiddleTensor4(
+    void TransposeMiddleTensor4(
         float *arr, // (Batch_size, seq_len, num_head, head_dim)
         float *out, // (Batch_size, num_head, seq_len, head_dim)
         int batch_size,

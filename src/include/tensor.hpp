@@ -19,7 +19,6 @@ enum Location
     HOST,
     DEVICE
 };
-
 // Minimal tensor
 template <typename T>
 class Tensor
@@ -35,10 +34,10 @@ public:
     explicit Tensor(const vector<int> &shape, Location location, bool zero_init = false);
     Tensor(const Tensor &) = delete;
     Tensor &operator=(const Tensor &) = delete;
-    
+
     Tensor<T>& NormalInit(float stdDev = 0.9f, float center=0.0f);
     T *get();
-    
+
     // The owner must stay alive while its pointer is being used.
     operator T *() &
     {

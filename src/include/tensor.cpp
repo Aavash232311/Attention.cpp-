@@ -1,10 +1,11 @@
 #include "./tensor.hpp"
 
+
 static size_t sizeElem(const vector<int> &shape)
 {
     size_t count = 1;
-    for (size_t i = 0; i < shape.size(); ++i)
-        count *= shape[i];
+    for (int i : shape)
+        count *= i;
     return count;
 }
 
@@ -93,4 +94,4 @@ Tensor<T> &Tensor<T>::NormalInit(float stdDev, float center)
 }
 
 template class Tensor<float>;
-// I am giving opreator overloading a pause here for now
+// I am giving operator overloading a pause here for now
