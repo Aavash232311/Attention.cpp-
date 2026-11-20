@@ -30,7 +30,7 @@ public:
     // This is for debudding
     bool debug = true; // this is like s switch runs once and then turns off, now this was ment to debug by printing.
 
-    int *deviceXPrompt = nullptr;
+    int *deviceXPrompt;
     float *lookupDeviceOutPrompt = nullptr;
     float *deviceEmbeddingsFinalPrompt = nullptr;
 
