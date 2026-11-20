@@ -37,6 +37,7 @@ add_executable(attention
         src/forward/linear.cpp
         src/forward/embeddings.cpp
         src/forward/interface.cpp
+        src/forward/layer_norm.cpp
 )
 
 set_target_properties(attention PROPERTIES

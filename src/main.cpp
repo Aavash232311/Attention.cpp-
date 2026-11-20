@@ -30,7 +30,7 @@
 int main()
 {
     cudaDeviceSynchronize();
-    auto start = std::chrono::high_resolution_clock::now();
+    const auto start = std::chrono::high_resolution_clock::now();
 
     bool debug = false;
 #ifdef DEBUG
@@ -54,14 +54,14 @@ int main()
 
     std::string path = "./src/data/chunk.txt";
 
-    auto utils = std::make_unique<Utility>();
+    const auto utils = std::make_unique<Utility>();
 
-    auto textEncoderFile = std::make_unique<EncoderText>();
+    const auto textEncoderFile = std::make_unique<EncoderText>();
 
     textEncoderFile->loadTextChunk(path); // load that into char arr
 
     std::vector<char> charPool = textEncoderFile->getFileAsChar();
-    auto helper = std::make_unique<Helper>(charPool);
+    const auto helper = std::make_unique<Helper>(charPool);
 
     int vocab_size = helper->vocab_size();
 
@@ -76,10 +76,10 @@ int main()
 
     const std::vector<int> &encodedData = helper->getEncodedList();
 
-    std::unique_ptr<DataLoader> dataLoader = std::make_unique<DataLoader>(batch_size, seq_len, encodedData);
+    const auto dataLoader = std::make_unique<DataLoader>(batch_size, seq_len, encodedData);
     // dataLoader->inspectData();
 
-    std::unique_ptr<AttentionInterface> model = std::make_unique<AttentionInterface>(
+    const auto model = std::make_unique<AttentionInterface>(
         d_model,
         num_heads,
         batch_size,
@@ -102,14 +102,14 @@ int main()
     
     // helper->inspect();
 
-    auto end = std::chrono::high_resolution_clock::now();
+    const auto end = std::chrono::high_resolution_clock::now();
     cudaDeviceSynchronize(); // CPU is waiting for the GPU to finish
     std::chrono::duration<double, std::milli> duration = end - start;
 
     Tensor<float> tensor(std::vector<int>{2, 3, 4}, DEVICE, true);
     tensor.NormalInit();
     
-    utils->printFlatArray3D<float>(tensor, 2, 3, 4, false, "device");
+    // utils->printFlatArray3D<float>(tensor, 2, 3, 4, false, "device");
 
     if (!(debug))
     {
