@@ -75,7 +75,7 @@ public:
 
     /*
         So I cannot make judgement in 4D tensor which is printed as flat.
-        Espically for swapNT I want to verify that claim using this method
+        Epically for swapNT I want to verify that claim using this method
     */
     static void print2DTensorOnDemand(const float *data, int dim0, int dim1, int dim2, int dim3,
                                 int fix0, int fix1);

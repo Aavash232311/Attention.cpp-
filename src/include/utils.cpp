@@ -18,7 +18,6 @@ void Utility::showHashMap(
             std::cout << "  Key: " << pair.first << " -> Value: " << pair.second << std::endl;
         }
     }
-    return;
 }
 
 /**
