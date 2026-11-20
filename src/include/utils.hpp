@@ -37,6 +37,10 @@ public:
     template <typename T>
     void printFlatArray2D(const T *arr, int seq_len, int d_model, const std::string& pointer_type = "host");
 
+    static void softmaxAcrossProbabilityCrossEntropyLoss(const float *probability, const int *y);
+
+    static void DebugBTCFlatArray3D(const float *d_arr, int B, int T, int C);
+
     static vector<vector<float>> lastDimHostToVector(
         const float *tensor, int A, int B, int C);
 

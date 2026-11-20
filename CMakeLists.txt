@@ -36,6 +36,7 @@ add_executable(attention
         src/include/data_loader.cpp
         src/forward/linear.cpp
         src/forward/embeddings.cpp
+        src/forward/interface.cpp
 )
 
 set_target_properties(attention PROPERTIES

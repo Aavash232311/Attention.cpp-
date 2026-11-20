@@ -1,0 +1,13 @@
+//
+// Created by avash on 11/20/26.
+//
+
+#ifndef CHARACTER_TRANSFORMER_INTERFACE_H
+#define CHARACTER_TRANSFORMER_INTERFACE_H
+
+
+class interface {
+};
+
+
+#endif //CHARACTER_TRANSFORMER_INTERFACE_H
