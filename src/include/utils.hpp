@@ -16,13 +16,13 @@ struct Tensor4
     int x;
     int y;
     int z;
-    int z1; // shapes can have muliple heads
+    int z1; // shapes can have multiple heads
 };
 
 class Utility
 {
 public:
-    static void showHashMap(std::vector<std::unordered_map<char, int>> &encoded_input);
+    static void showHashMap(const std::vector<std::unordered_map<char, int>> &encoded_input);
     template <typename T>
     void showVector(std::vector<T> &arr);
 
@@ -35,23 +35,23 @@ public:
     void print_vector(const std::vector<T> &vec);
 
     template <typename T>
-    void printFlatArray2D(const T *arr, int seq_len, int d_model, std::string pointer_type = "host");
+    void printFlatArray2D(const T *arr, int seq_len, int d_model, const std::string& pointer_type = "host");
 
-    vector<vector<float>> lastDimHostToVector(
+    static vector<vector<float>> lastDimHostToVector(
         const float *tensor, int A, int B, int C);
 
     template <typename T>
-    void printFlatArray3D(const T *arr, int seq_len, int batch_size, int embed_dim, bool show_last_dim = false, std::string pointer_type = "host");
+    void printFlatArray3D(const T *arr, int seq_len, int batch_size, int embed_dim, bool show_last_dim = false, const std::string& pointer_type = "host");
 
     template <typename T>
     std::vector<std::vector<T>> flatArrToVec(const float *arr, int rows, int cols);
 
     template <typename T>
-    T *vectorToFlatStrip(std::vector<T> arr, std::string type = "cpu");
+    T *vectorToFlatStrip(std::vector<T> arr, const std::string& type = "cpu");
 
     template <typename T>
     T *TwoDVectorToFlatMem(const std::vector<std::vector<T>> &arr,
-                           bool shape = false); // This is a bottleneck in the perforamce I know the fact that we should use flat vector but for the sake of learning I am using this.
+                           bool shape = false); // This is a bottleneck in the performance I know the fact that we should use flat vector but for the sake of learning I am using this.
     template <typename T>
     void print2DMatrixLastTwo(
         T *arr,
@@ -59,7 +59,7 @@ public:
         int n_head,
         int dim_row,
         int dim_col,
-        std::string pointer_type = "host");
+        const std::string& pointer_type = "host");
 
     template <typename T>
     void print2DMatrixLastTwoRect(
@@ -69,9 +69,9 @@ public:
         int seq_len,
         int head_dim,
         const char *label = "Matrix",
-        std::string pointer_type = "host");
+        const std::string& pointer_type = "host");
     template <typename T>
-    void printFlarArray4D(T *data, int B, int S, int num_heads, int head_dim, const std::string& pointer_type = "host");
+    void printFlatArray4D(T *data, int B, int S, int num_heads, int head_dim, const std::string& pointer_type = "host");
 
     /*
         So I cannot make judgement in 4D tensor which is printed as flat.
@@ -80,7 +80,7 @@ public:
     static void print2DTensorOnDemand(const float *data, int dim0, int dim1, int dim2, int dim3,
                                 int fix0, int fix1);
     template <typename T>
-    void printLastOneOf3D(const T *arr, int D0, int D1, int D2, std::string pointer_type = "host");
+    static void printLastOneOf3D(const T *arr, int D0, int D1, int D2, const std::string& pointer_type = "host");
 
     // THIS IS FOR PRINTING ALL THE ROWS OF ONE HOT ENCODED ARRAY
     template <typename T>
@@ -89,7 +89,7 @@ public:
     // THIS IS FOR PRINTING FLAT ARRAY OUTPUT
     // If type is device we allocate temp memory to print
     template <typename T>
-    void printFlatArray1D(const T *arr, int N, string label = "", std::string pointer_type = "host");
+    void printFlatArray1D(const T *arr, int N, const string& label = "", const std::string& pointer_type = "host");
 
     template <typename T>
     float averageFlatStrip2D(const T *arr, int N);
@@ -98,7 +98,6 @@ public:
     void checkBuf(const char *name, T *d, size_t n);
 
     template <typename T>
-    void tensor_min_max(T *tensor, int N, std::string type);
+    void tensor_min_max(T *tensor, int N, const std::string& type);
 
-    void save_state_dict(FlashAttentionPointers &paramaters);
 };

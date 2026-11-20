@@ -9,13 +9,13 @@
  * @param encoded_input: pass in the hash map
  */
 void Utility::showHashMap(
-    std::vector<std::unordered_map<char, int>> &encoded_input)
+    const std::vector<std::unordered_map<char, int>> &encoded_input)
 {
-    for (size_t i = 0; i < encoded_input.size(); i++)
+    for (const auto & i : encoded_input)
     {
-        for (const auto &pair : encoded_input[i])
+        for (const auto &[fst, snd] : i)
         {
-            std::cout << "  Key: " << pair.first << " -> Value: " << pair.second << std::endl;
+            std::cout << "  Key: " << fst << " -> Value: " << snd << std::endl;
         }
     }
 }
@@ -41,10 +41,10 @@ void Utility::showVector(std::vector<T> &arr)
  * @brief Prints 2D vector data structure
  *
  * @param vec: pass in the vector
- * @param shape: bool shows the shape of the vector as if it was a tensor
+ * @param shape_only: bool shows the shape of the vector as if it was a tensor
  */
 template <typename T>
-void Utility::Print2DVector(const std::vector<std::vector<T>> &vec, bool shape_only)
+void Utility::Print2DVector(const std::vector<std::vector<T>> &vec, const bool shape_only)
 {
 
     if (shape_only == false)
@@ -59,7 +59,7 @@ void Utility::Print2DVector(const std::vector<std::vector<T>> &vec, bool shape_o
             std::cout << '\n';
         }
     }
-    std::string shapeAnnotation = shape_only == false ? "\n] Shape: (" : "Shape: (";
+    const std::string shapeAnnotation = shape_only == false ? "\n] Shape: (" : "Shape: (";
 
     std::cout << shapeAnnotation
               << vec.size()
@@ -73,10 +73,10 @@ void Utility::Print2DVector(const std::vector<std::vector<T>> &vec, bool shape_o
  * @brief Prints 3D vector data structure
  *
  * @param vec: pass in the vector
- * @param shape: bool shows the shape of the vector as if it was a tensor
+ * @param shape_only: bool shows the shape of the vector as if it was a tensor
  */
 template <typename T>
-void Utility::Print3DVector(const std::vector<std::vector<std::vector<T>>> &vec, bool shape_only)
+void Utility::Print3DVector(const std::vector<std::vector<std::vector<T>>> &vec, const bool shape_only)
 {
     if (!shape_only)
     {
@@ -96,7 +96,7 @@ void Utility::Print3DVector(const std::vector<std::vector<std::vector<T>>> &vec,
         }
     }
 
-    std::string shapeAnnotation =
+    const std::string shapeAnnotation =
         shape_only ? "Shape: (" : "\nShape: (";
 
     std::cout << shapeAnnotation
@@ -131,27 +131,27 @@ void Utility::print_vector(const std::vector<T> &vec)
  * @class printFlatArray2D
  * @brief Prints flat memory strip as if it was a tensor
  *
- * @param generic pointer address
- * @param dim 1
- * @param dim 2
+ * @param arr pointer address
+ * @param seq_len 1
+ * @param d_model 2
+ * @param pointer_type
  *
  */
 template <typename T>
-void Utility::printFlatArray2D(const T *arr, int seq_len, int d_model, std::string pointer_type)
+void Utility::printFlatArray2D(const T *arr, const int seq_len, const int d_model, const std::string& pointer_type)
 {
 
-    T *h_arr = (T *)malloc(seq_len * d_model * sizeof(T));
+    T *h_arr = static_cast<T *>(malloc(seq_len * d_model * sizeof(T)));
     if (pointer_type == "device")
     {
         cudaMemcpy(h_arr, arr, seq_len * d_model * sizeof(T), cudaMemcpyDeviceToHost);
         arr = h_arr;
     }
 
-    const int M = 16;
-
     printf("tensor([\n");
     for (int r = 0; r < seq_len; r++)
     {
+        const int M = 16;
         if (r == M && seq_len > M * 2)
         {
             printf("  ...,\n");
@@ -165,7 +165,7 @@ void Utility::printFlatArray2D(const T *arr, int seq_len, int d_model, std::stri
                 printf("..., ");
                 c = d_model - M;
             }
-            printf("%g%s", (double)arr[r * d_model + c], c < d_model - 1 ? ", " : "");
+            printf("%g%s", static_cast<double>(arr[r * d_model + c]), c < d_model - 1 ? ", " : "");
         }
         printf("],\n");
     }
@@ -177,8 +177,7 @@ void Utility::printFlatArray2D(const T *arr, int seq_len, int d_model, std::stri
     }
 }
 
-vector<vector<float>> Utility::lastDimHostToVector(
-    const float *tensor, int A, int B, int C)
+vector<vector<float>> Utility::lastDimHostToVector(const float *tensor, const int A, const int B, const int C)
 {
     vector<vector<float>> vectorList;
     vectorList.reserve(A * B); // this is a 2d shape, row = list of vocab
@@ -192,7 +191,7 @@ vector<vector<float>> Utility::lastDimHostToVector(
 
             for (int elem = 0; elem < C; ++elem)
             {
-                int idx = row * B * C + col * C + elem;
+                const int idx = row * B * C + col * C + elem;
                 vec.push_back(tensor[idx]);
             }
 
@@ -207,29 +206,30 @@ vector<vector<float>> Utility::lastDimHostToVector(
  * @class printFlatArray3D
  * @brief Prints flat memory strip as if it was a tensor
  *
- * @param generic pointer address
- * @param dim 1
- * @param dim 2
- * @param dim 3
+ * @param arr generic pointer address
+ * @param seq_len
+ * @param batch_size
+ * @param embed_dim
  *
  * @param show_last_dim bool shows the last dim
+ * @param pointer_type
  *
  * @note Known issue something is wrong here, I noticed that when using this it sometimes crashes next time that happens
  * I will take a look at this one right here.
  */
 template <typename T>
-void Utility::printFlatArray3D(const T *arr, int seq_len, int batch_size, int embed_dim, bool show_last_dim, std::string pointer_type)
+void Utility::printFlatArray3D(const T *arr, const int seq_len, const int batch_size, const int embed_dim, const bool show_last_dim, const std::string& pointer_type)
 {
 
     T *h_arr = nullptr;
     if (pointer_type == "device")
     {
-        h_arr = (T *)malloc(seq_len * batch_size * embed_dim * sizeof(T));
+        h_arr = static_cast<T *>(malloc(seq_len * batch_size * embed_dim * sizeof(T)));
         cudaMemcpy(h_arr, arr, seq_len * batch_size * embed_dim * sizeof(T), cudaMemcpyDeviceToHost);
         arr = h_arr;
     }
 
-    const int M = 1024;
+    constexpr int M = 1024;
 
     printf("tensor([\n");
     for (int r = 0; r < seq_len; r++)
@@ -255,7 +255,7 @@ void Utility::printFlatArray3D(const T *arr, int seq_len, int batch_size, int em
                     printf("..., ");
                     e = embed_dim - M;
                 }
-                printf("%g%s", (double)arr[r * batch_size * embed_dim + c * embed_dim + e], e < embed_dim - 1 ? ", " : "");
+                printf("%g%s", static_cast<double>(arr[r * batch_size * embed_dim + c * embed_dim + e]), e < embed_dim - 1 ? ", " : "");
             }
             printf("],\n");
         }
@@ -288,7 +288,7 @@ void Utility::printFlatArray3D(const T *arr, int seq_len, int batch_size, int em
                         printf("..., ");
                         e = embed_dim - M;
                     }
-                    printf("%g%s", (double)arr[r * batch_size * embed_dim + c * embed_dim + e], e < embed_dim - 1 ? ", " : "");
+                    printf("%g%s", static_cast<double>(arr[r * batch_size * embed_dim + c * embed_dim + e]), e < embed_dim - 1 ? ", " : "");
                 }
                 printf("]\n");
             }
@@ -310,7 +310,7 @@ void Utility::printFlatArray3D(const T *arr, int seq_len, int batch_size, int em
  * @param cols 2
  *
  *
- * @note this is expensive when invoking under each epoch. Its sutiable only for a single shot opreation
+ * @note this is expensive when invoking under each epoch. Its suitable only for a single shot operation
  * Example: when converting flat memory strip to a vector using data loader.
  */
 template <typename T>
@@ -330,9 +330,9 @@ std::vector<std::vector<T>> Utility::flatArrToVec(const float *arr, int rows, in
 }
 
 template <typename T>
-T *Utility::vectorToFlatStrip(std::vector<T> arr, std::string type)
+T *Utility::vectorToFlatStrip(std::vector<T> arr, const std::string& type)
 {
-    T *newArr = (T *)malloc(arr.size() * sizeof(T));
+    T *newArr = static_cast<T *>(malloc(arr.size() * sizeof(T)));
 
     // row = 1 and col = n
     for (int col = 0; col < arr.size(); ++col)
@@ -343,12 +343,12 @@ T *Utility::vectorToFlatStrip(std::vector<T> arr, std::string type)
     if (type == "gpu")
     {
         T *deviceArr;
-        cudaMalloc((void **)&deviceArr, arr.size() * sizeof(T));
+        cudaMalloc(reinterpret_cast<void**>(&deviceArr),arr.size() * sizeof(T));
         cudaMemcpy(deviceArr, newArr, arr.size() * sizeof(T), cudaMemcpyHostToDevice);
 
         free(newArr);
 
-        // we will free the cudaMem instead of host memroy
+        // we will free the cudaMem instead of host memory
         return deviceArr;
     }
 
@@ -363,19 +363,17 @@ T *Utility::vectorToFlatStrip(std::vector<T> arr, std::string type)
  * @param shape prints the shape
  *
  * @warning This is again expensive task to invoke under each epoch. It really hurts the performance very much.
- * Use this in something like a data loader for single shot opreation
+ * Use this in something like a data loader for single shot operation
  */
 template <typename T>
 T *Utility::TwoDVectorToFlatMem(const std::vector<std::vector<T>> &arr,
-                                bool shape) // This is a bottleneck in the perforamce I know the fact that we should use flat vector but for the sake of learning I am using this.
+                                const bool shape) // This is a bottleneck in the performance I know the fact that we should use flat vector but for the sake of learning I am using this.
 {
     if (arr.empty())
         return nullptr;
 
-    size_t rows = arr.size();
+    const size_t rows = arr.size();
     size_t cols = arr[0].size();
-
-    // std::cout << "Rows: " << rows << " Cols: " << cols << std::endl;
 
     for (const auto &row : arr)
     {
@@ -411,24 +409,25 @@ T *Utility::TwoDVectorToFlatMem(const std::vector<std::vector<T>> &arr,
  * @brief Prints 4d memory strip's last two matrix.
  *
  * @param arr pass in vector data structure
- * @param dim1
- * @param dim2
- * @param dim3
- * @param dim4
+ * @param batch_size
+ * @param n_head
+ * @param dim_row
+ * @param dim_col
+ * @param pointer_type
  *
  * @brief Used for debugging
  */
 template <typename T>
 void Utility::print2DMatrixLastTwo(
     T *arr,
-    int batch_size,
-    int n_head,
-    int dim_row,
-    int dim_col,
-    std::string pointer_type)
+    const int batch_size,
+    const int n_head,
+    const int dim_row,
+    const int dim_col,
+    const std::string& pointer_type)
 {
 
-    T *h_arr = (T *)malloc(batch_size * n_head * dim_row * dim_col * sizeof(T));
+    T *h_arr = static_cast<T *>(malloc(batch_size * n_head * dim_row * dim_col * sizeof(T)));
     if (pointer_type == "device")
     {
         cudaMemcpy(h_arr, arr, batch_size * n_head * dim_row * dim_col * sizeof(T), cudaMemcpyDeviceToHost);
@@ -465,29 +464,30 @@ void Utility::print2DMatrixLastTwo(
  * @brief Prints 4d memory strip's last two matrix.
  *
  * @param arr pass in vector data structure
- * @param dim1
- * @param dim2
- * @param dim3
- * @param dim4
+ * @param batch_size
+ * @param n_head
+ * @param seq_len
+ * @param head_dim
  * @param label: can pass in anything for label
+ * @param pointer_type
  *
  * @brief Used for debugging
  */
 template <typename T>
 void Utility::print2DMatrixLastTwoRect(
     T *arr,
-    int batch_size,
-    int n_head,
-    int seq_len,
-    int head_dim,
+    const int batch_size,
+    const int n_head,
+    const int seq_len,
+    const int head_dim,
     const char *label,
-    std::string pointer_type)
+    const std::string& pointer_type)
 {
 
     T *h_arr = nullptr;
     if (pointer_type == "device")
     {
-        h_arr = (T *)malloc(batch_size * n_head * seq_len * head_dim * sizeof(T));
+        h_arr = static_cast<T *>(malloc(batch_size * n_head * seq_len * head_dim * sizeof(T)));
         cudaMemcpy(h_arr, arr, batch_size * n_head * seq_len * head_dim * sizeof(T), cudaMemcpyDeviceToHost);
         arr = h_arr;
     }
@@ -518,19 +518,20 @@ void Utility::print2DMatrixLastTwoRect(
 }
 
 /**
- * @class printFlarArray4D
+ * @class printFlatArray4D
  * @brief Prints the 4d memory strip as if it was a tensor
  *
  * @param data pointer data
- * @param dim1
- * @param dim2
- * @param dim3
- * @param dim4
+ * @param B
+ * @param S
+ * @param num_heads
+ * @param head_dim
+ * @param pointer_type
  *
  * @brief Used for debugging
  */
 template <typename T>
-void Utility::printFlarArray4D(T *data, int B, int S, int num_heads, int head_dim, const std::string& pointer_type)
+void Utility::printFlatArray4D(T *data, const int B, const int S, const int num_heads, const int head_dim, const std::string& pointer_type)
 {
     float *h_arr = nullptr;
 
@@ -567,10 +568,10 @@ void Utility::printFlarArray4D(T *data, int B, int S, int num_heads, int head_di
     So I cannot make judgement in 4D tensor which is printed as flat.
     Epically for swapNT I want to verify that claim using this method
 */
-void Utility::print2DTensorOnDemand(const float *data, int dim0, int dim1, int dim2, int dim3,
-                                     int fix0, int fix1)
+void Utility::print2DTensorOnDemand(const float *data, int dim0, const int dim1, const int dim2, const int dim3,
+                                     const int fix0, const int fix1)
 {
-    int base = fix0 * (dim1 * dim2 * dim3) + fix1 * (dim2 * dim3);
+    const int base = fix0 * (dim1 * dim2 * dim3) + fix1 * (dim2 * dim3);
     printf("\n[%d][%d][*][*] (%d x %d):\n", fix0, fix1, dim2, dim3);
     for (int i = 0; i < dim2; i++)
     {
@@ -581,7 +582,7 @@ void Utility::print2DTensorOnDemand(const float *data, int dim0, int dim1, int d
 }
 
 template <typename T>
-void Utility::printLastOneOf3D(const T *arr, int D0, int D1, int D2, std::string pointer_type)
+void Utility::printLastOneOf3D(const T *arr, const int D0, const int D1, const int D2, const std::string& pointer_type)
 {
     int i = D0 - 1; // last batch
     int j = D1 - 1; // last row
@@ -590,7 +591,7 @@ void Utility::printLastOneOf3D(const T *arr, int D0, int D1, int D2, std::string
 
     if (pointer_type == "device")
     {
-        d_arr = (float *)malloc(D0 * D1 * D2 * sizeof(T));
+        d_arr = static_cast<float *>(malloc(D0 * D1 * D2 * sizeof(T)));
         cudaMemcpy(d_arr, arr, D0 * D1 * D2 * sizeof(T), cudaMemcpyDeviceToHost);
         arr = d_arr;
     }
@@ -612,7 +613,7 @@ void Utility::printLastOneOf3D(const T *arr, int D0, int D1, int D2, std::string
 }
 
 template <typename T>
-void Utility::printAllOneHot3D(const T *arr, int D0, int D1, int D2)
+void Utility::printAllOneHot3D(const T *arr, const int D0, const int D1, const int D2)
 {
     for (int i = 0; i < D0; ++i)
     {
@@ -634,18 +635,18 @@ void Utility::printAllOneHot3D(const T *arr, int D0, int D1, int D2)
 // THIS IS FOR PRINTING FLAT ARRAY OUTPUT
 // If type is device we allocate temp memory to print
 template <typename T>
-void Utility::printFlatArray1D(const T *arr, int N, string label, std::string pointer_type)
+void Utility::printFlatArray1D(const T *arr, const int N, const string& label, const std::string& pointer_type)
 {
 
     T *d_arr = nullptr;
     if (pointer_type == "device")
     {
-        d_arr = (T *)malloc(N * sizeof(T));
+        d_arr = static_cast<T *>(malloc(N * sizeof(T)));
         cudaMemcpy(d_arr, arr, N * sizeof(T), cudaMemcpyDeviceToHost);
         arr = d_arr;
     }
 
-    int max_print = N;
+    const int max_print = N;
     std::cout << label << " tensor([";
     for (int i = 0; i < N; ++i)
     {
@@ -668,7 +669,7 @@ void Utility::printFlatArray1D(const T *arr, int N, string label, std::string po
 }
 
 template <typename T>
-float Utility::averageFlatStrip2D(const T *arr, int N)
+float Utility::averageFlatStrip2D(const T *arr, const int N)
 {
 
     if (arr == nullptr || N <= 0)
@@ -681,7 +682,7 @@ float Utility::averageFlatStrip2D(const T *arr, int N)
         sum += static_cast<float>(arr[i]);
     }
 
-    return sum / N;
+    return sum / static_cast<float>(N);
 }
 
 template <typename T>
@@ -707,15 +708,15 @@ void Utility::checkBuf(const char *name, T *d, size_t n)
     }
 }
 template <typename T>
-void Utility::tensor_min_max(T *tensor, int N, std::string type)
+void Utility::tensor_min_max(T *tensor, const int N, const std::string& type)
 {
     // we could write entire parallel reduction logic here
-    // create beautiful data data structures intregate things seamless
+    // create beautiful data data structures integrate things seamless
     // I see lot of exciting potential but first lets get the end-result right
     T *t = nullptr;
     if (type == "device")
     {
-        t = (T *)malloc(N * sizeof(T));
+        t = static_cast<T *>(malloc(N * sizeof(T)));
         cudaMemcpy(t, tensor, N * sizeof(T), cudaMemcpyDeviceToHost);
     }
     else
@@ -742,11 +743,6 @@ void Utility::tensor_min_max(T *tensor, int N, std::string type)
     }
 }
 
-void Utility::save_state_dict(FlashAttentionPointers &paramaters)
-{
-
-}
-
 
 // These template definitions live in this translation unit, so instantiate
 // the types used by the model and its debug helpers for the linker.
@@ -758,20 +754,28 @@ template void Utility::Print3DVector<int>(const std::vector<std::vector<std::vec
 template void Utility::Print3DVector<float>(const std::vector<std::vector<std::vector<float>>> &, bool);
 template void Utility::print_vector<int>(const std::vector<int> &);
 template void Utility::print_vector<float>(const std::vector<float> &);
-template void Utility::printFlatArray2D<int>(const int *, int, int, std::string);
-template void Utility::printFlatArray2D<float>(const float *, int, int, std::string);
-template void Utility::printFlatArray3D<float>(const float *, int, int, int, bool, std::string);
+
+template void Utility::printFlatArray2D<int>(const int*, int, int, const std::string&);
+template void Utility::printFlatArray2D<float>(const float*, int, int, const std::string&);
+
+template void Utility::printFlatArray3D<float>(const float *, const int, const int, const int, const bool,const std::string&);
 template std::vector<std::vector<int>> Utility::flatArrToVec<int>(const float *, int, int);
 template std::vector<std::vector<float>> Utility::flatArrToVec<float>(const float *, int, int);
-template int *Utility::vectorToFlatStrip<int>(std::vector<int>, std::string);
+
+
+template int *Utility::vectorToFlatStrip<int>(const std::vector<int>, const std::string&);
+
+
 template float *Utility::TwoDVectorToFlatMem<float>(const std::vector<std::vector<float>> &, bool);
-template void Utility::print2DMatrixLastTwo<float>(float *, int, int, int, int, std::string);
-template void Utility::print2DMatrixLastTwoRect<float>(float *, int, int, int, int, const char *, std::string);
-template <typename T>
-void printFlatArray4D(T *data, int B, int S, int num_heads, int head_dim,const std::string& pointer_type = "host");
-template void Utility::printLastOneOf3D<float>(const float *, int, int, int, std::string);
+template void Utility::print2DMatrixLastTwo<float>(float *, const int, const int, const int, const int, const std::string&);
+template void Utility::print2DMatrixLastTwoRect<float>(float *, int, int, int, int, const char *, const std::string&);
+
+template void Utility::printFlatArray4D<float>(float *data, int B, int S, int num_heads, int head_dim,const std::string& pointer_type );
+
+template void Utility::printLastOneOf3D<float>(const float *, int, int, int, const std::string&);
+
 template void Utility::printAllOneHot3D<float>(const float *, int, int, int);
-template void Utility::printFlatArray1D<float>(const float *, int, std::string, std::string);
+template void Utility::printFlatArray1D<float>(const float *, int, const std::string&, const std::string&);
 template float Utility::averageFlatStrip2D<float>(const float *, int);
 template void Utility::checkBuf<float>(const char *, float *, size_t);
-template void Utility::tensor_min_max<float>(float *, int, std::string);
+template void Utility::tensor_min_max<float>(float *, int, const std::string&);
